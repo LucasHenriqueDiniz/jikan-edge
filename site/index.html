@@ -71,18 +71,23 @@ nav a.gh:hover { border-color: var(--vermillion); }
 .hero { position: relative; padding: 72px 0 40px; }
 .hero-grid { display: grid; grid-template-columns: 1.15fr .85fr; gap: 48px; align-items: center; }
 @media (max-width: 900px) { .hero-grid { grid-template-columns: 1fr; } }
-.hero-show {
-  position: relative;
-  background: var(--ink-2); border: 1px solid var(--line); border-radius: 16px;
-  padding: 16px 16px 12px;
-  box-shadow: 0 30px 80px -30px rgba(0,0,0,.75);
-}
+.hero-show { position: relative; }
 .hs-req {
+  position: relative; overflow: hidden;
   display: flex; align-items: center; gap: 10px;
   font-family: var(--mono); font-size: 12.5px; color: var(--paper);
-  border-bottom: 1px dashed var(--line);
-  padding: 2px 2px 12px; margin-bottom: 14px;
+  background: var(--ink-2); border: 1px solid var(--line); border-radius: 10px;
+  padding: 10px 14px; margin-bottom: 18px;
+  box-shadow: 0 14px 40px -18px rgba(0,0,0,.8);
 }
+.hs-bar {
+  position: absolute; left: 0; bottom: 0; height: 2px; width: 0;
+  background: linear-gradient(90deg, var(--vermillion), var(--gold));
+  border-radius: 2px; opacity: 1; transition: width .3s ease, opacity .5s ease;
+}
+.hs-req.loading .hs-bar { animation: loadbar 1.6s ease-out forwards; }
+@keyframes loadbar { 0% { width: 4%; } 40% { width: 55%; } 80% { width: 82%; } 100% { width: 92%; } }
+.hs-req.done .hs-bar { animation: none; width: 100%; opacity: 0; }
 .hs-req .method { color: var(--teal); font-weight: 500; }
 .hs-req .hs-time { color: var(--gold); font-size: 11.5px; }
 .hs-req .hc-live { margin-left: auto; }
@@ -110,8 +115,13 @@ nav a.gh:hover { border-color: var(--vermillion); }
   border: 1px solid var(--line); background: var(--ink-2);
   box-shadow: 0 20px 50px -20px rgba(0,0,0,.8);
   transition: transform .2s, border-color .2s;
+  opacity: 0; animation: cardIn .55s cubic-bezier(.2,.7,.3,1) forwards;
 }
-.hs-card:hover { transform: translateY(-4px); border-color: var(--vermillion); z-index: 2; }
+@keyframes cardIn { from { opacity: 0; transform: translateY(14px) scale(.97); } to { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .hs-card { animation: none; opacity: 1; } }
+.hs-card:nth-child(odd) { transform: rotate(-.7deg) translateY(3px); }
+.hs-card:nth-child(even) { transform: rotate(.7deg) translateY(-3px); }
+.hs-card:hover { transform: translateY(-5px); border-color: var(--vermillion); z-index: 2; }
 .hs-card img { width: 100%; height: 100%; object-fit: cover; display: block; }
 .hs-card .hs-grad {
   position: absolute; inset: 0;
@@ -132,12 +142,6 @@ nav a.gh:hover { border-color: var(--vermillion); }
   font-size: 13.5px; font-weight: 600; line-height: 1.3; color: var(--paper);
   display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
 }
-.hs-foot { margin-top: 12px; text-align: center; }
-.hs-foot a { color: var(--paper-faint); text-decoration: none; font-size: 11.5px; font-family: var(--mono); }
-.hs-foot a:hover { color: var(--vermillion); }
-.credit { margin-top: 18px; font-size: 13.5px; color: var(--paper-faint); }
-.credit a { color: var(--paper-dim); text-decoration-color: var(--line); }
-.credit a:hover { color: var(--vermillion); }
 .hero .kanji-bg {
   position: absolute; right: -40px; top: -30px;
   font-size: clamp(200px, 34vw, 420px); line-height: 1;
@@ -244,6 +248,36 @@ h2 { font-size: clamp(28px, 4vw, 40px); font-weight: 700; letter-spacing: -.02em
   padding: 20px; transition: border-color .2s, transform .2s;
 }
 .route-card:hover { border-color: var(--vermillion); transform: translateY(-2px); }
+.route-card { position: relative; }
+.peek {
+  position: absolute; left: 50%; bottom: calc(100% + 10px);
+  transform: translateX(-50%) translateY(6px);
+  width: 290px; z-index: 6; pointer-events: none;
+  background: var(--ink); border: 1px solid var(--line); border-radius: 12px;
+  box-shadow: 0 24px 60px -18px rgba(0,0,0,.9);
+  opacity: 0; visibility: hidden;
+  transition: opacity .18s ease, transform .18s ease, visibility .18s;
+}
+.route-card:hover .peek { opacity: 1; visibility: visible; transform: translateX(-50%) translateY(0); }
+.peek::after {
+  content: ""; position: absolute; left: 50%; top: 100%; transform: translateX(-50%);
+  border: 7px solid transparent; border-top-color: var(--line);
+}
+.peek-req {
+  font-family: var(--mono); font-size: 11px; color: var(--teal);
+  padding: 9px 14px; border-bottom: 1px dashed var(--line);
+}
+.peek-body { display: flex; gap: 12px; padding: 12px 14px; }
+.peek-body img {
+  width: 56px; height: 80px; object-fit: cover; border-radius: 6px;
+  border: 1px solid var(--line); flex-shrink: 0;
+}
+.peek-rows { min-width: 0; }
+.peek-title { font-size: 13.5px; font-weight: 650; color: var(--paper); margin-bottom: 5px; }
+.peek-rows div:not(.peek-title) { display: flex; gap: 8px; font-size: 11.5px; line-height: 1.7; }
+.peek-rows i { font-style: normal; font-family: var(--mono); color: var(--paper-faint); min-width: 78px; }
+.peek-rows b { color: var(--paper-dim); font-weight: 450; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+@media (hover: none) { .peek { display: none; } }
 .route-card h3 { font-size: 17px; font-weight: 650; display: flex; align-items: baseline; gap: 10px; }
 .route-card h3 .count { font-family: var(--mono); font-size: 11px; color: var(--vermillion); }
 .chips { margin-top: 12px; display: flex; flex-wrap: wrap; gap: 6px; }
@@ -270,26 +304,38 @@ h2 { font-size: clamp(28px, 4vw, 40px); font-weight: 700; letter-spacing: -.02em
 }
 .ratebox b { color: var(--paper); font-weight: 600; }
 
-/* migration prompt */
-.prompt-card {
-  background: var(--ink-2); border: 1px solid var(--line); border-radius: 12px; overflow: hidden;
+/* migration */
+.mig { text-align: center; }
+.mig-diff {
+  display: inline-block; text-align: left;
+  background: var(--ink-2); border: 1px solid var(--line); border-radius: 12px;
+  padding: 16px 20px; margin-bottom: 26px; max-width: 100%; overflow-x: auto;
 }
-.prompt-head {
-  display: flex; align-items: center; justify-content: space-between;
-  padding: 10px 16px; border-bottom: 1px solid var(--line);
+.mig-line { display: flex; align-items: center; gap: 12px; padding: 5px 0; }
+.mig-line code { font-family: var(--mono); font-size: 12.5px; white-space: nowrap; }
+.mig-tag {
+  font-family: var(--mono); font-size: 10px; letter-spacing: .14em; text-transform: uppercase;
+  border-radius: 4px; padding: 2px 8px; min-width: 52px; text-align: center; flex-shrink: 0;
 }
-.prompt-label { font-family: var(--mono); font-size: 12px; color: var(--paper-faint); }
-.prompt-head button {
-  font-family: var(--mono); font-size: 11.5px; color: var(--vermillion);
-  background: transparent; border: 1px solid var(--vermillion); border-radius: 6px;
-  padding: 5px 12px; cursor: pointer; transition: all .15s;
+.mig-old .mig-tag { color: var(--vermillion); border: 1px solid var(--vermillion); }
+.mig-old code { color: var(--paper-faint); }
+.mig-old s { text-decoration-color: var(--vermillion); }
+.mig-new .mig-tag { color: var(--teal); border: 1px solid var(--teal); }
+.mig-new code { color: var(--paper); }
+.mig-btn {
+  display: inline-flex; align-items: center; gap: 10px;
+  font-family: var(--mono); font-size: 14px; font-weight: 500;
+  color: var(--ink); background: var(--vermillion);
+  border: 0; border-radius: 10px; padding: 14px 28px; cursor: pointer;
+  box-shadow: 0 14px 40px -14px rgba(255,75,51,.55);
+  transition: transform .15s, filter .15s, background .2s;
 }
-.prompt-head button:hover { background: var(--vermillion); color: var(--ink); }
-.prompt-card pre {
-  font-family: var(--mono); font-size: 12px; line-height: 1.6; color: var(--paper-dim);
-  padding: 16px 18px; max-height: 420px; overflow: auto; white-space: pre-wrap; word-break: break-word;
-  scrollbar-width: thin; scrollbar-color: var(--line) transparent;
-}
+.mig-btn:hover { transform: translateY(-2px); filter: brightness(1.08); }
+.mig-btn:active { transform: translateY(0) scale(.98); }
+.mig-btn.ok { background: var(--teal); box-shadow: 0 14px 40px -14px rgba(111,211,199,.5); }
+.mig-note { margin-top: 18px; font-size: 13.5px; color: var(--paper-faint); max-width: 58ch; margin-left: auto; margin-right: auto; }
+.mig-note a { color: var(--paper-dim); }
+.mig-note a:hover { color: var(--vermillion); }
 
 /* footer */
 footer { border-top: 1px solid var(--line); margin-top: 40px; padding: 40px 0 56px; }
@@ -344,22 +390,18 @@ footer .stamp .kanji { color: var(--vermillion); }
           <span id="baseurl-text">https://jikan-edge.lucas-hdo.workers.dev</span>
           <span class="copy" id="baseurl-copy">copy</span>
         </div>
-        <p class="credit">
-          Inspired by <a href="https://jikan.moe" target="_blank" rel="noopener">Jikan</a>, the original
-          unofficial MAL API · <a href="https://github.com/LucasHenriqueDiniz/jikan-edge" target="_blank" rel="noopener">source on GitHub</a>
-        </p>
       </div>
       <aside class="hero-show" aria-label="Live API response">
-        <div class="hs-req">
+        <div class="hs-req loading" id="hs-req">
           <span class="method">GET</span>
           <span class="hs-path">/v1/top/anime</span>
           <span class="hs-time" id="hs-time"></span>
           <span class="hc-live"><i></i>live</span>
+          <span class="hs-bar"></span>
         </div>
         <div class="hs-cards" id="hs-cards">
           <div class="hs-skel"></div><div class="hs-skel"></div><div class="hs-skel"></div><div class="hs-skel"></div>
         </div>
-        <div class="hs-foot"><a href="#try">Rendered from a real request against this API — try your own ↓</a></div>
       </aside>
     </div>
 
@@ -415,34 +457,129 @@ footer .stamp .kanji { color: var(--vermillion); }
       <div class="route-card reveal">
         <h3>Anime <span class="count">20 routes</span></h3>
         <div class="chips"><span>search + filters</span><span>detail</span><span>full</span><span>characters</span><span>staff</span><span>episodes</span><span>videos</span><span>pictures</span><span>statistics</span><span>news</span><span>forum</span><span>relations</span><span>themes</span><span>external</span><span>streaming</span><span>recommendations</span><span>reviews</span><span>moreinfo</span><span>userupdates</span></div>
+        <div class="peek">
+          <div class="peek-req">GET /v1/anime/1</div>
+          <div class="peek-body">
+            <img src="https://cdn.myanimelist.net/images/anime/4/19644.jpg" alt="" loading="lazy" onerror="this.style.display='none'">
+            <div class="peek-rows">
+              <div class="peek-title">Cowboy Bebop</div>
+              <div><i>score</i><b>★ 8.75</b></div>
+              <div><i>episodes</i><b>26</b></div>
+              <div><i>status</i><b>Finished Airing</b></div>
+              <div><i>genres</i><b>Action, Sci-Fi</b></div>
+            </div>
+          </div>
+        </div>
       </div>
       <div class="route-card reveal">
         <h3>Manga <span class="count">14 routes</span></h3>
         <div class="chips"><span>search + filters</span><span>detail</span><span>full</span><span>characters</span><span>pictures</span><span>statistics</span><span>news</span><span>forum</span><span>relations</span><span>external</span><span>recommendations</span><span>reviews</span><span>moreinfo</span><span>userupdates</span></div>
+        <div class="peek">
+          <div class="peek-req">GET /v1/manga/2</div>
+          <div class="peek-body">
+            <img src="https://cdn.myanimelist.net/images/manga/1/157897.jpg" alt="" loading="lazy" onerror="this.style.display='none'">
+            <div class="peek-rows">
+              <div class="peek-title">Berserk</div>
+              <div><i>score</i><b>★ 9.47</b></div>
+              <div><i>status</i><b>Publishing</b></div>
+              <div><i>authors</i><b>Miura, Kentarou</b></div>
+              <div><i>genres</i><b>Action, Horror</b></div>
+            </div>
+          </div>
+        </div>
       </div>
       <div class="route-card reveal">
         <h3>Characters &amp; People <span class="count">16 routes</span></h3>
         <div class="chips"><span>detail</span><span>full</span><span>anime</span><span>manga</span><span>voices</span><span>pictures</span><span>news</span><span>search</span><span>top</span></div>
+        <div class="peek">
+          <div class="peek-req">GET /v1/characters/1</div>
+          <div class="peek-body">
+            <div class="peek-rows">
+              <div class="peek-title">Spike Spiegel</div>
+              <div><i>favorites</i><b>49,244</b></div>
+              <div><i>animeography</i><b>Cowboy Bebop +2</b></div>
+              <div><i>voices</i><b>Yamadera, Kouichi (JP)</b></div>
+            </div>
+          </div>
+        </div>
       </div>
       <div class="route-card reveal">
         <h3>Users <span class="count">13 routes</span></h3>
         <div class="chips"><span>profile</span><span>full</span><span>about</span><span>statistics</span><span>favorites</span><span>updates</span><span>friends</span><span>clubs</span><span>reviews</span><span>recommendations</span><span>animelist</span><span>mangalist</span><span>search</span></div>
+        <div class="peek">
+          <div class="peek-req">GET /v1/users/:username/statistics</div>
+          <div class="peek-body">
+            <div class="peek-rows">
+              <div class="peek-title">anime · manga stats</div>
+              <div><i>daysWatched</i><b>142.3</b></div>
+              <div><i>meanScore</i><b>7.84</b></div>
+              <div><i>completed</i><b>428</b></div>
+              <div><i>totalEntries</i><b>612</b></div>
+            </div>
+          </div>
+        </div>
       </div>
       <div class="route-card reveal">
         <h3>Seasons &amp; Schedules <span class="count">6 routes</span></h3>
         <div class="chips"><span>now</span><span>year/season</span><span>upcoming</span><span>archive</span><span>weekly schedule</span><span>?filter=monday…sunday</span></div>
+        <div class="peek">
+          <div class="peek-req">GET /v1/seasons/now</div>
+          <div class="peek-body">
+            <div class="peek-rows">
+              <div class="peek-title">this season's list</div>
+              <div><i>title</i><b>Mushoku Tensei III</b></div>
+              <div><i>score</i><b>★ 8.75</b></div>
+              <div><i>episodes</i><b>14</b></div>
+              <div><i>members</i><b>282,269</b></div>
+            </div>
+          </div>
+        </div>
       </div>
       <div class="route-card reveal">
         <h3>Clubs, Producers &amp; Magazines <span class="count">11 routes</span></h3>
         <div class="chips"><span>club detail</span><span>members</span><span>staff</span><span>relations</span><span>producer directory</span><span>detail</span><span>full</span><span>external</span><span>magazines ?q=</span></div>
+        <div class="peek">
+          <div class="peek-req">GET /v1/producers/4</div>
+          <div class="peek-body">
+            <div class="peek-rows">
+              <div class="peek-title">Bones</div>
+              <div><i>favorites</i><b>~40,000</b></div>
+              <div><i>established</i><b>1998</b></div>
+              <div><i>external</i><b>bones.co.jp +3</b></div>
+            </div>
+          </div>
+        </div>
       </div>
       <div class="route-card reveal">
         <h3>Watch, Reviews &amp; Recs <span class="count">8 routes</span></h3>
         <div class="chips"><span>recent episodes</span><span>popular episodes</span><span>recent promos</span><span>popular promos</span><span>global reviews</span><span>global recommendations</span><span>pagination</span></div>
+        <div class="peek">
+          <div class="peek-req">GET /v1/reviews/anime</div>
+          <div class="peek-body">
+            <div class="peek-rows">
+              <div class="peek-title">latest reviews feed</div>
+              <div><i>user</i><b>anime_fan_92</b></div>
+              <div><i>score</i><b>9 / 10</b></div>
+              <div><i>tag</i><b>Recommended</b></div>
+              <div><i>text</i><b>"An absolute classic that…"</b></div>
+            </div>
+          </div>
+        </div>
       </div>
       <div class="route-card reveal">
         <h3>Random <span class="count">5 routes</span></h3>
         <div class="chips"><span>anime</span><span>manga</span><span>characters</span><span>people</span><span>users</span></div>
+        <div class="peek">
+          <div class="peek-req">GET /v1/random/anime</div>
+          <div class="peek-body">
+            <div class="peek-rows">
+              <div class="peek-title">🎲 a surprise from the cache</div>
+              <div><i>malId</i><b>???</b></div>
+              <div><i>title</i><b>different every time</b></div>
+              <div><i>source</i><b>local D1 catalog</b></div>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
     <p class="routes-foot">Full reference with parameters, conventions and a live runner per route:
@@ -493,42 +630,26 @@ footer .stamp .kanji { color: var(--vermillion); }
     <div class="sec-head reveal">
       <div class="jp">移行</div>
       <h2>Migrating from Jikan?</h2>
-      <p>Using an AI coding agent (Claude Code, Cursor, Copilot…)? Paste this prompt and let it port
-      your project from <code>api.jikan.moe/v4</code> to jikan-edge. It carries everything the agent
-      needs to know — envelope, naming, pagination, rate limits and the routes we don't serve.</p>
+      <p>One click, one paste. The button below copies a ready-made prompt for your AI coding agent
+      (Claude Code, Cursor, Copilot…) that ports a project from <code>api.jikan.moe/v4</code> to
+      jikan-edge — envelope, naming, pagination, rate limits, everything.</p>
     </div>
-    <div class="prompt-card reveal">
-      <div class="prompt-head">
-        <span class="prompt-label">agent-prompt.txt</span>
-        <button id="prompt-copy">copy prompt</button>
+    <div class="mig reveal">
+      <div class="mig-diff" aria-hidden="true">
+        <div class="mig-line mig-old">
+          <span class="mig-tag">before</span>
+          <code><s>https://api.jikan.moe/v4</s>/anime/1 → <s>mal_id</s>, <s>images.jpg.image_url</s></code>
+        </div>
+        <div class="mig-line mig-new">
+          <span class="mig-tag">after</span>
+          <code>https://jikan-edge.lucas-hdo.workers.dev/v1/anime/1 → malId, imageUrl</code>
+        </div>
       </div>
-      <pre id="prompt-text">Migrate this project from the Jikan API (https://api.jikan.moe/v4) to jikan-edge
-(https://jikan-edge.lucas-hdo.workers.dev/v1). Full docs: https://jikan-edge.lucas-hdo.workers.dev/docs
-
-Key differences to apply:
-1. Base URL: replace https://api.jikan.moe/v4 with https://jikan-edge.lucas-hdo.workers.dev/v1.
-   Route paths and groups mirror Jikan v4 (anime, manga, characters, people, users, seasons,
-   schedules, top, producers, clubs, magazines, watch, reviews, recommendations, random).
-2. Response envelope: every success is { "data": ..., "meta": { cached, stale, refreshFailed,
-   fetchedAt } }. There is no Jikan-style "pagination" object; pass ?page= (1-based) and read
-   list lengths directly. User lists also accept ?limit= (1-300, default 100).
-3. Field naming: camelCase instead of snake_case (mal_id -> malId, title_english -> titleEnglish).
-   Images are flat URL strings (imageUrl), not Jikan's nested images.jpg/webp objects.
-4. Errors: { "error": { code, message, requestId } } with HTTP status. Handle 429 RATE_LIMITED by
-   honoring the Retry-After header (limits: 30 req/10s and 60 req/min per IP).
-5. meta.stale === true means a served-from-cache fallback after a failed refresh - treat as valid.
-6. Not served (adjust or remove features that depend on them): genres/anime, genres/manga,
-   clubs?q= (club search), top/reviews, users/:u/history, users/:u/external, users/userbyid/:id,
-   per-episode forum. Also: anime/:id/episodes returns only MAL's first page, streaming may be
-   empty (geo-dependent), random/* draws from jikan-edge's local cache only.
-
-Steps: find every Jikan call site; swap the base URL; update response parsing to the envelope and
-camelCase fields; adapt pagination and rate-limit handling; then verify each migrated endpoint
-against the live API before finishing.</pre>
+      <button class="mig-btn" id="prompt-copy"><span class="mig-ico">⧉</span><span class="mig-txt">Copy the agent prompt</span></button>
+      <p class="mig-note">Covers the <code>{ data, meta }</code> envelope, camelCase fields, pagination,
+      <code>429</code> handling and the <a href="/docs#not-served">routes we don't serve</a> — and asks the
+      agent to verify every endpoint against the live API.</p>
     </div>
-    <p class="routes-foot">Every non-served route above is a documented investigation, not a gap — see
-      <a href="/docs#not-served">the limitations table in the docs</a>.
-    </p>
   </div>
 </section>
 
@@ -540,7 +661,8 @@ against the live API before finishing.</pre>
         MyAnimeList pages, cached aggressively and rate-limited to keep upstream load minimal.
         If you are MyAnimeList and have concerns, please open an issue.
       </p>
-      <p class="stamp"><span class="kanji">時間</span> jikan-edge · MIT License</p>
+      <p class="stamp"><span class="kanji">時間</span> jikan-edge · MIT License · Inspired by
+        <a href="https://jikan.moe" target="_blank" rel="noopener">Jikan</a>, the original unofficial MAL API</p>
     </div>
     <div class="links">
       <a href="/docs">Documentation</a>
@@ -634,12 +756,55 @@ against the live API before finishing.</pre>
     fire(btn.dataset.path);
   });
 
+  var AGENT_PROMPT = [
+    'Migrate this project from the Jikan API (https://api.jikan.moe/v4) to jikan-edge',
+    '(https://jikan-edge.lucas-hdo.workers.dev/v1). Full docs: https://jikan-edge.lucas-hdo.workers.dev/docs',
+    '',
+    'Key differences to apply:',
+    '1. Base URL: replace https://api.jikan.moe/v4 with https://jikan-edge.lucas-hdo.workers.dev/v1.',
+    '   Route paths and groups mirror Jikan v4 (anime, manga, characters, people, users, seasons,',
+    '   schedules, top, producers, clubs, magazines, watch, reviews, recommendations, random).',
+    '2. Response envelope: every success is { "data": ..., "meta": { cached, stale, refreshFailed,',
+    '   fetchedAt } }. There is no Jikan-style "pagination" object; pass ?page= (1-based) and read',
+    '   list lengths directly. User lists also accept ?limit= (1-300, default 100).',
+    '3. Field naming: camelCase instead of snake_case (mal_id -> malId, title_english -> titleEnglish).',
+    "   Images are flat URL strings (imageUrl), not Jikan's nested images.jpg/webp objects.",
+    '4. Errors: { "error": { code, message, requestId } } with HTTP status. Handle 429 RATE_LIMITED by',
+    '   honoring the Retry-After header (limits: 30 req/10s and 60 req/min per IP).',
+    '5. meta.stale === true means a served-from-cache fallback after a failed refresh - treat as valid.',
+    '6. Not served (adjust or remove features that depend on them): genres/anime, genres/manga,',
+    '   clubs?q= (club search), top/reviews, users/:u/history, users/:u/external, users/userbyid/:id,',
+    "   per-episode forum. Also: anime/:id/episodes returns only MAL's first page, streaming may be",
+    "   empty (geo-dependent), random/* draws from jikan-edge's local cache only.",
+    '',
+    'Steps: find every Jikan call site; swap the base URL; update response parsing to the envelope and',
+    'camelCase fields; adapt pagination and rate-limit handling; then verify each migrated endpoint',
+    'against the live API before finishing.'
+  ].join('\n');
   var promptCopy = document.getElementById('prompt-copy');
+  var promptTxt = promptCopy.querySelector('.mig-txt');
+  var promptIco = promptCopy.querySelector('.mig-ico');
+  function legacyCopy(text) {
+    var ta = document.createElement('textarea');
+    ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0';
+    document.body.appendChild(ta); ta.select();
+    try { document.execCommand('copy'); } catch (e) { /* nothing left to try */ }
+    document.body.removeChild(ta);
+  }
+  function promptCopied() {
+    promptCopy.classList.add('ok');
+    promptIco.textContent = '✓';
+    promptTxt.textContent = 'Copied — paste it into your agent';
+    setTimeout(function () {
+      promptCopy.classList.remove('ok');
+      promptIco.textContent = '⧉';
+      promptTxt.textContent = 'Copy the agent prompt';
+    }, 2200);
+  }
   promptCopy.addEventListener('click', function () {
-    navigator.clipboard.writeText(document.getElementById('prompt-text').textContent).then(function () {
-      promptCopy.textContent = 'copied!';
-      setTimeout(function () { promptCopy.textContent = 'copy prompt'; }, 1500);
-    });
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(AGENT_PROMPT).then(promptCopied, function () { legacyCopy(AGENT_PROMPT); promptCopied(); });
+    } else { legacyCopy(AGENT_PROMPT); promptCopied(); }
   });
 
   document.getElementById('term-form').addEventListener('submit', function (e) {
@@ -655,6 +820,7 @@ against the live API before finishing.</pre>
   (function heroShowcase() {
     var cardsEl = document.getElementById('hs-cards');
     var timeEl = document.getElementById('hs-time');
+    var reqEl = document.getElementById('hs-req');
     // MAL CDN thumbnails come as /r/50x70/...; stripping the resize prefix yields the full poster.
     function fullImage(url) { return url ? url.replace(/\/r\/\d+x\d+/, '') : null; }
     var t0 = performance.now();
@@ -662,10 +828,11 @@ against the live API before finishing.</pre>
       .then(function (res) { return res.json(); })
       .then(function (body) {
         timeEl.textContent = Math.round(performance.now() - t0) + ' ms';
+        reqEl.classList.remove('loading'); reqEl.classList.add('done');
         var entries = (body.data || []).filter(function (e) { return e.imageUrl; }).slice(0, 4);
         if (!entries.length) throw new Error('empty');
         cardsEl.innerHTML = entries.map(function (e, i) {
-          return '<a class="hs-card" href="' + base + '/v1/anime/' + e.malId + '" target="_blank" rel="noopener" title="GET /v1/anime/' + e.malId + '">' +
+          return '<a class="hs-card" style="animation-delay:' + (i * 90) + 'ms" href="' + base + '/v1/anime/' + e.malId + '" target="_blank" rel="noopener" title="GET /v1/anime/' + e.malId + '">' +
             '<img src="' + esc(fullImage(e.imageUrl)) + '" alt="" loading="eager">' +
             '<span class="hs-grad"></span>' +
             '<span class="hs-rank">#' + (e.rank || i + 1) + '</span>' +
@@ -676,6 +843,7 @@ against the live API before finishing.</pre>
       })
       .catch(function () {
         timeEl.textContent = '';
+        reqEl.classList.remove('loading');
         cardsEl.innerHTML = '<div class="hs-skel" style="animation:none;grid-column:1/-1;aspect-ratio:auto;padding:20px;font-family:var(--mono);font-size:12px;color:var(--paper-faint)">Could not reach the API from here — try it with curl.</div>';
       });
   })();
