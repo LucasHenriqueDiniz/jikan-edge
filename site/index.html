@@ -69,6 +69,42 @@ nav a.gh:hover { border-color: var(--vermillion); }
 
 /* ---------- hero ---------- */
 .hero { position: relative; padding: 72px 0 40px; }
+.hero-grid { display: grid; grid-template-columns: 1.15fr .85fr; gap: 48px; align-items: center; }
+@media (max-width: 900px) { .hero-grid { grid-template-columns: 1fr; } }
+.hero-card {
+  background: var(--ink-2); border: 1px solid var(--line); border-radius: 14px;
+  overflow: hidden; box-shadow: 0 30px 80px -30px rgba(0,0,0,.7);
+  font-family: var(--mono); font-size: 12.5px;
+  transform: rotate(.6deg);
+}
+@media (max-width: 900px) { .hero-card { transform: none; } }
+.hero-card .hc-head {
+  display: flex; align-items: center; gap: 8px; padding: 10px 14px;
+  border-bottom: 1px solid var(--line); color: var(--paper);
+}
+.hero-card .hc-head .method { color: var(--teal); font-weight: 500; }
+.hero-card .hc-head .hc-live {
+  margin-left: auto; font-size: 10.5px; letter-spacing: .12em; text-transform: uppercase;
+  color: var(--vermillion); display: flex; align-items: center; gap: 6px;
+}
+.hero-card .hc-head .hc-live i {
+  width: 7px; height: 7px; border-radius: 50%; background: var(--vermillion); display: block;
+  animation: pulse 1.6s ease-in-out infinite;
+}
+@keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: .3; } }
+.hero-card .hc-meta { display: flex; gap: 14px; padding: 8px 14px 0; font-size: 11.5px; color: var(--paper-faint); }
+.hero-card .hc-meta .ok { color: var(--teal); }
+.hero-card pre {
+  margin: 8px 0 0; padding: 6px 14px 14px; max-height: 300px; overflow: auto;
+  line-height: 1.55; color: var(--paper-dim); white-space: pre;
+  scrollbar-width: thin; scrollbar-color: var(--line) transparent;
+}
+.hero-card pre .k { color: var(--gold); }
+.hero-card pre .s { color: var(--teal); }
+.hero-card pre .n { color: var(--vermillion); }
+.hero-card .hc-foot { border-top: 1px dashed var(--line); padding: 9px 14px; }
+.hero-card .hc-foot a { color: var(--paper-dim); text-decoration: none; font-size: 11.5px; }
+.hero-card .hc-foot a:hover { color: var(--vermillion); }
 .hero .kanji-bg {
   position: absolute; right: -40px; top: -30px;
   font-size: clamp(200px, 34vw, 420px); line-height: 1;
@@ -130,9 +166,19 @@ h1 .accent { color: var(--vermillion); }
 .term-tabs button:hover { color: var(--paper); border-color: var(--paper-faint); }
 .term-tabs button.active { color: var(--ink); background: var(--vermillion); border-color: var(--vermillion); font-weight: 500; }
 .term-body { padding: 18px 20px; font-family: var(--mono); font-size: 13px; }
-.term-cmd { color: var(--paper-dim); word-break: break-all; }
+.term-cmd { color: var(--paper-dim); display: flex; align-items: center; gap: 10px; }
 .term-cmd .method { color: var(--teal); font-weight: 500; }
-.term-cmd .path { color: var(--paper); }
+.term-cmd input {
+  flex: 1; min-width: 0; font: inherit; color: var(--paper);
+  background: var(--ink); border: 1px solid var(--line); border-radius: 6px;
+  padding: 7px 10px; outline: none; transition: border-color .15s;
+}
+.term-cmd input:focus { border-color: var(--vermillion); }
+.term-cmd button {
+  font: inherit; font-size: 12px; color: var(--ink); background: var(--vermillion);
+  border: 0; border-radius: 6px; padding: 8px 14px; cursor: pointer; font-weight: 500;
+}
+.term-cmd button:hover { filter: brightness(1.1); }
 .term-meta { margin: 10px 0 14px; display: flex; gap: 16px; font-size: 12px; color: var(--paper-faint); flex-wrap: wrap; }
 .term-meta .ok { color: var(--teal); }
 .term-meta .err { color: var(--vermillion); }
@@ -234,6 +280,7 @@ footer .stamp .kanji { color: var(--vermillion); }
       <span class="name">jikan<em>-edge</em></span>
     </a>
     <nav>
+      <a href="/docs">Documentation</a>
       <a href="#try">Try it</a>
       <a href="#routes">Routes</a>
       <a href="#how">How it works</a>
@@ -246,17 +293,30 @@ footer .stamp .kanji { color: var(--vermillion); }
 <div class="hero">
   <div class="kanji-bg" aria-hidden="true">縁</div>
   <div class="wrap">
-    <div class="eyebrow">Unofficial MyAnimeList API · Jikan functional parity</div>
-    <h1>Anime data, served from <span class="accent">the edge.</span></h1>
-    <p class="lede">
-      An open-source REST API over public MyAnimeList pages — anime, manga, characters, people,
-      seasons, users and more — running <strong>entirely on Cloudflare Workers</strong> with
-      D1-backed caching and stale fallback. <strong>No auth. Open CORS. MIT.</strong>
-    </p>
-    <div class="baseurl" id="baseurl" title="Click to copy">
-      <span class="dot"></span>
-      <span id="baseurl-text">https://jikan-edge.lucas-hdo.workers.dev</span>
-      <span class="copy" id="baseurl-copy">copy</span>
+    <div class="hero-grid">
+      <div>
+        <div class="eyebrow">Unofficial MyAnimeList API · Jikan functional parity</div>
+        <h1>Anime data, served from <span class="accent">the edge.</span></h1>
+        <p class="lede">
+          An open-source REST API over public MyAnimeList pages — anime, manga, characters, people,
+          seasons, users and more — running <strong>entirely on Cloudflare Workers</strong> with
+          D1-backed caching and stale fallback. <strong>No auth. Open CORS. MIT.</strong>
+        </p>
+        <div class="baseurl" id="baseurl" title="Click to copy">
+          <span class="dot"></span>
+          <span id="baseurl-text">https://jikan-edge.lucas-hdo.workers.dev</span>
+          <span class="copy" id="baseurl-copy">copy</span>
+        </div>
+      </div>
+      <aside class="hero-card" aria-label="Live API response">
+        <div class="hc-head">
+          <span class="method">GET</span> <span>/v1/anime/1</span>
+          <span class="hc-live"><i></i>live</span>
+        </div>
+        <div class="hc-meta"><span id="hc-status">…</span><span id="hc-time"></span><span id="hc-cache"></span></div>
+        <pre id="hc-out">fetching a real response…</pre>
+        <div class="hc-foot"><a href="#try">This is a real request against this API — try your own ↓</a></div>
+      </aside>
     </div>
 
     <div class="stats">
@@ -282,7 +342,11 @@ footer .stamp .kanji { color: var(--vermillion); }
         </div>
       </div>
       <div class="term-body">
-        <div class="term-cmd"><span class="method">GET</span> <span class="path" id="term-path">/v1/anime/1</span></div>
+        <form class="term-cmd" id="term-form">
+          <span class="method">GET</span>
+          <input id="term-path" type="text" value="/v1/anime/1" spellcheck="false" autocomplete="off" aria-label="Request path">
+          <button type="submit" id="term-run">run ⏎</button>
+        </form>
         <div class="term-meta">
           <span id="term-status">—</span>
           <span id="term-time">—</span>
@@ -337,7 +401,8 @@ footer .stamp .kanji { color: var(--vermillion); }
         <div class="chips"><span>anime</span><span>manga</span><span>characters</span><span>people</span><span>users</span></div>
       </div>
     </div>
-    <p class="routes-foot">Full route table with source pages, cache TTLs and per-route notes:
+    <p class="routes-foot">Full reference with parameters, conventions and a live runner per route:
+      <a href="/docs">Documentation</a> · deeper per-route evidence:
       <a href="https://github.com/LucasHenriqueDiniz/jikan-edge/blob/main/docs/routes.md" target="_blank" rel="noopener">docs/routes.md</a>
     </p>
   </div>
@@ -421,6 +486,7 @@ footer .stamp .kanji { color: var(--vermillion); }
       <p class="stamp"><span class="kanji">時間</span> jikan-edge · MIT License</p>
     </div>
     <div class="links">
+      <a href="/docs">Documentation</a>
       <a href="https://github.com/LucasHenriqueDiniz/jikan-edge" target="_blank" rel="noopener">GitHub</a>
       <a href="https://github.com/LucasHenriqueDiniz/jikan-edge/blob/main/docs/routes.md" target="_blank" rel="noopener">Route docs</a>
       <a href="https://jikan.moe" target="_blank" rel="noopener">Jikan (the original)</a>
@@ -477,7 +543,7 @@ footer .stamp .kanji { color: var(--vermillion); }
 
   function fire(path) {
     var mySeq = ++seq;
-    pathEl.textContent = path;
+    pathEl.value = path;
     statusEl.textContent = '…'; statusEl.className = '';
     timeEl.textContent = '—'; cacheEl.textContent = '—';
     out.innerHTML = '<span class="waiting">fetching…</span>';
@@ -510,6 +576,40 @@ footer .stamp .kanji { color: var(--vermillion); }
     btn.classList.add('active');
     fire(btn.dataset.path);
   });
+
+  document.getElementById('term-form').addEventListener('submit', function (e) {
+    e.preventDefault();
+    var path = pathEl.value.trim();
+    if (!path) return;
+    if (path.charAt(0) !== '/') path = '/' + path;
+    tabs.querySelectorAll('button').forEach(function (b) { b.classList.remove('active'); });
+    fire(path);
+  });
+
+  // --- hero showcase: fire one real request immediately on load ---
+  (function heroShowcase() {
+    var hcOut = document.getElementById('hc-out');
+    var hcStatus = document.getElementById('hc-status');
+    var hcTime = document.getElementById('hc-time');
+    var hcCache = document.getElementById('hc-cache');
+    var t0 = performance.now();
+    fetch(base + '/v1/anime/1')
+      .then(function (res) {
+        var ms = Math.round(performance.now() - t0);
+        return res.json().then(function (body) {
+          hcStatus.textContent = res.status + (res.ok ? ' OK' : '');
+          hcStatus.className = res.ok ? 'ok' : '';
+          hcTime.textContent = ms + ' ms';
+          var cs = res.headers.get('X-Cache-Status');
+          hcCache.textContent = cs ? 'cache: ' + cs : '';
+          hcOut.innerHTML = highlight(JSON.stringify(truncate(body), null, 2));
+        });
+      })
+      .catch(function () {
+        hcStatus.textContent = 'offline';
+        hcOut.textContent = '// Could not reach the API from here — try curl.';
+      });
+  })();
 
   // Auto-fire the first demo request once the section scrolls into view (or immediately if visible).
   var fired = false;

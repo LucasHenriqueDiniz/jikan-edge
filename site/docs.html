@@ -1,0 +1,479 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Documentation — jikan-edge</title>
+<meta name="description" content="Full route reference for jikan-edge: 96 GET routes over public MyAnimeList data, with response conventions, rate limits and a live try-it-out runner.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%230b0e14'/%3E%3Ctext x='32' y='44' font-size='34' text-anchor='middle' fill='%23ff4b33' font-family='serif'%3E時%3C/text%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,300..800&family=IBM+Plex+Mono:ital,wght@0,400;0,500;1,400&display=swap" rel="stylesheet">
+<style>
+:root {
+  --ink: #0b0e14;
+  --ink-2: #10141d;
+  --panel: #131826;
+  --line: #232a3a;
+  --paper: #e9e5d9;
+  --paper-dim: #9aa0ae;
+  --paper-faint: #5d6474;
+  --vermillion: #ff4b33;
+  --gold: #d8b46a;
+  --teal: #6fd3c7;
+  --mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  --display: "Bricolage Grotesque", system-ui, sans-serif;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body { background: var(--ink); color: var(--paper); font-family: var(--display); font-weight: 350; line-height: 1.6; }
+::selection { background: var(--vermillion); color: var(--ink); }
+a { color: inherit; }
+code { font-family: var(--mono); font-size: .85em; background: var(--panel); border: 1px solid var(--line); border-radius: 4px; padding: 1px 5px; color: var(--gold); }
+.topline { height: 3px; background: linear-gradient(90deg, var(--vermillion) 0%, var(--vermillion) 30%, var(--gold) 60%, transparent 100%); }
+.wrap { max-width: 1200px; margin: 0 auto; padding: 0 24px; }
+header { padding: 18px 0; border-bottom: 1px solid var(--line); }
+header .wrap { display: flex; align-items: center; gap: 20px; flex-wrap: wrap; }
+.brand { display: flex; align-items: baseline; gap: 10px; text-decoration: none; }
+.brand .kanji { color: var(--vermillion); font-size: 20px; line-height: 1; }
+.brand .name { font-weight: 700; font-size: 17px; letter-spacing: -.02em; }
+.brand .name em { font-style: normal; color: var(--vermillion); }
+.brand .docs-tag { font-family: var(--mono); font-size: 11px; color: var(--paper-faint); letter-spacing: .15em; text-transform: uppercase; }
+header nav { margin-left: auto; display: flex; gap: 4px; }
+header nav a { text-decoration: none; color: var(--paper-dim); font-size: 14px; padding: 6px 12px; border-radius: 999px; }
+header nav a:hover { color: var(--paper); background: var(--panel); }
+
+.layout { display: grid; grid-template-columns: 230px 1fr; gap: 40px; padding: 40px 0 80px; }
+@media (max-width: 900px) { .layout { grid-template-columns: 1fr; } .sidebar { position: static !important; max-height: none !important; } }
+.sidebar { position: sticky; top: 24px; align-self: start; max-height: calc(100vh - 48px); overflow-y: auto; scrollbar-width: thin; scrollbar-color: var(--line) transparent; }
+.sidebar h4 { font-family: var(--mono); font-size: 10.5px; letter-spacing: .18em; text-transform: uppercase; color: var(--paper-faint); margin: 18px 0 6px; }
+.sidebar h4:first-child { margin-top: 0; }
+.sidebar a { display: block; text-decoration: none; color: var(--paper-dim); font-size: 13.5px; padding: 4px 10px; border-left: 2px solid var(--line); }
+.sidebar a:hover { color: var(--vermillion); border-left-color: var(--vermillion); }
+
+main h1 { font-size: clamp(30px, 4vw, 42px); font-weight: 750; letter-spacing: -.02em; line-height: 1.1; }
+main .lede { color: var(--paper-dim); margin-top: 12px; max-width: 70ch; }
+.basebar {
+  margin-top: 20px; font-family: var(--mono); font-size: 13px;
+  background: var(--ink-2); border: 1px solid var(--line); border-radius: 8px;
+  padding: 10px 14px; display: inline-flex; gap: 10px; align-items: center; cursor: pointer;
+}
+.basebar:hover { border-color: var(--vermillion); }
+.basebar .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--teal); box-shadow: 0 0 10px var(--teal); }
+.basebar .copy { color: var(--paper-faint); font-size: 11px; }
+
+section { margin-top: 56px; scroll-margin-top: 24px; }
+section > h2 { font-size: 26px; font-weight: 700; letter-spacing: -.02em; padding-bottom: 10px; border-bottom: 1px solid var(--line); }
+section > h2 .count { font-family: var(--mono); font-size: 12px; color: var(--vermillion); font-weight: 400; margin-left: 10px; }
+section > p.note { color: var(--paper-dim); font-size: 14.5px; margin-top: 12px; max-width: 78ch; }
+
+/* conventions blocks */
+.conv { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 14px; margin-top: 20px; }
+.conv .card { background: var(--ink-2); border: 1px solid var(--line); border-radius: 10px; padding: 18px 20px; }
+.conv .card h3 { font-size: 15px; font-weight: 650; margin-bottom: 8px; }
+.conv .card p, .conv .card li { font-size: 13.5px; color: var(--paper-dim); }
+.conv .card ul { margin: 6px 0 0 16px; }
+.conv .card li { margin-bottom: 4px; }
+pre.block {
+  font-family: var(--mono); font-size: 12.5px; line-height: 1.55; color: var(--paper-dim);
+  background: var(--ink-2); border: 1px solid var(--line); border-radius: 10px;
+  padding: 14px 16px; margin-top: 10px; overflow-x: auto;
+}
+pre.block .k { color: var(--gold); } pre.block .s { color: var(--teal); } pre.block .n { color: var(--vermillion); }
+
+/* route rows */
+.route { border: 1px solid var(--line); border-radius: 10px; background: var(--ink-2); margin-top: 12px; overflow: hidden; }
+.route-row { display: flex; align-items: center; gap: 12px; padding: 12px 16px; flex-wrap: wrap; }
+.route-row .method { font-family: var(--mono); font-size: 11px; font-weight: 500; color: var(--teal); border: 1px solid var(--line); border-radius: 5px; padding: 2px 7px; }
+.route-row .path { font-family: var(--mono); font-size: 13.5px; color: var(--paper); word-break: break-all; }
+.route-row .desc { font-size: 13px; color: var(--paper-faint); flex-basis: 100%; margin-left: 2px; }
+.route-row .desc b { color: var(--paper-dim); font-weight: 550; }
+.route-row .try {
+  margin-left: auto; font-family: var(--mono); font-size: 11.5px; cursor: pointer;
+  color: var(--vermillion); background: transparent; border: 1px solid var(--vermillion);
+  border-radius: 6px; padding: 4px 12px; transition: all .15s; white-space: nowrap;
+}
+.route-row .try:hover { background: var(--vermillion); color: var(--ink); }
+.route-out { display: none; border-top: 1px dashed var(--line); padding: 12px 16px; font-family: var(--mono); font-size: 12px; }
+.route-out.open { display: block; }
+.route-out .meta { display: flex; gap: 14px; color: var(--paper-faint); font-size: 11.5px; margin-bottom: 8px; flex-wrap: wrap; }
+.route-out .meta .ok { color: var(--teal); } .route-out .meta .err { color: var(--vermillion); }
+.route-out pre { max-height: 320px; overflow: auto; white-space: pre; line-height: 1.55; color: var(--paper-dim); scrollbar-width: thin; scrollbar-color: var(--line) transparent; }
+.route-out pre .k { color: var(--gold); } .route-out pre .s { color: var(--teal); } .route-out pre .n { color: var(--vermillion); }
+
+/* not served table */
+.table-scroll { overflow-x: auto; border: 1px solid var(--line); border-radius: 10px; background: var(--ink-2); margin-top: 16px; }
+table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+th { text-align: left; font-family: var(--mono); font-size: 10.5px; letter-spacing: .12em; text-transform: uppercase; color: var(--paper-faint); padding: 10px 14px; border-bottom: 1px solid var(--line); }
+td { padding: 11px 14px; border-bottom: 1px solid var(--line); vertical-align: top; color: var(--paper-dim); }
+td:first-child { white-space: nowrap; }
+tr:last-child td { border-bottom: 0; }
+.tag { font-family: var(--mono); font-size: 10.5px; padding: 2px 7px; border-radius: 4px; border: 1px solid var(--vermillion); color: var(--vermillion); white-space: nowrap; }
+
+footer { border-top: 1px solid var(--line); padding: 28px 0 48px; color: var(--paper-faint); font-size: 13px; }
+footer .wrap { display: flex; gap: 24px; flex-wrap: wrap; justify-content: space-between; }
+footer a { color: var(--paper-dim); }
+</style>
+</head>
+<body>
+<div class="topline"></div>
+
+<header>
+  <div class="wrap">
+    <a class="brand" href="/">
+      <span class="kanji">時間</span>
+      <span class="name">jikan<em>-edge</em></span>
+      <span class="docs-tag">/ docs</span>
+    </a>
+    <nav>
+      <a href="/">Home</a>
+      <a href="/#try">Playground</a>
+      <a href="https://github.com/LucasHenriqueDiniz/jikan-edge" target="_blank" rel="noopener">GitHub ↗</a>
+    </nav>
+  </div>
+</header>
+
+<div class="wrap">
+  <div class="layout">
+    <aside class="sidebar" id="sidebar">
+      <h4>Guide</h4>
+      <a href="#conventions">Conventions</a>
+      <a href="#rate-limits">Rate limits</a>
+      <a href="#caching">Caching</a>
+      <h4>Routes</h4>
+      <!-- group links injected by JS -->
+      <span id="sidebar-groups"></span>
+      <a href="#not-served">Not served</a>
+    </aside>
+
+    <main>
+      <h1>API Documentation</h1>
+      <p class="lede">96 GET routes under <code>/v1</code>, mirroring the Jikan v4 functional surface over public
+      MyAnimeList pages. No authentication, fully open CORS. Every route below has a <b>try</b> button that fires
+      a real request from your browser.</p>
+      <div class="basebar" id="basebar" title="Click to copy">
+        <span class="dot"></span><span id="base-text">https://jikan-edge.lucas-hdo.workers.dev</span><span class="copy">copy</span>
+      </div>
+
+      <section id="conventions">
+        <h2>Conventions</h2>
+        <div class="conv">
+          <div class="card">
+            <h3>Response envelope</h3>
+            <p>Every success is wrapped in <code>data</code> + <code>meta</code>. Field names are <b>camelCase</b> —
+            functional parity with Jikan, not schema-identical cloning.</p>
+<pre class="block">{
+  <span class="k">"data"</span>: { … },
+  <span class="k">"meta"</span>: {
+    <span class="k">"cached"</span>: <span class="n">true</span>,
+    <span class="k">"stale"</span>: <span class="n">false</span>,
+    <span class="k">"refreshFailed"</span>: <span class="n">false</span>,
+    <span class="k">"fetchedAt"</span>: <span class="s">"2026-07-27T12:00:00Z"</span>
+  }
+}</pre>
+          </div>
+          <div class="card">
+            <h3>Errors</h3>
+            <p>Errors return an <code>error</code> object with a stable machine-readable code and a request id
+            you can quote when reporting issues.</p>
+<pre class="block">{
+  <span class="k">"error"</span>: {
+    <span class="k">"code"</span>: <span class="s">"NOT_FOUND"</span>,
+    <span class="k">"message"</span>: <span class="s">"Route not found."</span>,
+    <span class="k">"requestId"</span>: <span class="s">"…"</span>
+  }
+}</pre>
+            <p style="margin-top:8px">Common codes: <code>NOT_FOUND</code>, <code>INVALID_FILTER</code>,
+            <code>RATE_LIMITED</code>, <code>UPSTREAM_SUSPICIOUS</code>, <code>NO_LOCAL_ENTRIES</code>.</p>
+          </div>
+          <div class="card">
+            <h3>Headers</h3>
+            <ul>
+              <li><code>X-Cache-Status</code> — <code>hit</code>, <code>miss</code>, <code>stale</code></li>
+              <li><code>X-Request-Id</code> — per-request UUID</li>
+              <li><code>X-Worker-Version</code> — deployed version</li>
+              <li><code>Retry-After</code> — on <code>429</code> only</li>
+            </ul>
+          </div>
+          <div class="card">
+            <h3>Parameter rules</h3>
+            <ul>
+              <li><code>page</code> starts at 1</li>
+              <li><code>limit</code> 1–300, default 100 (user lists only)</li>
+              <li>Usernames: ASCII alphanumeric, <code>_</code>, <code>-</code>, max 32 chars</li>
+              <li>IDs: positive integers (<code>400</code> otherwise)</li>
+              <li><code>:season</code> — <code>winter</code> / <code>spring</code> / <code>summer</code> / <code>fall</code></li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <section id="rate-limits">
+        <h2>Rate limits</h2>
+        <p class="note">Two per-IP windows, enforced <b>globally across all routes</b> (mirroring Jikan's own published
+        policy): <b>30 requests / 10 s</b> burst and <b>60 requests / minute</b> sustained. Exceeding either returns
+        <code>429 RATE_LIMITED</code> with a <code>Retry-After</code> header (<code>10</code> or <code>60</code>).
+        Enforcement is per Cloudflare colo and eventually consistent — treat the numbers as an operational target,
+        not an exact contract.</p>
+      </section>
+
+      <section id="caching">
+        <h2>Caching</h2>
+        <p class="note">Fresh data is served straight from the edge database (D1) without touching MyAnimeList — TTL is
+        <b>6 h</b> for most resources and <b>2 h</b> for user lists. A cache miss fetches the public page once, parses it,
+        and persists the normalized result (a 30 s per-resource lease prevents thundering herds). If a refresh fails and a
+        stale copy exists, you still get <code>200</code> with <code>meta.stale: true</code>. Valid cached data is never
+        replaced by a suspicious upstream document.</p>
+      </section>
+
+      <!-- route groups injected here -->
+      <div id="groups"></div>
+
+      <section id="not-served">
+        <h2>Not served <span class="count">investigated &amp; documented</span></h2>
+        <p class="note">Every missing route was investigated against the real MyAnimeList pages — evidence lives in
+        <a href="https://github.com/LucasHenriqueDiniz/jikan-edge/blob/main/docs/routes.md" target="_blank" rel="noopener">docs/routes.md</a>.</p>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th>Jikan route</th><th>Status</th><th>Why</th></tr></thead>
+            <tbody>
+              <tr><td><code>/genres/anime|manga</code></td><td><span class="tag">500</span></td><td>MAL serves a truncated genre sidebar (~12 of 40+ entries) to Cloudflare's network. We refuse to cache incomplete data as complete.</td></tr>
+              <tr><td><code>/clubs?q=</code></td><td><span class="tag">q ignored</span></td><td>MAL's club search does no server-side filtering — the real search is an internal JS endpoint our source policy forbids.</td></tr>
+              <tr><td><code>/top/reviews</code></td><td><span class="tag">not served</span></td><td>MAL has no review ranking mechanism (no sort-by-helpful, day-only dates). It would just be <code>/reviews/anime</code> in a costume.</td></tr>
+              <tr><td><code>/users/:u/history</code></td><td><span class="tag">not served</span></td><td>The history page is empty without login. <code>/users/:u/userupdates</code> covers the public equivalent.</td></tr>
+              <tr><td><code>/users/:u/external</code></td><td><span class="tag">not served</span></td><td>The MAL profile exposes no structured external links.</td></tr>
+              <tr><td><code>/users/userbyid/:id</code></td><td><span class="tag">not served</span></td><td>Depends on a Jikan-internal mechanism with no public MAL page behind it.</td></tr>
+              <tr><td>per-episode forum</td><td><span class="tag">not served</span></td><td>No reliable dedicated public page per episode discussion.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </main>
+  </div>
+</div>
+
+<footer>
+  <div class="wrap">
+    <span>時間 jikan-edge · MIT License · Not affiliated with MyAnimeList or Jikan.</span>
+    <span><a href="https://github.com/LucasHenriqueDiniz/jikan-edge" target="_blank" rel="noopener">GitHub</a> ·
+    <a href="https://github.com/LucasHenriqueDiniz/jikan-edge/blob/main/docs/routes.md" target="_blank" rel="noopener">docs/routes.md</a></span>
+  </div>
+</footer>
+
+<script>
+(function () {
+  var base = location.protocol === 'file:' ? 'https://jikan-edge.lucas-hdo.workers.dev' : '';
+  document.getElementById('base-text').textContent = base || location.origin;
+  document.getElementById('basebar').addEventListener('click', function () {
+    navigator.clipboard.writeText(document.getElementById('base-text').textContent);
+  });
+
+  // p: path template · ex: runnable example · d: description · n: extra note (optional)
+  var GROUPS = [
+    { id: 'g-anime', title: 'Anime', note: 'Search accepts <code>q</code> (1–64 chars) and server-side filters: <code>type</code> (tv/ova/movie/special/ona/music), <code>status</code> (airing/complete/upcoming), <code>rating</code> (g/pg/pg13/r17/r/rx), <code>score</code> (min, 1–10), <code>genres</code> (comma-separated ids), <code>order_by</code> (score/episodes/type). Filter-only search without <code>q</code> is valid (e.g. <code>?genres=1&amp;score=9</code>). Invalid filter values return <code>400 INVALID_FILTER</code> with the accepted list. Zero-match text queries mirror MAL’s own fallback (popular titles), not an empty list.', routes: [
+      { p: '/v1/anime?q=&page=', ex: '/v1/anime?q=cowboy+bebop', d: 'Search anime — text query, filters, or both. 50 per page.' },
+      { p: '/v1/anime/:id', ex: '/v1/anime/1', d: 'Anime detail.' },
+      { p: '/v1/anime/:id/full', ex: '/v1/anime/1/full', d: 'Detail plus theme songs (openings/endings).' },
+      { p: '/v1/anime/:id/characters', ex: '/v1/anime/1/characters', d: 'Characters with voice actors.' },
+      { p: '/v1/anime/:id/staff', ex: '/v1/anime/1/staff', d: 'Staff with positions. Derived from the characters page — no extra upstream fetch.' },
+      { p: '/v1/anime/:id/episodes', ex: '/v1/anime/1/episodes', d: 'Episode list. First MAL page only — very long series return a truncated list.' },
+      { p: '/v1/anime/:id/episodes/:episode', ex: '/v1/anime/1/episodes/1', d: 'Single episode: title, alt title, duration, aired date, synopsis.' },
+      { p: '/v1/anime/:id/videos', ex: '/v1/anime/1/videos', d: 'Trailers/PVs, music videos and episode videos.' },
+      { p: '/v1/anime/:id/videos/episodes', ex: '/v1/anime/1/videos/episodes', d: 'Episode videos only (projection of videos).' },
+      { p: '/v1/anime/:id/pictures', ex: '/v1/anime/1/pictures', d: 'Picture gallery.' },
+      { p: '/v1/anime/:id/statistics', ex: '/v1/anime/1/statistics', d: 'Watching/completed/dropped counts and score distribution.' },
+      { p: '/v1/anime/:id/news', ex: '/v1/anime/1/news', d: 'News entries for the title.' },
+      { p: '/v1/anime/:id/forum', ex: '/v1/anime/1/forum', d: 'Forum topics for the title.' },
+      { p: '/v1/anime/:id/relations', ex: '/v1/anime/1/relations', d: 'Related entries (flat list). Derived from detail — no extra fetch.' },
+      { p: '/v1/anime/:id/themes', ex: '/v1/anime/1/themes', d: 'Opening/ending theme songs (projection of full).' },
+      { p: '/v1/anime/:id/external', ex: '/v1/anime/1/external', d: 'External links. Derived from detail.' },
+      { p: '/v1/anime/:id/streaming', ex: '/v1/anime/1/streaming', d: 'Streaming platforms. May return [] in production — availability is geo-dependent from Cloudflare’s network.' },
+      { p: '/v1/anime/:id/recommendations', ex: '/v1/anime/1/recommendations', d: 'User recommendations for this title (single MAL page, no pagination).' },
+      { p: '/v1/anime/:id/reviews?page=', ex: '/v1/anime/1/reviews', d: 'Reviews, native MAL pagination.' },
+      { p: '/v1/anime/:id/moreinfo', ex: '/v1/anime/1/moreinfo', d: 'Curated free-text notes. Most titles have none — returns { "text": null }, not an error.' },
+      { p: '/v1/anime/:id/userupdates', ex: '/v1/anime/1/userupdates', d: 'Recent member list updates (from the public stats page).' }
+    ]},
+    { id: 'g-manga', title: 'Manga', note: 'Search behaves like anime search (same filters, minus <code>rating</code>; <code>type</code> accepts manga/novel/lightnovel/oneshot/doujin/manhwa/manhua; <code>order_by</code> uses volumes instead of episodes). <code>full</code> is a pure alias of detail — the MAL manga page already contains everything (no openings/streaming concept for manga).', routes: [
+      { p: '/v1/manga?q=&page=', ex: '/v1/manga?q=berserk', d: 'Search manga — text query, filters, or both.' },
+      { p: '/v1/manga/:id', ex: '/v1/manga/2', d: 'Manga detail (includes relations and external links).' },
+      { p: '/v1/manga/:id/full', ex: '/v1/manga/2/full', d: 'Alias of detail — see group note.' },
+      { p: '/v1/manga/:id/characters', ex: '/v1/manga/2/characters', d: 'Characters.' },
+      { p: '/v1/manga/:id/pictures', ex: '/v1/manga/2/pictures', d: 'Picture gallery.' },
+      { p: '/v1/manga/:id/statistics', ex: '/v1/manga/2/statistics', d: 'Reading/completed/dropped counts and score distribution.' },
+      { p: '/v1/manga/:id/news', ex: '/v1/manga/2/news', d: 'News entries.' },
+      { p: '/v1/manga/:id/forum', ex: '/v1/manga/2/forum', d: 'Forum topics.' },
+      { p: '/v1/manga/:id/relations', ex: '/v1/manga/2/relations', d: 'Related entries. Derived from detail.' },
+      { p: '/v1/manga/:id/external', ex: '/v1/manga/2/external', d: 'External links. Derived from detail.' },
+      { p: '/v1/manga/:id/recommendations', ex: '/v1/manga/2/recommendations', d: 'User recommendations for this title.' },
+      { p: '/v1/manga/:id/reviews?page=', ex: '/v1/manga/2/reviews', d: 'Reviews, native MAL pagination.' },
+      { p: '/v1/manga/:id/moreinfo', ex: '/v1/manga/2/moreinfo', d: 'Curated free-text notes (usually null).' },
+      { p: '/v1/manga/:id/userupdates', ex: '/v1/manga/2/userupdates', d: 'Recent member list updates.' }
+    ]},
+    { id: 'g-characters', title: 'Characters', note: 'The anime/manga/voices sub-routes are all derived from the same detail page — one upstream fetch serves all of them. Empty lists are valid (a manga-only character has no animeography). Zero-result searches return MAL’s own 404.', routes: [
+      { p: '/v1/characters?q=&page=', ex: '/v1/characters?q=spike', d: 'Search characters (real server-side filtering, 50 per page).' },
+      { p: '/v1/characters/:id', ex: '/v1/characters/1', d: 'Character detail.' },
+      { p: '/v1/characters/:id/full', ex: '/v1/characters/1/full', d: 'Detail + anime + manga + voices in one response.' },
+      { p: '/v1/characters/:id/anime', ex: '/v1/characters/1/anime', d: 'Animeography.' },
+      { p: '/v1/characters/:id/manga', ex: '/v1/characters/1/manga', d: 'Mangaography.' },
+      { p: '/v1/characters/:id/voices', ex: '/v1/characters/1/voices', d: 'Voice actors by language.' },
+      { p: '/v1/characters/:id/pictures', ex: '/v1/characters/1/pictures', d: 'Picture gallery.' }
+    ]},
+    { id: 'g-people', title: 'People', note: 'Like characters, the anime (staff positions), manga (author credits) and voices (voice roles) sub-routes derive from one detail page fetch. Zero-result searches return 200 with an empty list (MAL behavior differs from character search).', routes: [
+      { p: '/v1/people?q=&page=', ex: '/v1/people?q=yamadera', d: 'Search people (real server-side filtering, 50 per page).' },
+      { p: '/v1/people/:id', ex: '/v1/people/1', d: 'Person detail.' },
+      { p: '/v1/people/:id/full', ex: '/v1/people/1/full', d: 'Detail + anime + manga + voices in one response.' },
+      { p: '/v1/people/:id/anime', ex: '/v1/people/1/anime', d: 'Staff positions (e.g. Director, Screenplay).' },
+      { p: '/v1/people/:id/manga', ex: '/v1/people/1/manga', d: 'Published manga credits.' },
+      { p: '/v1/people/:id/voices', ex: '/v1/people/1/voices', d: 'Voice acting roles (anime + character pairs).' },
+      { p: '/v1/people/:id/pictures', ex: '/v1/people/1/pictures', d: 'Picture gallery.' },
+      { p: '/v1/people/:id/news', ex: '/v1/people/1/news', d: 'News entries.' }
+    ]},
+    { id: 'g-users', title: 'Users', note: 'Usernames: ASCII alphanumeric, <code>_</code>, <code>-</code>, max 32 chars. List routes accept <code>page</code> and <code>limit</code> (1–300, default 100). An exact-username search returns a single-item list (MAL redirects straight to the profile). User reviews/recommendations return a valid <code>[]</code> when empty.', routes: [
+      { p: '/v1/users?q=&page=', ex: '/v1/users?q=xinil', d: 'Search users (24 per page). Zero matches → MAL’s own 404, passed through.' },
+      { p: '/v1/users/:username', ex: '/v1/users/Xinil', d: 'Public profile.' },
+      { p: '/v1/users/:username/full', ex: '/v1/users/Xinil/full', d: 'Profile + statistics + favorites + updates combined.' },
+      { p: '/v1/users/:username/about', ex: '/v1/users/Xinil/about', d: 'About text (derived from profile).' },
+      { p: '/v1/users/:username/statistics', ex: '/v1/users/Xinil/statistics', d: 'Anime/manga statistics.' },
+      { p: '/v1/users/:username/favorites', ex: '/v1/users/Xinil/favorites', d: 'Favorite anime, manga, characters, people.' },
+      { p: '/v1/users/:username/userupdates', ex: '/v1/users/Xinil/userupdates', d: 'Recent list updates (public "Last Updates" section).' },
+      { p: '/v1/users/:username/friends', ex: '/v1/users/Xinil/friends', d: 'Friends list.' },
+      { p: '/v1/users/:username/clubs', ex: '/v1/users/Xinil/clubs', d: 'Club memberships.' },
+      { p: '/v1/users/:username/reviews', ex: '/v1/users/Xinil/reviews', d: 'Reviews written by the user.' },
+      { p: '/v1/users/:username/recommendations', ex: '/v1/users/Xinil/recommendations', d: 'Recommendations made by the user.' },
+      { p: '/v1/users/:username/animelist?page=&limit=', ex: '/v1/users/Xinil/animelist?limit=5', d: 'Anime list (public lists only).' },
+      { p: '/v1/users/:username/mangalist?page=&limit=', ex: '/v1/users/Xinil/mangalist?limit=5', d: 'Manga list (public lists only).' }
+    ]},
+    { id: 'g-seasons', title: 'Seasons & Schedules', note: '<code>:season</code> accepts winter/spring/summer/fall. Season entries are compact list items — use <code>/v1/anime/:id</code> for full detail. Without <code>filter</code>, <code>/v1/schedules</code> returns an object grouped by day (<code>{monday: […], …, other: […], unknown: […]}</code>); with <code>?filter=monday</code> it returns that day’s list only.', routes: [
+      { p: '/v1/seasons', ex: '/v1/seasons', d: 'Season archive, grouped by year.' },
+      { p: '/v1/seasons/now', ex: '/v1/seasons/now', d: 'Current season.' },
+      { p: '/v1/seasons/:year/:season', ex: '/v1/seasons/2026/spring', d: 'Specific season.' },
+      { p: '/v1/seasons/upcoming', ex: '/v1/seasons/upcoming', d: 'Upcoming seasons.' },
+      { p: '/v1/schedules?filter=', ex: '/v1/schedules?filter=monday', d: 'Weekly airing schedule — monday…sunday, other, unknown.' }
+    ]},
+    { id: 'g-top', title: 'Top rankings', note: 'Native MAL pagination, 50 per page. Entries are compact — fetch the detail routes for full data. <code>top/characters</code> includes animeography/mangaography as {malId, title} pairs.', routes: [
+      { p: '/v1/top/anime?page=', ex: '/v1/top/anime', d: 'Top anime by score.' },
+      { p: '/v1/top/manga?page=', ex: '/v1/top/manga', d: 'Top manga by score.' },
+      { p: '/v1/top/people?page=', ex: '/v1/top/people', d: 'Most favorited people.' },
+      { p: '/v1/top/characters?page=', ex: '/v1/top/characters', d: 'Most favorited characters.' }
+    ]},
+    { id: 'g-producers', title: 'Producers', note: 'The directory covers ~895 producers/studios; <code>q</code> filters locally over the cached directory.', routes: [
+      { p: '/v1/producers?q=', ex: '/v1/producers?q=bones', d: 'Producer directory with optional name filter.' },
+      { p: '/v1/producers/:id', ex: '/v1/producers/4', d: 'Producer detail.' },
+      { p: '/v1/producers/:id/full', ex: '/v1/producers/4/full', d: 'Detail + about + external links.' },
+      { p: '/v1/producers/:id/external', ex: '/v1/producers/4/external', d: 'External links only (projection of full).' }
+    ]},
+    { id: 'g-clubs', title: 'Clubs', note: 'The index has no search — see "Not served". MAL’s own index repeats a few featured clubs across the first pages (upstream behavior, not a parser bug). Members paginate in native blocks of 36.', routes: [
+      { p: '/v1/clubs?page=', ex: '/v1/clubs', d: 'Club index (native MAL pagination).' },
+      { p: '/v1/clubs/:id', ex: '/v1/clubs/1', d: 'Club detail.' },
+      { p: '/v1/clubs/:id/staff', ex: '/v1/clubs/1/staff', d: 'Club staff (derived from detail — no extra fetch).' },
+      { p: '/v1/clubs/:id/relations', ex: '/v1/clubs/1/relations', d: 'Anime/manga/character relations.' },
+      { p: '/v1/clubs/:id/members?page=', ex: '/v1/clubs/1/members', d: 'Member list.' }
+    ]},
+    { id: 'g-magazines', title: 'Magazines', note: '<code>q</code> filters locally over the cached full directory (same pattern as producers).', routes: [
+      { p: '/v1/magazines?q=', ex: '/v1/magazines?q=jump', d: 'Magazine directory with optional name filter.' }
+    ]},
+    { id: 'g-watch', title: 'Watch', note: 'Anime only — MAL has no manga video pages. First page only (most recent/popular).', routes: [
+      { p: '/v1/watch/episodes', ex: '/v1/watch/episodes', d: 'Recently added episodes.' },
+      { p: '/v1/watch/episodes/popular', ex: '/v1/watch/episodes/popular', d: 'Popular episodes.' },
+      { p: '/v1/watch/promos', ex: '/v1/watch/promos', d: 'Recently added promotional videos.' },
+      { p: '/v1/watch/promos/popular', ex: '/v1/watch/promos/popular', d: 'Popular promotional videos.' }
+    ]},
+    { id: 'g-reviews', title: 'Reviews & Recommendations (global)', note: 'Site-wide feeds, most recent first. Reviews paginate 50 per page (native <code>p=</code>); recommendations 100 per page (native <code>show=</code>).', routes: [
+      { p: '/v1/reviews/anime?page=', ex: '/v1/reviews/anime', d: 'Latest anime reviews site-wide.' },
+      { p: '/v1/reviews/manga?page=', ex: '/v1/reviews/manga', d: 'Latest manga reviews site-wide.' },
+      { p: '/v1/recommendations/anime?page=', ex: '/v1/recommendations/anime', d: 'Latest anime recommendations site-wide.' },
+      { p: '/v1/recommendations/manga?page=', ex: '/v1/recommendations/manga', d: 'Latest manga recommendations site-wide.' }
+    ]},
+    { id: 'g-random', title: 'Random', note: 'Deliberately different from Jikan: draws only from entities already cached locally (<code>ORDER BY RANDOM()</code>), never scans MAL ids. Empty local catalog for a type → <code>404 NO_LOCAL_ENTRIES</code>.', routes: [
+      { p: '/v1/random/anime', ex: '/v1/random/anime', d: 'Random cached anime.' },
+      { p: '/v1/random/manga', ex: '/v1/random/manga', d: 'Random cached manga.' },
+      { p: '/v1/random/characters', ex: '/v1/random/characters', d: 'Random cached character.' },
+      { p: '/v1/random/people', ex: '/v1/random/people', d: 'Random cached person.' },
+      { p: '/v1/random/users', ex: '/v1/random/users', d: 'Random cached user profile.' }
+    ]},
+    { id: 'g-general', title: 'General', routes: [
+      { p: '/health', ex: '/health', d: 'Service health check.' }
+    ]}
+  ];
+
+  function esc(s) { return s.replace(/&/g, '&amp;').replace(/</g, '&lt;'); }
+  function highlight(json) {
+    return esc(json)
+      .replace(/"([^"]+)":/g, '<span class="k">"$1"</span>:')
+      .replace(/: "((?:[^"\\]|\\.)*)"/g, ': <span class="s">"$1"</span>')
+      .replace(/: (-?\d[\d.]*)/g, ': <span class="n">$1</span>');
+  }
+  function truncate(obj) {
+    if (Array.isArray(obj)) {
+      var arr = obj.slice(0, 2).map(truncate);
+      if (obj.length > 2) arr.push('… ' + (obj.length - 2) + ' more');
+      return arr;
+    }
+    if (obj && typeof obj === 'object') {
+      var o = {};
+      Object.keys(obj).forEach(function (k) { o[k] = truncate(obj[k]); });
+      return o;
+    }
+    if (typeof obj === 'string' && obj.length > 140) return obj.slice(0, 140) + '…';
+    return obj;
+  }
+
+  var groupsEl = document.getElementById('groups');
+  var sidebarEl = document.getElementById('sidebar-groups');
+
+  GROUPS.forEach(function (g) {
+    var sec = document.createElement('section');
+    sec.id = g.id;
+    var html = '<h2>' + g.title + ' <span class="count">' + g.routes.length + (g.routes.length === 1 ? ' route' : ' routes') + '</span></h2>';
+    if (g.note) html += '<p class="note">' + g.note + '</p>';
+    g.routes.forEach(function (r, i) {
+      html += '<div class="route">' +
+        '<div class="route-row">' +
+          '<span class="method">GET</span>' +
+          '<span class="path">' + esc(r.p) + '</span>' +
+          '<button class="try" data-ex="' + esc(r.ex) + '" data-out="' + g.id + '-out-' + i + '">try ▸</button>' +
+          '<span class="desc">' + r.d + '</span>' +
+        '</div>' +
+        '<div class="route-out" id="' + g.id + '-out-' + i + '"></div>' +
+      '</div>';
+    });
+    sec.innerHTML = html;
+    groupsEl.appendChild(sec);
+
+    var link = document.createElement('a');
+    link.href = '#' + g.id;
+    link.textContent = g.title;
+    sidebarEl.appendChild(link);
+  });
+
+  document.addEventListener('click', function (e) {
+    var btn = e.target.closest('button.try');
+    if (!btn) return;
+    var out = document.getElementById(btn.dataset.out);
+    if (out.classList.contains('open') && !btn.dataset.busy) { out.classList.remove('open'); return; }
+    out.classList.add('open');
+    out.innerHTML = '<div class="meta"><span>GET ' + esc(btn.dataset.ex) + '</span><span>fetching…</span></div>';
+    btn.dataset.busy = '1';
+    var t0 = performance.now();
+    fetch(base + btn.dataset.ex)
+      .then(function (res) {
+        var ms = Math.round(performance.now() - t0);
+        return res.json().then(function (body) {
+          var cs = res.headers.get('X-Cache-Status');
+          out.innerHTML = '<div class="meta">' +
+            '<span>GET ' + esc(btn.dataset.ex) + '</span>' +
+            '<span class="' + (res.ok ? 'ok' : 'err') + '">' + res.status + (res.ok ? ' OK' : '') + '</span>' +
+            '<span>' + ms + ' ms</span>' +
+            (cs ? '<span>cache: ' + esc(cs) + '</span>' : '') +
+            '</div><pre>' + highlight(JSON.stringify(truncate(body), null, 2)) + '</pre>';
+        });
+      })
+      .catch(function () {
+        out.innerHTML = '<div class="meta"><span class="err">network error — could not reach the API from here.</span></div>';
+      })
+      .then(function () { delete btn.dataset.busy; });
+  });
+})();
+</script>
+</body>
+</html>
