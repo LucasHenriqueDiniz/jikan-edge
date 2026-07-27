@@ -174,12 +174,13 @@ h1 .accent { color: var(--vermillion); }
 .baseurl .copy { color: var(--paper-faint); font-size: 12px; }
 
 /* ---------- stats strip ---------- */
-.stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1px; background: var(--line); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; margin: 56px 0 0; }
-.stat { background: var(--ink-2); padding: 22px 24px; }
-.stat b { display: block; font-size: 30px; font-weight: 700; letter-spacing: -.02em; }
-.stat b .unit { font-size: 15px; color: var(--paper-faint); font-weight: 400; }
-.stat span { font-family: var(--mono); font-size: 11.5px; letter-spacing: .1em; text-transform: uppercase; color: var(--paper-faint); }
-@media (max-width: 720px) { .stats { grid-template-columns: repeat(2, 1fr); } }
+.facts { margin-top: 22px; display: flex; flex-wrap: wrap; gap: 8px; }
+.facts span {
+  font-family: var(--mono); font-size: 11.5px; color: var(--paper-faint);
+  border: 1px solid var(--line); border-radius: 999px; padding: 5px 12px;
+  letter-spacing: .04em;
+}
+.facts b { color: var(--paper); font-weight: 550; }
 
 /* ---------- terminal ---------- */
 .term-section { padding: 64px 0; }
@@ -188,9 +189,17 @@ h1 .accent { color: var(--vermillion); }
   overflow: hidden; box-shadow: 0 30px 80px -30px rgba(0,0,0,.7);
 }
 .term-head {
+  position: relative;
   display: flex; align-items: center; gap: 10px; padding: 12px 16px;
   border-bottom: 1px solid var(--line); flex-wrap: wrap;
 }
+.term-bar {
+  position: absolute; left: 0; bottom: -1px; height: 2px; width: 0;
+  background: linear-gradient(90deg, var(--vermillion), var(--gold));
+  opacity: 1; transition: width .3s ease, opacity .5s ease; z-index: 1;
+}
+.term.loading .term-bar { animation: loadbar 1.6s ease-out forwards; }
+.term.done .term-bar { animation: none; width: 100%; opacity: 0; }
 .term-head .lights { display: flex; gap: 6px; }
 .term-head .lights i { width: 10px; height: 10px; border-radius: 50%; background: var(--line); display: block; }
 .term-head .lights i:first-child { background: var(--vermillion); }
@@ -220,7 +229,7 @@ h1 .accent { color: var(--vermillion); }
 .term-meta .ok { color: var(--teal); }
 .term-meta .err { color: var(--vermillion); }
 .term-out {
-  max-height: 340px; overflow: auto; white-space: pre; line-height: 1.55;
+  height: 320px; overflow: auto; white-space: pre; line-height: 1.55;
   color: var(--paper-dim); font-size: 12.5px;
   border-top: 1px dashed var(--line); padding-top: 14px;
   scrollbar-width: thin; scrollbar-color: var(--line) transparent;
@@ -305,9 +314,9 @@ h2 { font-size: clamp(28px, 4vw, 40px); font-weight: 700; letter-spacing: -.02em
 .ratebox b { color: var(--paper); font-weight: 600; }
 
 /* migration */
-.mig { text-align: center; }
+.mig { display: flex; flex-direction: column; align-items: center; text-align: center; }
 .mig-diff {
-  display: inline-block; text-align: left;
+  text-align: left;
   background: var(--ink-2); border: 1px solid var(--line); border-radius: 12px;
   padding: 16px 20px; margin-bottom: 26px; max-width: 100%; overflow-x: auto;
 }
@@ -390,6 +399,13 @@ footer .stamp .kanji { color: var(--vermillion); }
           <span id="baseurl-text">https://jikan-edge.lucas-hdo.workers.dev</span>
           <span class="copy" id="baseurl-copy">copy</span>
         </div>
+        <div class="facts">
+          <span><b>96</b> routes</span>
+          <span><b>7&nbsp;ms</b> p50</span>
+          <span><b>no</b> auth</span>
+          <span><b>open</b> CORS</span>
+          <span><b>MIT</b> licensed</span>
+        </div>
       </div>
       <aside class="hero-show" aria-label="Live API response">
         <div class="hs-req loading" id="hs-req">
@@ -405,12 +421,6 @@ footer .stamp .kanji { color: var(--vermillion); }
       </aside>
     </div>
 
-    <div class="stats">
-      <div class="stat reveal"><b>96</b><span>GET routes under /v1</span></div>
-      <div class="stat reveal"><b>7<span class="unit"> ms</span></b><span>p50 CPU time (measured)</span></div>
-      <div class="stat reveal"><b>0</b><span>API keys required</span></div>
-      <div class="stat reveal"><b>MIT</b><span>free &amp; open source</span></div>
-    </div>
   </div>
 </div>
 
@@ -418,6 +428,7 @@ footer .stamp .kanji { color: var(--vermillion); }
   <div class="wrap">
     <div class="term reveal">
       <div class="term-head">
+        <span class="term-bar"></span>
         <div class="lights"><i></i><i></i><i></i></div>
         <div class="term-tabs" id="term-tabs">
           <button data-path="/v1/anime/1" class="active">anime detail</button>
@@ -720,18 +731,21 @@ footer .stamp .kanji { color: var(--vermillion); }
     return obj;
   }
 
+  var termBox = document.querySelector('.term');
   function fire(path) {
     var mySeq = ++seq;
     pathEl.value = path;
     statusEl.textContent = '…'; statusEl.className = '';
     timeEl.textContent = '—'; cacheEl.textContent = '—';
     out.innerHTML = '<span class="waiting">fetching…</span>';
+    termBox.classList.remove('done'); termBox.classList.add('loading');
     var t0 = performance.now();
     fetch(base + path)
       .then(function (res) {
         var ms = Math.round(performance.now() - t0);
         return res.json().then(function (body) {
           if (mySeq !== seq) return;
+          termBox.classList.remove('loading'); termBox.classList.add('done');
           statusEl.textContent = res.status + (res.ok ? ' OK' : '');
           statusEl.className = res.ok ? 'ok' : 'err';
           timeEl.textContent = ms + ' ms';
@@ -742,6 +756,7 @@ footer .stamp .kanji { color: var(--vermillion); }
       })
       .catch(function () {
         if (mySeq !== seq) return;
+        termBox.classList.remove('loading');
         statusEl.textContent = 'network error'; statusEl.className = 'err';
         timeEl.textContent = ''; cacheEl.textContent = '';
         out.innerHTML = '<span class="waiting">Could not reach the API from here — try it with curl instead.</span>';
