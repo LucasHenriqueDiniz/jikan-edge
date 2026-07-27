@@ -1,0 +1,534 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>jikan-edge — Jikan-parity anime API on Cloudflare Workers</title>
+<meta name="description" content="An unofficial, open-source MyAnimeList REST API with Jikan functional parity — 96 routes served entirely from Cloudflare's edge. No auth, open CORS, MIT.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%230b0e14'/%3E%3Ctext x='32' y='44' font-size='34' text-anchor='middle' fill='%23ff4b33' font-family='serif'%3E時%3C/text%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,300..800&family=IBM+Plex+Mono:ital,wght@0,400;0,500;1,400&display=swap" rel="stylesheet">
+<style>
+:root {
+  --ink: #0b0e14;
+  --ink-2: #10141d;
+  --panel: #131826;
+  --line: #232a3a;
+  --paper: #e9e5d9;
+  --paper-dim: #9aa0ae;
+  --paper-faint: #5d6474;
+  --vermillion: #ff4b33;
+  --vermillion-soft: rgba(255, 75, 51, .12);
+  --gold: #d8b46a;
+  --teal: #6fd3c7;
+  --mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  --display: "Bricolage Grotesque", system-ui, sans-serif;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body {
+  background: var(--ink);
+  color: var(--paper);
+  font-family: var(--display);
+  font-weight: 350;
+  line-height: 1.6;
+  overflow-x: hidden;
+}
+body::before {
+  content: "";
+  position: fixed; inset: 0; pointer-events: none; z-index: 0;
+  background-image:
+    linear-gradient(var(--line) 1px, transparent 1px),
+    linear-gradient(90deg, var(--line) 1px, transparent 1px);
+  background-size: 72px 72px;
+  opacity: .14;
+  mask-image: radial-gradient(ellipse 90% 60% at 50% 0%, #000 0%, transparent 75%);
+  -webkit-mask-image: radial-gradient(ellipse 90% 60% at 50% 0%, #000 0%, transparent 75%);
+}
+::selection { background: var(--vermillion); color: var(--ink); }
+a { color: inherit; }
+.wrap { max-width: 1080px; margin: 0 auto; padding: 0 24px; position: relative; z-index: 1; }
+
+/* ---------- header ---------- */
+.topline { height: 3px; background: linear-gradient(90deg, var(--vermillion) 0%, var(--vermillion) 30%, var(--gold) 60%, transparent 100%); }
+header { padding: 20px 0; }
+header .wrap { display: flex; align-items: center; gap: 20px; flex-wrap: wrap; }
+.brand { display: flex; align-items: baseline; gap: 10px; text-decoration: none; }
+.brand .kanji { color: var(--vermillion); font-size: 22px; line-height: 1; }
+.brand .name { font-weight: 700; font-size: 18px; letter-spacing: -.02em; }
+.brand .name em { font-style: normal; color: var(--vermillion); }
+nav { margin-left: auto; display: flex; gap: 4px; flex-wrap: wrap; }
+nav a {
+  text-decoration: none; color: var(--paper-dim); font-size: 14px;
+  padding: 6px 12px; border-radius: 999px; transition: color .15s, background .15s;
+}
+nav a:hover { color: var(--paper); background: var(--panel); }
+nav a.gh { color: var(--paper); border: 1px solid var(--line); }
+nav a.gh:hover { border-color: var(--vermillion); }
+
+/* ---------- hero ---------- */
+.hero { position: relative; padding: 72px 0 40px; }
+.hero .kanji-bg {
+  position: absolute; right: -40px; top: -30px;
+  font-size: clamp(200px, 34vw, 420px); line-height: 1;
+  color: var(--panel); z-index: 0; user-select: none; pointer-events: none;
+  font-weight: 700;
+}
+.hero .wrap { position: relative; z-index: 1; }
+.eyebrow {
+  font-family: var(--mono); font-size: 12px; letter-spacing: .18em; text-transform: uppercase;
+  color: var(--gold); margin-bottom: 20px; display: flex; align-items: center; gap: 10px;
+}
+.eyebrow::before { content: ""; width: 28px; height: 1px; background: var(--gold); display: inline-block; }
+h1 {
+  font-size: clamp(40px, 7vw, 76px); font-weight: 750; line-height: 1.02;
+  letter-spacing: -.03em; max-width: 14ch;
+}
+h1 .accent { color: var(--vermillion); }
+.hero p.lede {
+  margin-top: 24px; max-width: 54ch; font-size: 18px; color: var(--paper-dim);
+}
+.hero p.lede strong { color: var(--paper); font-weight: 550; }
+.baseurl {
+  margin-top: 28px; display: inline-flex; align-items: center; gap: 12px;
+  font-family: var(--mono); font-size: 14px;
+  background: var(--panel); border: 1px solid var(--line); border-radius: 8px;
+  padding: 10px 14px; cursor: pointer; transition: border-color .15s;
+}
+.baseurl:hover { border-color: var(--vermillion); }
+.baseurl .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--teal); box-shadow: 0 0 10px var(--teal); }
+.baseurl .copy { color: var(--paper-faint); font-size: 12px; }
+
+/* ---------- stats strip ---------- */
+.stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1px; background: var(--line); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; margin: 56px 0 0; }
+.stat { background: var(--ink-2); padding: 22px 24px; }
+.stat b { display: block; font-size: 30px; font-weight: 700; letter-spacing: -.02em; }
+.stat b .unit { font-size: 15px; color: var(--paper-faint); font-weight: 400; }
+.stat span { font-family: var(--mono); font-size: 11.5px; letter-spacing: .1em; text-transform: uppercase; color: var(--paper-faint); }
+@media (max-width: 720px) { .stats { grid-template-columns: repeat(2, 1fr); } }
+
+/* ---------- terminal ---------- */
+.term-section { padding: 64px 0; }
+.term {
+  background: var(--ink-2); border: 1px solid var(--line); border-radius: 14px;
+  overflow: hidden; box-shadow: 0 30px 80px -30px rgba(0,0,0,.7);
+}
+.term-head {
+  display: flex; align-items: center; gap: 10px; padding: 12px 16px;
+  border-bottom: 1px solid var(--line); flex-wrap: wrap;
+}
+.term-head .lights { display: flex; gap: 6px; }
+.term-head .lights i { width: 10px; height: 10px; border-radius: 50%; background: var(--line); display: block; }
+.term-head .lights i:first-child { background: var(--vermillion); }
+.term-tabs { display: flex; gap: 6px; margin-left: 8px; flex-wrap: wrap; }
+.term-tabs button {
+  font-family: var(--mono); font-size: 12px; color: var(--paper-dim);
+  background: transparent; border: 1px solid var(--line); border-radius: 6px;
+  padding: 5px 10px; cursor: pointer; transition: all .15s;
+}
+.term-tabs button:hover { color: var(--paper); border-color: var(--paper-faint); }
+.term-tabs button.active { color: var(--ink); background: var(--vermillion); border-color: var(--vermillion); font-weight: 500; }
+.term-body { padding: 18px 20px; font-family: var(--mono); font-size: 13px; }
+.term-cmd { color: var(--paper-dim); word-break: break-all; }
+.term-cmd .method { color: var(--teal); font-weight: 500; }
+.term-cmd .path { color: var(--paper); }
+.term-meta { margin: 10px 0 14px; display: flex; gap: 16px; font-size: 12px; color: var(--paper-faint); flex-wrap: wrap; }
+.term-meta .ok { color: var(--teal); }
+.term-meta .err { color: var(--vermillion); }
+.term-out {
+  max-height: 340px; overflow: auto; white-space: pre; line-height: 1.55;
+  color: var(--paper-dim); font-size: 12.5px;
+  border-top: 1px dashed var(--line); padding-top: 14px;
+  scrollbar-width: thin; scrollbar-color: var(--line) transparent;
+}
+.term-out .k { color: var(--gold); }
+.term-out .s { color: var(--teal); }
+.term-out .n { color: var(--vermillion); }
+.term-out .waiting { color: var(--paper-faint); font-style: italic; }
+
+/* ---------- sections ---------- */
+section { padding: 56px 0; }
+.sec-head { margin-bottom: 36px; }
+.sec-head .jp { font-family: var(--mono); font-size: 12px; color: var(--vermillion); letter-spacing: .3em; }
+h2 { font-size: clamp(28px, 4vw, 40px); font-weight: 700; letter-spacing: -.02em; margin-top: 6px; }
+.sec-head p { color: var(--paper-dim); max-width: 62ch; margin-top: 10px; }
+.sec-head p code, td code, li code {
+  font-family: var(--mono); font-size: .85em; background: var(--panel);
+  border: 1px solid var(--line); border-radius: 4px; padding: 1px 5px; color: var(--gold);
+}
+
+/* routes grid */
+.routes { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 14px; }
+.route-card {
+  background: var(--ink-2); border: 1px solid var(--line); border-radius: 12px;
+  padding: 20px; transition: border-color .2s, transform .2s;
+}
+.route-card:hover { border-color: var(--vermillion); transform: translateY(-2px); }
+.route-card h3 { font-size: 17px; font-weight: 650; display: flex; align-items: baseline; gap: 10px; }
+.route-card h3 .count { font-family: var(--mono); font-size: 11px; color: var(--vermillion); }
+.chips { margin-top: 12px; display: flex; flex-wrap: wrap; gap: 6px; }
+.chips span {
+  font-family: var(--mono); font-size: 11px; color: var(--paper-dim);
+  border: 1px solid var(--line); border-radius: 5px; padding: 3px 7px;
+}
+.routes-foot { margin-top: 22px; font-size: 14px; color: var(--paper-faint); }
+.routes-foot a { color: var(--gold); }
+
+/* how it works */
+.steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+@media (max-width: 820px) { .steps { grid-template-columns: 1fr; } }
+.step { background: var(--ink-2); border: 1px solid var(--line); border-radius: 12px; padding: 24px 22px; position: relative; }
+.step .num {
+  font-family: var(--mono); font-size: 12px; color: var(--vermillion);
+  position: absolute; top: 18px; right: 20px;
+}
+.step h3 { font-size: 17px; font-weight: 650; margin-bottom: 8px; }
+.step p { font-size: 14px; color: var(--paper-dim); }
+.ratebox {
+  margin-top: 14px; background: var(--ink-2); border: 1px solid var(--line); border-left: 3px solid var(--gold);
+  border-radius: 10px; padding: 18px 22px; font-size: 14px; color: var(--paper-dim);
+}
+.ratebox b { color: var(--paper); font-weight: 600; }
+
+/* honesty table */
+.honest table { width: 100%; border-collapse: collapse; font-size: 14px; }
+.honest th {
+  text-align: left; font-family: var(--mono); font-size: 11px; letter-spacing: .12em;
+  text-transform: uppercase; color: var(--paper-faint); padding: 10px 14px;
+  border-bottom: 1px solid var(--line);
+}
+.honest td { padding: 12px 14px; border-bottom: 1px solid var(--line); vertical-align: top; color: var(--paper-dim); }
+.honest td:first-child { white-space: nowrap; }
+.honest td .tag {
+  font-family: var(--mono); font-size: 10.5px; padding: 2px 7px; border-radius: 4px;
+  border: 1px solid var(--vermillion); color: var(--vermillion); white-space: nowrap;
+}
+.honest .table-scroll { overflow-x: auto; border: 1px solid var(--line); border-radius: 12px; background: var(--ink-2); }
+.honest ul { margin: 22px 0 0 18px; color: var(--paper-dim); font-size: 14px; }
+.honest ul li { margin-bottom: 8px; }
+
+/* footer */
+footer { border-top: 1px solid var(--line); margin-top: 40px; padding: 40px 0 56px; }
+footer .wrap { display: flex; gap: 32px; flex-wrap: wrap; justify-content: space-between; align-items: flex-start; }
+footer .disclaimer { max-width: 60ch; font-size: 13px; color: var(--paper-faint); }
+footer .links { display: flex; gap: 18px; font-size: 14px; }
+footer .links a { color: var(--paper-dim); text-decoration: none; }
+footer .links a:hover { color: var(--vermillion); }
+footer .stamp { font-family: var(--mono); font-size: 12px; color: var(--paper-faint); margin-top: 14px; }
+footer .stamp .kanji { color: var(--vermillion); }
+
+/* reveal animation */
+.reveal { opacity: 0; transform: translateY(16px); transition: opacity .6s ease, transform .6s ease; }
+.reveal.in { opacity: 1; transform: none; }
+@media (prefers-reduced-motion: reduce) { .reveal { opacity: 1; transform: none; transition: none; } html { scroll-behavior: auto; } }
+</style>
+</head>
+<body>
+<div class="topline"></div>
+
+<header>
+  <div class="wrap">
+    <a class="brand" href="/">
+      <span class="kanji">時間</span>
+      <span class="name">jikan<em>-edge</em></span>
+    </a>
+    <nav>
+      <a href="#try">Try it</a>
+      <a href="#routes">Routes</a>
+      <a href="#how">How it works</a>
+      <a href="#honest">Limitations</a>
+      <a class="gh" href="https://github.com/LucasHenriqueDiniz/jikan-edge" target="_blank" rel="noopener">GitHub ↗</a>
+    </nav>
+  </div>
+</header>
+
+<div class="hero">
+  <div class="kanji-bg" aria-hidden="true">縁</div>
+  <div class="wrap">
+    <div class="eyebrow">Unofficial MyAnimeList API · Jikan functional parity</div>
+    <h1>Anime data, served from <span class="accent">the edge.</span></h1>
+    <p class="lede">
+      An open-source REST API over public MyAnimeList pages — anime, manga, characters, people,
+      seasons, users and more — running <strong>entirely on Cloudflare Workers</strong> with
+      D1-backed caching and stale fallback. <strong>No auth. Open CORS. MIT.</strong>
+    </p>
+    <div class="baseurl" id="baseurl" title="Click to copy">
+      <span class="dot"></span>
+      <span id="baseurl-text">https://jikan-edge.lucas-hdo.workers.dev</span>
+      <span class="copy" id="baseurl-copy">copy</span>
+    </div>
+
+    <div class="stats">
+      <div class="stat reveal"><b>96</b><span>GET routes under /v1</span></div>
+      <div class="stat reveal"><b>7<span class="unit"> ms</span></b><span>p50 CPU time (measured)</span></div>
+      <div class="stat reveal"><b>0</b><span>API keys required</span></div>
+      <div class="stat reveal"><b>MIT</b><span>free &amp; open source</span></div>
+    </div>
+  </div>
+</div>
+
+<div class="term-section" id="try">
+  <div class="wrap">
+    <div class="term reveal">
+      <div class="term-head">
+        <div class="lights"><i></i><i></i><i></i></div>
+        <div class="term-tabs" id="term-tabs">
+          <button data-path="/v1/anime/1" class="active">anime detail</button>
+          <button data-path="/v1/seasons/now">current season</button>
+          <button data-path="/v1/top/anime?page=1">top anime</button>
+          <button data-path="/v1/schedules?filter=monday">schedule</button>
+          <button data-path="/v1/anime?q=one+piece&type=tv">search</button>
+        </div>
+      </div>
+      <div class="term-body">
+        <div class="term-cmd"><span class="method">GET</span> <span class="path" id="term-path">/v1/anime/1</span></div>
+        <div class="term-meta">
+          <span id="term-status">—</span>
+          <span id="term-time">—</span>
+          <span id="term-cache">—</span>
+        </div>
+        <div class="term-out" id="term-out"><span class="waiting">Press a tab to fire a real request against this API…</span></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<section id="routes">
+  <div class="wrap">
+    <div class="sec-head reveal">
+      <div class="jp">ルート</div>
+      <h2>96 routes, one worker</h2>
+      <p>The full Jikan v4 functional surface, minus the parts MyAnimeList doesn't actually expose
+      (documented below, not swept under the rug). Responses are camelCase and wrapped in
+      <code>{ data, meta }</code>.</p>
+    </div>
+    <div class="routes">
+      <div class="route-card reveal">
+        <h3>Anime <span class="count">20 routes</span></h3>
+        <div class="chips"><span>search + filters</span><span>detail</span><span>full</span><span>characters</span><span>staff</span><span>episodes</span><span>videos</span><span>pictures</span><span>statistics</span><span>news</span><span>forum</span><span>relations</span><span>themes</span><span>external</span><span>streaming</span><span>recommendations</span><span>reviews</span><span>moreinfo</span><span>userupdates</span></div>
+      </div>
+      <div class="route-card reveal">
+        <h3>Manga <span class="count">14 routes</span></h3>
+        <div class="chips"><span>search + filters</span><span>detail</span><span>full</span><span>characters</span><span>pictures</span><span>statistics</span><span>news</span><span>forum</span><span>relations</span><span>external</span><span>recommendations</span><span>reviews</span><span>moreinfo</span><span>userupdates</span></div>
+      </div>
+      <div class="route-card reveal">
+        <h3>Characters &amp; People <span class="count">16 routes</span></h3>
+        <div class="chips"><span>detail</span><span>full</span><span>anime</span><span>manga</span><span>voices</span><span>pictures</span><span>news</span><span>search</span><span>top</span></div>
+      </div>
+      <div class="route-card reveal">
+        <h3>Users <span class="count">13 routes</span></h3>
+        <div class="chips"><span>profile</span><span>full</span><span>about</span><span>statistics</span><span>favorites</span><span>updates</span><span>friends</span><span>clubs</span><span>reviews</span><span>recommendations</span><span>animelist</span><span>mangalist</span><span>search</span></div>
+      </div>
+      <div class="route-card reveal">
+        <h3>Seasons &amp; Schedules <span class="count">6 routes</span></h3>
+        <div class="chips"><span>now</span><span>year/season</span><span>upcoming</span><span>archive</span><span>weekly schedule</span><span>?filter=monday…sunday</span></div>
+      </div>
+      <div class="route-card reveal">
+        <h3>Clubs, Producers &amp; Magazines <span class="count">11 routes</span></h3>
+        <div class="chips"><span>club detail</span><span>members</span><span>staff</span><span>relations</span><span>producer directory</span><span>detail</span><span>full</span><span>external</span><span>magazines ?q=</span></div>
+      </div>
+      <div class="route-card reveal">
+        <h3>Watch, Reviews &amp; Recs <span class="count">8 routes</span></h3>
+        <div class="chips"><span>recent episodes</span><span>popular episodes</span><span>recent promos</span><span>popular promos</span><span>global reviews</span><span>global recommendations</span><span>pagination</span></div>
+      </div>
+      <div class="route-card reveal">
+        <h3>Random <span class="count">5 routes</span></h3>
+        <div class="chips"><span>anime</span><span>manga</span><span>characters</span><span>people</span><span>users</span></div>
+      </div>
+    </div>
+    <p class="routes-foot">Full route table with source pages, cache TTLs and per-route notes:
+      <a href="https://github.com/LucasHenriqueDiniz/jikan-edge/blob/main/docs/routes.md" target="_blank" rel="noopener">docs/routes.md</a>
+    </p>
+  </div>
+</section>
+
+<section id="how">
+  <div class="wrap">
+    <div class="sec-head reveal">
+      <div class="jp">仕組み</div>
+      <h2>How it works</h2>
+      <p>No servers, no queues, no headless browsers. One Worker, one D1 database, and the
+      public HTML pages MyAnimeList already serves to everyone.</p>
+    </div>
+    <div class="steps">
+      <div class="step reveal">
+        <span class="num">01</span>
+        <h3>Fresh? Serve from D1.</h3>
+        <p>Cached data within TTL (6&nbsp;h for most resources, 2&nbsp;h for user lists) is returned straight
+        from the edge database — MyAnimeList is never touched.</p>
+      </div>
+      <div class="step reveal">
+        <span class="num">02</span>
+        <h3>Miss? Fetch once, parse, persist.</h3>
+        <p>A cache miss fetches the public page a single time, runs a pure HTML parser, validates the
+        document, and stores the normalized result. Refresh locks stop thundering herds.</p>
+      </div>
+      <div class="step reveal">
+        <span class="num">03</span>
+        <h3>Upstream down? Serve stale.</h3>
+        <p>If a refresh fails and a stale copy exists, you still get a <code>200</code> — flagged with
+        <code>meta.stale: true</code> instead of an error. Valid data is never replaced by a suspicious document.</p>
+      </div>
+    </div>
+    <div class="ratebox reveal">
+      <b>Rate limits</b> — two per-IP windows enforced globally across all routes, mirroring Jikan's own policy:
+      <b>30&nbsp;req / 10&nbsp;s</b> burst and <b>60&nbsp;req / min</b> sustained. Exceeding either returns
+      <code>429</code> with a <code>Retry-After</code> header.
+    </div>
+  </div>
+</section>
+
+<section id="honest" class="honest">
+  <div class="wrap">
+    <div class="sec-head reveal">
+      <div class="jp">正直</div>
+      <h2>Honest limitations</h2>
+      <p>Functional parity, not blind cloning. Every route we don't serve was investigated against the
+      real MyAnimeList pages — the evidence lives in the repo. Here's the short version.</p>
+    </div>
+    <div class="table-scroll reveal">
+      <table>
+        <thead><tr><th>Jikan route</th><th>Status</th><th>Why</th></tr></thead>
+        <tbody>
+          <tr><td><code>/genres/anime|manga</code></td><td><span class="tag">500</span></td><td>MAL serves a truncated genre sidebar (~12 of 40+ entries) to Cloudflare's network. We refuse to cache incomplete data as complete.</td></tr>
+          <tr><td><code>/clubs?q=</code></td><td><span class="tag">q ignored</span></td><td>MAL's club search does no server-side filtering — the real search is an internal JS endpoint our source policy forbids.</td></tr>
+          <tr><td><code>/top/reviews</code></td><td><span class="tag">not served</span></td><td>MAL has no review ranking mechanism. Serving it would just be <code>/reviews/anime</code> wearing a costume.</td></tr>
+          <tr><td><code>/users/:u/history</code></td><td><span class="tag">not served</span></td><td>The history page is empty without login. <code>/users/:u/userupdates</code> covers the public equivalent.</td></tr>
+          <tr><td><code>/users/:u/external</code></td><td><span class="tag">not served</span></td><td>The MAL profile exposes no structured external links to source it from.</td></tr>
+          <tr><td><code>/users/userbyid/:id</code></td><td><span class="tag">not served</span></td><td>Depends on a Jikan-internal mechanism with no public MAL page behind it.</td></tr>
+          <tr><td>per-episode forum</td><td><span class="tag">not served</span></td><td>No reliable dedicated public page per episode discussion.</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <ul class="reveal">
+      <li><code>anime/:id/episodes</code> fetches only MAL's first page — very long series return a truncated list.</li>
+      <li><code>anime/:id/streaming</code> may return <code>[]</code> in production — availability is geo-dependent from Cloudflare's network.</li>
+      <li><code>random/*</code> draws from the locally cached catalog only (no mass ID scanning, by policy).</li>
+      <li>Zero-match text searches mirror MAL's own fallback (popular titles) instead of an empty list.</li>
+    </ul>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <div>
+      <p class="disclaimer">
+        Not affiliated with MyAnimeList or Jikan. All data comes from publicly accessible
+        MyAnimeList pages, cached aggressively and rate-limited to keep upstream load minimal.
+        If you are MyAnimeList and have concerns, please open an issue.
+      </p>
+      <p class="stamp"><span class="kanji">時間</span> jikan-edge · MIT License</p>
+    </div>
+    <div class="links">
+      <a href="https://github.com/LucasHenriqueDiniz/jikan-edge" target="_blank" rel="noopener">GitHub</a>
+      <a href="https://github.com/LucasHenriqueDiniz/jikan-edge/blob/main/docs/routes.md" target="_blank" rel="noopener">Route docs</a>
+      <a href="https://jikan.moe" target="_blank" rel="noopener">Jikan (the original)</a>
+    </div>
+  </div>
+</footer>
+
+<script>
+(function () {
+  // Base URL: relative in production (same origin), absolute fallback when opened as a file.
+  var base = location.protocol === 'file:' ? 'https://jikan-edge.lucas-hdo.workers.dev' : '';
+  if (base) document.getElementById('baseurl-text').textContent = base;
+  else document.getElementById('baseurl-text').textContent = location.origin;
+
+  var copyEl = document.getElementById('baseurl-copy');
+  document.getElementById('baseurl').addEventListener('click', function () {
+    navigator.clipboard.writeText(document.getElementById('baseurl-text').textContent).then(function () {
+      copyEl.textContent = 'copied!';
+      setTimeout(function () { copyEl.textContent = 'copy'; }, 1500);
+    });
+  });
+
+  // --- live terminal ---
+  var out = document.getElementById('term-out');
+  var pathEl = document.getElementById('term-path');
+  var statusEl = document.getElementById('term-status');
+  var timeEl = document.getElementById('term-time');
+  var cacheEl = document.getElementById('term-cache');
+  var tabs = document.getElementById('term-tabs');
+  var seq = 0;
+
+  function esc(s) { return s.replace(/&/g, '&amp;').replace(/</g, '&lt;'); }
+  function highlight(json) {
+    return esc(json)
+      .replace(/"([^"]+)":/g, '<span class="k">"$1"</span>:')
+      .replace(/: "((?:[^"\\]|\\.)*)"/g, ': <span class="s">"$1"</span>')
+      .replace(/: (-?\d[\d.]*)/g, ': <span class="n">$1</span>');
+  }
+  function truncate(obj) {
+    // Keep the demo readable: cap arrays at 2 items and strings at 140 chars.
+    if (Array.isArray(obj)) {
+      var arr = obj.slice(0, 2).map(truncate);
+      if (obj.length > 2) arr.push('… ' + (obj.length - 2) + ' more');
+      return arr;
+    }
+    if (obj && typeof obj === 'object') {
+      var o = {};
+      Object.keys(obj).forEach(function (k) { o[k] = truncate(obj[k]); });
+      return o;
+    }
+    if (typeof obj === 'string' && obj.length > 140) return obj.slice(0, 140) + '…';
+    return obj;
+  }
+
+  function fire(path) {
+    var mySeq = ++seq;
+    pathEl.textContent = path;
+    statusEl.textContent = '…'; statusEl.className = '';
+    timeEl.textContent = '—'; cacheEl.textContent = '—';
+    out.innerHTML = '<span class="waiting">fetching…</span>';
+    var t0 = performance.now();
+    fetch(base + path)
+      .then(function (res) {
+        var ms = Math.round(performance.now() - t0);
+        return res.json().then(function (body) {
+          if (mySeq !== seq) return;
+          statusEl.textContent = res.status + (res.ok ? ' OK' : '');
+          statusEl.className = res.ok ? 'ok' : 'err';
+          timeEl.textContent = ms + ' ms';
+          var cs = res.headers.get('X-Cache-Status');
+          cacheEl.textContent = cs ? 'cache: ' + cs : '';
+          out.innerHTML = highlight(JSON.stringify(truncate(body), null, 2));
+        });
+      })
+      .catch(function () {
+        if (mySeq !== seq) return;
+        statusEl.textContent = 'network error'; statusEl.className = 'err';
+        timeEl.textContent = ''; cacheEl.textContent = '';
+        out.innerHTML = '<span class="waiting">Could not reach the API from here — try it with curl instead.</span>';
+      });
+  }
+
+  tabs.addEventListener('click', function (e) {
+    var btn = e.target.closest('button[data-path]');
+    if (!btn) return;
+    tabs.querySelectorAll('button').forEach(function (b) { b.classList.remove('active'); });
+    btn.classList.add('active');
+    fire(btn.dataset.path);
+  });
+
+  // Auto-fire the first demo request once the section scrolls into view (or immediately if visible).
+  var fired = false;
+  var termSection = document.getElementById('try');
+  var io = new IntersectionObserver(function (entries) {
+    entries.forEach(function (entry) {
+      if (entry.isIntersecting && !fired) { fired = true; fire('/v1/anime/1'); io.unobserve(termSection); }
+    });
+  }, { threshold: .3 });
+  io.observe(termSection);
+
+  // --- reveal on scroll ---
+  var ro = new IntersectionObserver(function (entries) {
+    entries.forEach(function (entry) {
+      if (entry.isIntersecting) { entry.target.classList.add('in'); ro.unobserve(entry.target); }
+    });
+  }, { threshold: .15 });
+  document.querySelectorAll('.reveal').forEach(function (el) { ro.observe(el); });
+})();
+</script>
+</body>
+</html>

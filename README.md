@@ -101,6 +101,10 @@ npm run benchmark     # parser p95 smoke tests
 
 Architecture, source policy and local-dev details: [`docs/`](docs/README.md).
 
+## Landing site
+
+The public landing page (jikan.moe-style, with a live request demo) lives in [`site/`](site/index.html) and is served by the same Worker via Cloudflare static assets: `/` serves the site, `/v1/*` and `/health` fall through to the API. No build step — it's a single static HTML file deployed together with `wrangler deploy`.
+
 ## Disclaimer
 
 Not affiliated with MyAnimeList or Jikan. All data is collected from publicly accessible MyAnimeList pages, cached aggressively, and rate-limited to keep upstream load minimal. If you are MyAnimeList and have concerns, please open an issue.

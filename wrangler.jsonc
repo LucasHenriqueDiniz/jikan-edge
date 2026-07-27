@@ -4,6 +4,8 @@
   "main": "src/index.ts",
   "compatibility_date": "2026-07-19",
   "workers_dev": true,
+  // Static landing site at "/" — asset-first routing keeps /v1/* and /health on the Worker.
+  "assets": { "directory": "./site" },
   "observability": { "enabled": true, "head_sampling_rate": 1 },
   "vars": {
     "MAL_USER_AGENT": "jikan-edge/0.1 (+https://jikan-edge.lucas-hdo.workers.dev)",
