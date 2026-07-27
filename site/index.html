@@ -71,40 +71,67 @@ nav a.gh:hover { border-color: var(--vermillion); }
 .hero { position: relative; padding: 72px 0 40px; }
 .hero-grid { display: grid; grid-template-columns: 1.15fr .85fr; gap: 48px; align-items: center; }
 @media (max-width: 900px) { .hero-grid { grid-template-columns: 1fr; } }
-.hero-card {
-  background: var(--ink-2); border: 1px solid var(--line); border-radius: 14px;
-  overflow: hidden; box-shadow: 0 30px 80px -30px rgba(0,0,0,.7);
-  font-family: var(--mono); font-size: 12.5px;
-  transform: rotate(.6deg);
+.hero-show { position: relative; }
+.hs-req {
+  display: inline-flex; align-items: center; gap: 10px;
+  font-family: var(--mono); font-size: 12.5px; color: var(--paper);
+  background: var(--ink-2); border: 1px solid var(--line); border-radius: 8px;
+  padding: 8px 14px; margin-bottom: 16px;
+  box-shadow: 0 14px 40px -18px rgba(0,0,0,.8);
 }
-@media (max-width: 900px) { .hero-card { transform: none; } }
-.hero-card .hc-head {
-  display: flex; align-items: center; gap: 8px; padding: 10px 14px;
-  border-bottom: 1px solid var(--line); color: var(--paper);
+.hs-req .method { color: var(--teal); font-weight: 500; }
+.hs-req .hs-time { color: var(--gold); font-size: 11.5px; }
+.hc-live {
+  font-size: 10.5px; letter-spacing: .12em; text-transform: uppercase;
+  color: var(--vermillion); display: inline-flex; align-items: center; gap: 6px;
+  font-family: var(--mono);
 }
-.hero-card .hc-head .method { color: var(--teal); font-weight: 500; }
-.hero-card .hc-head .hc-live {
-  margin-left: auto; font-size: 10.5px; letter-spacing: .12em; text-transform: uppercase;
-  color: var(--vermillion); display: flex; align-items: center; gap: 6px;
-}
-.hero-card .hc-head .hc-live i {
+.hc-live i {
   width: 7px; height: 7px; border-radius: 50%; background: var(--vermillion); display: block;
   animation: pulse 1.6s ease-in-out infinite;
 }
 @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: .3; } }
-.hero-card .hc-meta { display: flex; gap: 14px; padding: 8px 14px 0; font-size: 11.5px; color: var(--paper-faint); }
-.hero-card .hc-meta .ok { color: var(--teal); }
-.hero-card pre {
-  margin: 8px 0 0; padding: 6px 14px 14px; max-height: 300px; overflow: auto;
-  line-height: 1.55; color: var(--paper-dim); white-space: pre;
-  scrollbar-width: thin; scrollbar-color: var(--line) transparent;
+.hs-cards { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; }
+@media (max-width: 900px) { .hs-cards { grid-template-columns: repeat(4, 1fr); gap: 12px; } }
+@media (max-width: 640px) { .hs-cards { grid-template-columns: repeat(2, 1fr); } }
+.hs-skel {
+  aspect-ratio: 2 / 3; border-radius: 10px; border: 1px solid var(--line);
+  background: linear-gradient(110deg, var(--ink-2) 40%, var(--panel) 50%, var(--ink-2) 60%);
+  background-size: 220% 100%; animation: shimmer 1.4s linear infinite;
 }
-.hero-card pre .k { color: var(--gold); }
-.hero-card pre .s { color: var(--teal); }
-.hero-card pre .n { color: var(--vermillion); }
-.hero-card .hc-foot { border-top: 1px dashed var(--line); padding: 9px 14px; }
-.hero-card .hc-foot a { color: var(--paper-dim); text-decoration: none; font-size: 11.5px; }
-.hero-card .hc-foot a:hover { color: var(--vermillion); }
+@keyframes shimmer { to { background-position: -120% 0; } }
+.hs-card {
+  position: relative; aspect-ratio: 2 / 3; border-radius: 10px; overflow: hidden;
+  border: 1px solid var(--line); background: var(--ink-2);
+  box-shadow: 0 20px 50px -20px rgba(0,0,0,.8);
+  transition: transform .2s, border-color .2s;
+}
+.hs-card:nth-child(odd) { transform: rotate(-.8deg) translateY(4px); }
+.hs-card:nth-child(even) { transform: rotate(.8deg) translateY(-4px); }
+.hs-card:hover { transform: translateY(-4px); border-color: var(--vermillion); z-index: 2; }
+.hs-card img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.hs-card .hs-grad {
+  position: absolute; inset: 0;
+  background: linear-gradient(180deg, transparent 40%, rgba(11,14,20,.92) 100%);
+}
+.hs-card .hs-rank {
+  position: absolute; top: 8px; left: 8px;
+  font-family: var(--mono); font-size: 10.5px; font-weight: 500;
+  color: var(--ink); background: var(--vermillion); border-radius: 5px; padding: 2px 7px;
+}
+.hs-card .hs-score {
+  position: absolute; top: 8px; right: 8px;
+  font-family: var(--mono); font-size: 10.5px; color: var(--gold);
+  background: rgba(11,14,20,.85); border: 1px solid var(--line); border-radius: 5px; padding: 2px 6px;
+}
+.hs-card .hs-title {
+  position: absolute; left: 10px; right: 10px; bottom: 8px;
+  font-size: 13.5px; font-weight: 600; line-height: 1.3; color: var(--paper);
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+}
+.hs-foot { margin-top: 16px; }
+.hs-foot a { color: var(--paper-faint); text-decoration: none; font-size: 12px; font-family: var(--mono); }
+.hs-foot a:hover { color: var(--vermillion); }
 .hero .kanji-bg {
   position: absolute; right: -40px; top: -30px;
   font-size: clamp(200px, 34vw, 420px); line-height: 1;
@@ -308,14 +335,17 @@ footer .stamp .kanji { color: var(--vermillion); }
           <span class="copy" id="baseurl-copy">copy</span>
         </div>
       </div>
-      <aside class="hero-card" aria-label="Live API response">
-        <div class="hc-head">
-          <span class="method">GET</span> <span>/v1/anime/1</span>
+      <aside class="hero-show" aria-label="Live API response">
+        <div class="hs-req">
+          <span class="method">GET</span>
+          <span class="hs-path">/v1/top/anime</span>
+          <span class="hs-time" id="hs-time"></span>
           <span class="hc-live"><i></i>live</span>
         </div>
-        <div class="hc-meta"><span id="hc-status">…</span><span id="hc-time"></span><span id="hc-cache"></span></div>
-        <pre id="hc-out">fetching a real response…</pre>
-        <div class="hc-foot"><a href="#try">This is a real request against this API — try your own ↓</a></div>
+        <div class="hs-cards" id="hs-cards">
+          <div class="hs-skel"></div><div class="hs-skel"></div><div class="hs-skel"></div><div class="hs-skel"></div>
+        </div>
+        <div class="hs-foot"><a href="#try">Rendered from a real request against this API — try your own ↓</a></div>
       </aside>
     </div>
 
@@ -586,28 +616,32 @@ footer .stamp .kanji { color: var(--vermillion); }
     fire(path);
   });
 
-  // --- hero showcase: fire one real request immediately on load ---
+  // --- hero showcase: render real top-anime cards from a live request ---
   (function heroShowcase() {
-    var hcOut = document.getElementById('hc-out');
-    var hcStatus = document.getElementById('hc-status');
-    var hcTime = document.getElementById('hc-time');
-    var hcCache = document.getElementById('hc-cache');
+    var cardsEl = document.getElementById('hs-cards');
+    var timeEl = document.getElementById('hs-time');
+    // MAL CDN thumbnails come as /r/50x70/...; stripping the resize prefix yields the full poster.
+    function fullImage(url) { return url ? url.replace(/\/r\/\d+x\d+/, '') : null; }
     var t0 = performance.now();
-    fetch(base + '/v1/anime/1')
-      .then(function (res) {
-        var ms = Math.round(performance.now() - t0);
-        return res.json().then(function (body) {
-          hcStatus.textContent = res.status + (res.ok ? ' OK' : '');
-          hcStatus.className = res.ok ? 'ok' : '';
-          hcTime.textContent = ms + ' ms';
-          var cs = res.headers.get('X-Cache-Status');
-          hcCache.textContent = cs ? 'cache: ' + cs : '';
-          hcOut.innerHTML = highlight(JSON.stringify(truncate(body), null, 2));
-        });
+    fetch(base + '/v1/top/anime')
+      .then(function (res) { return res.json(); })
+      .then(function (body) {
+        timeEl.textContent = Math.round(performance.now() - t0) + ' ms';
+        var entries = (body.data || []).filter(function (e) { return e.imageUrl; }).slice(0, 4);
+        if (!entries.length) throw new Error('empty');
+        cardsEl.innerHTML = entries.map(function (e, i) {
+          return '<a class="hs-card" href="' + base + '/v1/anime/' + e.malId + '" target="_blank" rel="noopener" title="GET /v1/anime/' + e.malId + '">' +
+            '<img src="' + esc(fullImage(e.imageUrl)) + '" alt="" loading="eager">' +
+            '<span class="hs-grad"></span>' +
+            '<span class="hs-rank">#' + (e.rank || i + 1) + '</span>' +
+            (e.score ? '<span class="hs-score">★ ' + e.score + '</span>' : '') +
+            '<span class="hs-title">' + esc(e.title) + '</span>' +
+          '</a>';
+        }).join('');
       })
       .catch(function () {
-        hcStatus.textContent = 'offline';
-        hcOut.textContent = '// Could not reach the API from here — try curl.';
+        timeEl.textContent = '';
+        cardsEl.innerHTML = '<div class="hs-skel" style="animation:none;grid-column:1/-1;aspect-ratio:auto;padding:20px;font-family:var(--mono);font-size:12px;color:var(--paper-faint)">Could not reach the API from here — try it with curl.</div>';
       });
   })();
 
