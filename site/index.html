@@ -410,7 +410,7 @@ footer .stamp .kanji { color: var(--vermillion); }
       <aside class="hero-show" aria-label="Live API response">
         <div class="hs-req loading" id="hs-req">
           <span class="method">GET</span>
-          <span class="hs-path">/v1/top/anime</span>
+          <span class="hs-path" id="hs-path">/v1/top/anime</span>
           <span class="hs-time" id="hs-time"></span>
           <span class="hc-live"><i></i>live</span>
           <span class="hs-bar"></span>
@@ -831,36 +831,67 @@ footer .stamp .kanji { color: var(--vermillion); }
     fire(path);
   });
 
-  // --- hero showcase: render real top-anime cards from a live request ---
+  // --- hero showcase: live cards, rotating across API families ---
   (function heroShowcase() {
     var cardsEl = document.getElementById('hs-cards');
     var timeEl = document.getElementById('hs-time');
     var reqEl = document.getElementById('hs-req');
+    var pathSpan = document.getElementById('hs-path');
+    var showEl = document.querySelector('.hero-show');
+    var SOURCES = [
+      { path: '/v1/top/anime', type: 'anime' },
+      { path: '/v1/top/manga', type: 'manga' },
+      { path: '/v1/top/characters', type: 'characters' },
+      { path: '/v1/top/people', type: 'people' }
+    ];
+    var idx = 0, showSeq = 0, hovering = false;
     // MAL CDN thumbnails come as /r/50x70/...; stripping the resize prefix yields the full poster.
     function fullImage(url) { return url ? url.replace(/\/r\/\d+x\d+/, '') : null; }
-    var t0 = performance.now();
-    fetch(base + '/v1/top/anime')
-      .then(function (res) { return res.json(); })
-      .then(function (body) {
-        timeEl.textContent = Math.round(performance.now() - t0) + ' ms';
-        reqEl.classList.remove('loading'); reqEl.classList.add('done');
-        var entries = (body.data || []).filter(function (e) { return e.imageUrl; }).slice(0, 4);
-        if (!entries.length) throw new Error('empty');
-        cardsEl.innerHTML = entries.map(function (e, i) {
-          return '<a class="hs-card" style="animation-delay:' + (i * 90) + 'ms" href="' + base + '/v1/anime/' + e.malId + '" target="_blank" rel="noopener" title="GET /v1/anime/' + e.malId + '">' +
-            '<img src="' + esc(fullImage(e.imageUrl)) + '" alt="" loading="eager">' +
-            '<span class="hs-grad"></span>' +
-            '<span class="hs-rank">#' + (e.rank || i + 1) + '</span>' +
-            (e.score ? '<span class="hs-score">★ ' + e.score + '</span>' : '') +
-            '<span class="hs-title">' + esc(e.title) + '</span>' +
-          '</a>';
-        }).join('');
-      })
-      .catch(function () {
-        timeEl.textContent = '';
-        reqEl.classList.remove('loading');
-        cardsEl.innerHTML = '<div class="hs-skel" style="animation:none;grid-column:1/-1;aspect-ratio:auto;padding:20px;font-family:var(--mono);font-size:12px;color:var(--paper-faint)">Could not reach the API from here — try it with curl.</div>';
-      });
+    function badge(e) {
+      if (e.score) return '<span class="hs-score">★ ' + e.score + '</span>';
+      if (e.favorites) return '<span class="hs-score">♥ ' + Number(e.favorites).toLocaleString('en-US') + '</span>';
+      return '';
+    }
+    function fireShow(source) {
+      var mySeq = ++showSeq;
+      pathSpan.textContent = source.path;
+      reqEl.classList.remove('done'); reqEl.classList.add('loading');
+      var t0 = performance.now();
+      fetch(base + source.path)
+        .then(function (res) { return res.json(); })
+        .then(function (body) {
+          if (mySeq !== showSeq) return;
+          timeEl.textContent = Math.round(performance.now() - t0) + ' ms';
+          reqEl.classList.remove('loading'); reqEl.classList.add('done');
+          var entries = (body.data || []).filter(function (e) { return e.imageUrl; }).slice(0, 4);
+          if (!entries.length) throw new Error('empty');
+          cardsEl.innerHTML = entries.map(function (e, i) {
+            var detail = '/v1/' + source.type + '/' + e.malId;
+            return '<a class="hs-card" style="animation-delay:' + (i * 90) + 'ms" href="' + base + detail + '" target="_blank" rel="noopener" title="GET ' + detail + '">' +
+              '<img src="' + esc(fullImage(e.imageUrl)) + '" alt="" loading="eager">' +
+              '<span class="hs-grad"></span>' +
+              '<span class="hs-rank">#' + (e.rank || i + 1) + '</span>' +
+              badge(e) +
+              '<span class="hs-title">' + esc(e.title || e.name || '') + '</span>' +
+            '</a>';
+          }).join('');
+        })
+        .catch(function () {
+          if (mySeq !== showSeq) return;
+          timeEl.textContent = '';
+          reqEl.classList.remove('loading');
+          cardsEl.innerHTML = '<div class="hs-skel" style="animation:none;grid-column:1/-1;aspect-ratio:auto;padding:20px;font-family:var(--mono);font-size:12px;color:var(--paper-faint)">Could not reach the API from here — try it with curl.</div>';
+        });
+    }
+    fireShow(SOURCES[0]);
+    // Rotate through the families; pause while the user hovers the cards or the tab is hidden.
+    showEl.addEventListener('mouseenter', function () { hovering = true; });
+    showEl.addEventListener('mouseleave', function () { hovering = false; });
+    setInterval(function () {
+      if (hovering || document.hidden) return;
+      idx = (idx + 1) % SOURCES.length;
+      fireShow(SOURCES[idx]);
+    }, 8000);
   })();
 
   // Auto-fire the first demo request once the section scrolls into view (or immediately if visible).
