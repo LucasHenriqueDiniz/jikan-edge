@@ -65,13 +65,28 @@ Fresh data is served straight from D1 without touching MyAnimeList. Cache misses
 
 ## Honest differences from Jikan
 
-This project aims for **functional parity, not schema-identical cloning**. Field names are camelCase and response shapes are documented per route. A few Jikan routes are deliberately not served, each with recorded evidence in [`docs/routes.md`](docs/routes.md):
+This project aims for **functional parity, not schema-identical cloning**. Field names are camelCase and response shapes are documented per route.
 
-- `genres/anime` & `genres/manga` — MyAnimeList serves a truncated genre sidebar to requests originating from Cloudflare's network.
-- Club search — `clubs.php?q=` performs no server-side filtering at all.
-- `top/reviews` — MAL has no real review ranking mechanism to source it from.
-- User history — the MAL page renders empty without login (`userupdates` covers the public equivalent).
-- `random/*` draws only from locally cached entries rather than the full MAL database (no mass ID scanning, by policy).
+### Routes we can't serve (and why)
+
+Each of these was investigated against the real MyAnimeList pages, with the evidence recorded in [`docs/routes.md`](docs/routes.md):
+
+| Jikan route | Status here | Why |
+| --- | --- | --- |
+| `GET /genres/anime`, `GET /genres/manga` | Returns `500` | MAL serves a truncated genre sidebar (~12 of 40+/300+ entries) specifically to requests from Cloudflare's network. We refuse to cache incomplete data as if it were complete. |
+| `GET /clubs?q=` (club search) | `q` is ignored (index only) | `clubs.php?q=` performs **no** server-side filtering — any query returns the same list. MAL's real club search is an internal JS/AJAX endpoint, which this project's source policy forbids. |
+| `GET /top/reviews` | Not served | MAL has no review ranking mechanism (no sort-by-helpful, day-only date granularity). Serving it would be `reviews/anime` wearing a costume. |
+| `GET /users/{user}/history` | Not served | The MAL history page renders empty without login. `GET /v1/users/{user}/userupdates` covers the public equivalent from the profile page. |
+| `GET /users/{user}/external` | Not served | The MAL profile exposes no structured external links to source it from. |
+| `GET /users/userbyid/{id}` | Not served | Depends on a Jikan-internal ID-to-username mechanism with no public MAL page behind it. |
+| Per-episode forum (`forum?filter=episode`) | Not served | No dedicated public page per episode discussion worth scraping reliably. |
+
+### Known limitations on served routes
+
+- `GET /anime/{id}/episodes` fetches only MAL's first page — very long series return a truncated list (upstream pagination format unconfirmed).
+- `GET /anime/{id}/streaming` may return `[]` in production even when data exists: streaming availability is geo-dependent and MAL resolves Cloudflare's network to a different region.
+- `GET /random/*` draws only from locally cached entries rather than the full MAL database (no mass ID scanning, by policy). Empty local catalog → `404 NO_LOCAL_ENTRIES`.
+- Text-query searches with zero real matches mirror MAL's own fallback behavior (popular unrelated titles) instead of returning an empty list.
 
 ## Development
 

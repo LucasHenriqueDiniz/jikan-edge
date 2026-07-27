@@ -48,6 +48,22 @@ O código de produção do milestone está autorizado para perfil, estatísticas
 - Rate limit endurecido em 2026-07-27 (pré-divulgação): chave por IP **global** (a antiga `IP:rota` multiplicava o orçamento pelo nº de rotas), dois bindings — burst 30/10s + sustentado 60/60s, com `Retry-After` no 429. Ver `docs/routes.md` seção "Rate limiting".
 - Para limites, preços e APIs de plataforma, pesquise documentação oficial atual antes de afirmar algo.
 
+## Rotas não implementadas (lista consolidada)
+
+Cada uma foi investigada contra as páginas reais do MAL; a evidência detalhada está em `docs/routes.md`. **Não reabrir nenhuma sem evidência nova** — a razão de cada bloqueio está registrada:
+
+| Rota Jikan | Estado | Motivo |
+| --- | --- | --- |
+| `genres/anime`, `genres/manga` | registradas, retornam 500 | MAL serve barra de gêneros truncada (~12 de 40+/300+) para a rede da Cloudflare; recusamos cachear dado incompleto como completo |
+| `clubs?q=` (busca de clubes) | `q` ignorado (só índice) | `clubs.php?q=` não filtra no servidor; a busca real é endpoint interno JS, proibido pela política de fonte |
+| `top/reviews` | não servida | MAL não tem ranking de reviews (sem sort por utilidade, data com granularidade de dia); seria alias disfarçado de `reviews/anime` |
+| `users/:u/history` | não servida | página de histórico vazia sem login; `users/:u/userupdates` cobre o equivalente público |
+| `users/:u/external` | não servida | perfil do MAL não expõe links externos estruturados |
+| `users/userbyid/:id` | não servida | depende de mecanismo interno do Jikan, sem página pública do MAL por trás |
+| fórum por episódio | não servida | sem página pública dedicada confiável por episódio |
+
+Limitações conhecidas em rotas servidas: `anime/:id/episodes` só primeira página do MAL; `anime/:id/streaming` pode vir vazio em produção (geo-dependente); `random/*` sorteia só do catálogo local D1; busca textual sem match reflete o fallback do próprio MAL (títulos populares), não lista vazia.
+
 ## Estado de validação
 
 O slice está publicado e as medições pontuais estão registradas. Antes de ampliar o produto, adicione fixtures sanitizadas, benchmark de corpus (p50/p95), testes de stale/leases e contrato da nova rota.
