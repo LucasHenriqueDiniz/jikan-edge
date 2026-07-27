@@ -1,0 +1,11 @@
+node_modules/
+
+# Wrangler local state — contains local D1/R2 data and cached account identity (id + email);
+# must never be committed, at any depth (the spike has its own .wrangler dir too).
+.wrangler/
+**/.wrangler/
+
+# Local secrets and scratch output
+.dev.vars
+*.log
+*.jsonl

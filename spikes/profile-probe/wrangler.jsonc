@@ -1,0 +1,10 @@
+{
+  "name": "jikan-edge-profile-probe",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-07-19",
+  "workers_dev": true,
+  "observability": {
+    "enabled": true,
+    "head_sampling_rate": 1
+  }
+}

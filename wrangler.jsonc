@@ -1,0 +1,33 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "jikan-edge",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-07-19",
+  "workers_dev": true,
+  "observability": { "enabled": true, "head_sampling_rate": 1 },
+  "vars": {
+    "MAL_USER_AGENT": "jikan-edge/0.1 (+https://jikan-edge.lucas-hdo.workers.dev)",
+    "PROFILE_TTL_SECONDS": "21600",
+    "LIST_TTL_SECONDS": "7200",
+    "ANIME_TTL_SECONDS": "21600",
+    "CATALOG_TTL_SECONDS": "21600",
+    "SOURCE_TIMEOUT_MS": "8000",
+    "MAX_UPSTREAM_BYTES": "2097152"
+    ,"CORS_ALLOWED_ORIGINS": "http://localhost:5173"
+    ,"WORKER_VERSION": "jikan-edge-2026-07-19"
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "jikan-edge",
+      "database_id": "71f8a596-7855-47a5-906c-9a1cf46e12ee"
+    }
+  ],
+  "r2_buckets": [
+    { "binding": "SNAPSHOTS_BUCKET", "bucket_name": "jikan-edge-snapshots" }
+  ],
+  "ratelimits": [
+    { "name": "API_RATE_LIMIT", "namespace_id": "18973", "simple": { "limit": 60, "period": 60 } },
+    { "name": "API_BURST_LIMIT", "namespace_id": "18974", "simple": { "limit": 30, "period": 10 } }
+  ]
+}
