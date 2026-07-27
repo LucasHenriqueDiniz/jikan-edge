@@ -13,7 +13,6 @@
     "CATALOG_TTL_SECONDS": "21600",
     "SOURCE_TIMEOUT_MS": "8000",
     "MAX_UPSTREAM_BYTES": "2097152"
-    ,"CORS_ALLOWED_ORIGINS": "http://localhost:5173"
     ,"WORKER_VERSION": "jikan-edge-2026-07-19"
   },
   "d1_databases": [

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { MalClient } from '../../src/source/mal-client';
 
-const config = { profileTtlSeconds: 1, listTtlSeconds: 1, animeTtlSeconds: 1, catalogTtlSeconds: 1, sourceTimeoutMs: 1000, maxUpstreamBytes: 10_000, malUserAgent: 'test', corsAllowedOrigins: [] };
+const config = { profileTtlSeconds: 1, listTtlSeconds: 1, animeTtlSeconds: 1, catalogTtlSeconds: 1, sourceTimeoutMs: 1000, maxUpstreamBytes: 10_000, malUserAgent: 'test' };
 const html = `<html><body>${'valid profile '.repeat(60)} Profile Anime Stats</body></html>`;
 
 describe('MalClient redirects', () => {

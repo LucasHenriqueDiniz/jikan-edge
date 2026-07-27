@@ -22,11 +22,9 @@ const app = new Hono<{ Bindings: Env; Variables: Variables }>();
 
 app.use('*', async (c, next) => {
   c.set('requestId', crypto.randomUUID()); c.set('startedAt', performance.now());
-  const origin = c.req.header('Origin'); const corsOrigins = c.env ? configFrom(c.env).corsAllowedOrigins : [];
-  if (origin && corsOrigins.includes(origin)) {
-    c.header('Access-Control-Allow-Origin', origin); c.header('Access-Control-Allow-Methods', 'GET, OPTIONS'); c.header('Access-Control-Allow-Headers', 'Content-Type'); c.header('Vary', 'Origin');
-  }
-  if (c.req.method === 'OPTIONS') return origin && corsOrigins.includes(origin) && c.req.header('Access-Control-Request-Method') === 'GET' ? c.body(null, 204) : c.body(null, 403);
+  // Public read-only API: CORS is fully open. Abuse control lives in the rate limiter, not here.
+  c.header('Access-Control-Allow-Origin', '*'); c.header('Access-Control-Allow-Methods', 'GET, OPTIONS'); c.header('Access-Control-Allow-Headers', 'Content-Type');
+  if (c.req.method === 'OPTIONS') return c.body(null, 204);
   // Rate limits are keyed by client IP GLOBALLY (not per route) — a per-route key would let a
   // single IP multiply its budget by the number of routes. Two windows, mirroring Jikan's own
   // published policy: a short burst window plus a per-minute ceiling.

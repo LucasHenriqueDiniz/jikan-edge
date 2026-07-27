@@ -46,6 +46,10 @@ Every response is wrapped in `{ "data": ..., "meta": { cached, stale, refreshFai
 
 The full route table with source pages, cache TTLs and per-route notes lives in [`docs/routes.md`](docs/routes.md).
 
+## CORS
+
+Fully open (`Access-Control-Allow-Origin: *`) — call the API directly from any browser frontend. Abuse control is handled by the rate limiter, not by origin restrictions.
+
 ## Rate limits
 
 Two per-IP windows, enforced globally across all routes (mirroring Jikan's own policy):

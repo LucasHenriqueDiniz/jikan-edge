@@ -10,7 +10,6 @@ export interface Env {
   CATALOG_TTL_SECONDS?: string;
   SOURCE_TIMEOUT_MS?: string;
   MAX_UPSTREAM_BYTES?: string;
-  CORS_ALLOWED_ORIGINS?: string;
   WORKER_VERSION?: string;
 }
 
@@ -22,7 +21,6 @@ export interface RuntimeConfig {
   sourceTimeoutMs: number;
   maxUpstreamBytes: number;
   malUserAgent: string;
-  corsAllowedOrigins: string[];
 }
 
 function numberEnv(value: string | undefined, fallback: number): number {
@@ -39,6 +37,5 @@ export function configFrom(env: Env): RuntimeConfig {
     sourceTimeoutMs: numberEnv(env.SOURCE_TIMEOUT_MS, 8_000),
     maxUpstreamBytes: numberEnv(env.MAX_UPSTREAM_BYTES, 2 * 1024 * 1024),
     malUserAgent: env.MAL_USER_AGENT ?? 'jikan-edge/0.1',
-    corsAllowedOrigins: (env.CORS_ALLOWED_ORIGINS ?? 'http://localhost:5173').split(',').map((value) => value.trim()).filter(Boolean),
   };
 }
