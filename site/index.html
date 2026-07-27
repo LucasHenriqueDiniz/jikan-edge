@@ -71,16 +71,21 @@ nav a.gh:hover { border-color: var(--vermillion); }
 .hero { position: relative; padding: 72px 0 40px; }
 .hero-grid { display: grid; grid-template-columns: 1.15fr .85fr; gap: 48px; align-items: center; }
 @media (max-width: 900px) { .hero-grid { grid-template-columns: 1fr; } }
-.hero-show { position: relative; }
+.hero-show {
+  position: relative;
+  background: var(--ink-2); border: 1px solid var(--line); border-radius: 16px;
+  padding: 16px 16px 12px;
+  box-shadow: 0 30px 80px -30px rgba(0,0,0,.75);
+}
 .hs-req {
-  display: inline-flex; align-items: center; gap: 10px;
+  display: flex; align-items: center; gap: 10px;
   font-family: var(--mono); font-size: 12.5px; color: var(--paper);
-  background: var(--ink-2); border: 1px solid var(--line); border-radius: 8px;
-  padding: 8px 14px; margin-bottom: 16px;
-  box-shadow: 0 14px 40px -18px rgba(0,0,0,.8);
+  border-bottom: 1px dashed var(--line);
+  padding: 2px 2px 12px; margin-bottom: 14px;
 }
 .hs-req .method { color: var(--teal); font-weight: 500; }
 .hs-req .hs-time { color: var(--gold); font-size: 11.5px; }
+.hs-req .hc-live { margin-left: auto; }
 .hc-live {
   font-size: 10.5px; letter-spacing: .12em; text-transform: uppercase;
   color: var(--vermillion); display: inline-flex; align-items: center; gap: 6px;
@@ -106,8 +111,6 @@ nav a.gh:hover { border-color: var(--vermillion); }
   box-shadow: 0 20px 50px -20px rgba(0,0,0,.8);
   transition: transform .2s, border-color .2s;
 }
-.hs-card:nth-child(odd) { transform: rotate(-.8deg) translateY(4px); }
-.hs-card:nth-child(even) { transform: rotate(.8deg) translateY(-4px); }
 .hs-card:hover { transform: translateY(-4px); border-color: var(--vermillion); z-index: 2; }
 .hs-card img { width: 100%; height: 100%; object-fit: cover; display: block; }
 .hs-card .hs-grad {
@@ -129,9 +132,12 @@ nav a.gh:hover { border-color: var(--vermillion); }
   font-size: 13.5px; font-weight: 600; line-height: 1.3; color: var(--paper);
   display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
 }
-.hs-foot { margin-top: 16px; }
-.hs-foot a { color: var(--paper-faint); text-decoration: none; font-size: 12px; font-family: var(--mono); }
+.hs-foot { margin-top: 12px; text-align: center; }
+.hs-foot a { color: var(--paper-faint); text-decoration: none; font-size: 11.5px; font-family: var(--mono); }
 .hs-foot a:hover { color: var(--vermillion); }
+.credit { margin-top: 18px; font-size: 13.5px; color: var(--paper-faint); }
+.credit a { color: var(--paper-dim); text-decoration-color: var(--line); }
+.credit a:hover { color: var(--vermillion); }
 .hero .kanji-bg {
   position: absolute; right: -40px; top: -30px;
   font-size: clamp(200px, 34vw, 420px); line-height: 1;
@@ -264,22 +270,26 @@ h2 { font-size: clamp(28px, 4vw, 40px); font-weight: 700; letter-spacing: -.02em
 }
 .ratebox b { color: var(--paper); font-weight: 600; }
 
-/* honesty table */
-.honest table { width: 100%; border-collapse: collapse; font-size: 14px; }
-.honest th {
-  text-align: left; font-family: var(--mono); font-size: 11px; letter-spacing: .12em;
-  text-transform: uppercase; color: var(--paper-faint); padding: 10px 14px;
-  border-bottom: 1px solid var(--line);
+/* migration prompt */
+.prompt-card {
+  background: var(--ink-2); border: 1px solid var(--line); border-radius: 12px; overflow: hidden;
 }
-.honest td { padding: 12px 14px; border-bottom: 1px solid var(--line); vertical-align: top; color: var(--paper-dim); }
-.honest td:first-child { white-space: nowrap; }
-.honest td .tag {
-  font-family: var(--mono); font-size: 10.5px; padding: 2px 7px; border-radius: 4px;
-  border: 1px solid var(--vermillion); color: var(--vermillion); white-space: nowrap;
+.prompt-head {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 10px 16px; border-bottom: 1px solid var(--line);
 }
-.honest .table-scroll { overflow-x: auto; border: 1px solid var(--line); border-radius: 12px; background: var(--ink-2); }
-.honest ul { margin: 22px 0 0 18px; color: var(--paper-dim); font-size: 14px; }
-.honest ul li { margin-bottom: 8px; }
+.prompt-label { font-family: var(--mono); font-size: 12px; color: var(--paper-faint); }
+.prompt-head button {
+  font-family: var(--mono); font-size: 11.5px; color: var(--vermillion);
+  background: transparent; border: 1px solid var(--vermillion); border-radius: 6px;
+  padding: 5px 12px; cursor: pointer; transition: all .15s;
+}
+.prompt-head button:hover { background: var(--vermillion); color: var(--ink); }
+.prompt-card pre {
+  font-family: var(--mono); font-size: 12px; line-height: 1.6; color: var(--paper-dim);
+  padding: 16px 18px; max-height: 420px; overflow: auto; white-space: pre-wrap; word-break: break-word;
+  scrollbar-width: thin; scrollbar-color: var(--line) transparent;
+}
 
 /* footer */
 footer { border-top: 1px solid var(--line); margin-top: 40px; padding: 40px 0 56px; }
@@ -311,7 +321,7 @@ footer .stamp .kanji { color: var(--vermillion); }
       <a href="#try">Try it</a>
       <a href="#routes">Routes</a>
       <a href="#how">How it works</a>
-      <a href="#honest">Limitations</a>
+      <a href="#migrate">Migrate</a>
       <a class="gh" href="https://github.com/LucasHenriqueDiniz/jikan-edge" target="_blank" rel="noopener">GitHub ↗</a>
     </nav>
   </div>
@@ -334,6 +344,10 @@ footer .stamp .kanji { color: var(--vermillion); }
           <span id="baseurl-text">https://jikan-edge.lucas-hdo.workers.dev</span>
           <span class="copy" id="baseurl-copy">copy</span>
         </div>
+        <p class="credit">
+          Inspired by <a href="https://jikan.moe" target="_blank" rel="noopener">Jikan</a>, the original
+          unofficial MAL API · <a href="https://github.com/LucasHenriqueDiniz/jikan-edge" target="_blank" rel="noopener">source on GitHub</a>
+        </p>
       </div>
       <aside class="hero-show" aria-label="Live API response">
         <div class="hs-req">
@@ -474,34 +488,47 @@ footer .stamp .kanji { color: var(--vermillion); }
   </div>
 </section>
 
-<section id="honest" class="honest">
+<section id="migrate">
   <div class="wrap">
     <div class="sec-head reveal">
-      <div class="jp">正直</div>
-      <h2>Honest limitations</h2>
-      <p>Functional parity, not blind cloning. Every route we don't serve was investigated against the
-      real MyAnimeList pages — the evidence lives in the repo. Here's the short version.</p>
+      <div class="jp">移行</div>
+      <h2>Migrating from Jikan?</h2>
+      <p>Using an AI coding agent (Claude Code, Cursor, Copilot…)? Paste this prompt and let it port
+      your project from <code>api.jikan.moe/v4</code> to jikan-edge. It carries everything the agent
+      needs to know — envelope, naming, pagination, rate limits and the routes we don't serve.</p>
     </div>
-    <div class="table-scroll reveal">
-      <table>
-        <thead><tr><th>Jikan route</th><th>Status</th><th>Why</th></tr></thead>
-        <tbody>
-          <tr><td><code>/genres/anime|manga</code></td><td><span class="tag">500</span></td><td>MAL serves a truncated genre sidebar (~12 of 40+ entries) to Cloudflare's network. We refuse to cache incomplete data as complete.</td></tr>
-          <tr><td><code>/clubs?q=</code></td><td><span class="tag">q ignored</span></td><td>MAL's club search does no server-side filtering — the real search is an internal JS endpoint our source policy forbids.</td></tr>
-          <tr><td><code>/top/reviews</code></td><td><span class="tag">not served</span></td><td>MAL has no review ranking mechanism. Serving it would just be <code>/reviews/anime</code> wearing a costume.</td></tr>
-          <tr><td><code>/users/:u/history</code></td><td><span class="tag">not served</span></td><td>The history page is empty without login. <code>/users/:u/userupdates</code> covers the public equivalent.</td></tr>
-          <tr><td><code>/users/:u/external</code></td><td><span class="tag">not served</span></td><td>The MAL profile exposes no structured external links to source it from.</td></tr>
-          <tr><td><code>/users/userbyid/:id</code></td><td><span class="tag">not served</span></td><td>Depends on a Jikan-internal mechanism with no public MAL page behind it.</td></tr>
-          <tr><td>per-episode forum</td><td><span class="tag">not served</span></td><td>No reliable dedicated public page per episode discussion.</td></tr>
-        </tbody>
-      </table>
+    <div class="prompt-card reveal">
+      <div class="prompt-head">
+        <span class="prompt-label">agent-prompt.txt</span>
+        <button id="prompt-copy">copy prompt</button>
+      </div>
+      <pre id="prompt-text">Migrate this project from the Jikan API (https://api.jikan.moe/v4) to jikan-edge
+(https://jikan-edge.lucas-hdo.workers.dev/v1). Full docs: https://jikan-edge.lucas-hdo.workers.dev/docs
+
+Key differences to apply:
+1. Base URL: replace https://api.jikan.moe/v4 with https://jikan-edge.lucas-hdo.workers.dev/v1.
+   Route paths and groups mirror Jikan v4 (anime, manga, characters, people, users, seasons,
+   schedules, top, producers, clubs, magazines, watch, reviews, recommendations, random).
+2. Response envelope: every success is { "data": ..., "meta": { cached, stale, refreshFailed,
+   fetchedAt } }. There is no Jikan-style "pagination" object; pass ?page= (1-based) and read
+   list lengths directly. User lists also accept ?limit= (1-300, default 100).
+3. Field naming: camelCase instead of snake_case (mal_id -> malId, title_english -> titleEnglish).
+   Images are flat URL strings (imageUrl), not Jikan's nested images.jpg/webp objects.
+4. Errors: { "error": { code, message, requestId } } with HTTP status. Handle 429 RATE_LIMITED by
+   honoring the Retry-After header (limits: 30 req/10s and 60 req/min per IP).
+5. meta.stale === true means a served-from-cache fallback after a failed refresh - treat as valid.
+6. Not served (adjust or remove features that depend on them): genres/anime, genres/manga,
+   clubs?q= (club search), top/reviews, users/:u/history, users/:u/external, users/userbyid/:id,
+   per-episode forum. Also: anime/:id/episodes returns only MAL's first page, streaming may be
+   empty (geo-dependent), random/* draws from jikan-edge's local cache only.
+
+Steps: find every Jikan call site; swap the base URL; update response parsing to the envelope and
+camelCase fields; adapt pagination and rate-limit handling; then verify each migrated endpoint
+against the live API before finishing.</pre>
     </div>
-    <ul class="reveal">
-      <li><code>anime/:id/episodes</code> fetches only MAL's first page — very long series return a truncated list.</li>
-      <li><code>anime/:id/streaming</code> may return <code>[]</code> in production — availability is geo-dependent from Cloudflare's network.</li>
-      <li><code>random/*</code> draws from the locally cached catalog only (no mass ID scanning, by policy).</li>
-      <li>Zero-match text searches mirror MAL's own fallback (popular titles) instead of an empty list.</li>
-    </ul>
+    <p class="routes-foot">Every non-served route above is a documented investigation, not a gap — see
+      <a href="/docs#not-served">the limitations table in the docs</a>.
+    </p>
   </div>
 </section>
 
@@ -605,6 +632,14 @@ footer .stamp .kanji { color: var(--vermillion); }
     tabs.querySelectorAll('button').forEach(function (b) { b.classList.remove('active'); });
     btn.classList.add('active');
     fire(btn.dataset.path);
+  });
+
+  var promptCopy = document.getElementById('prompt-copy');
+  promptCopy.addEventListener('click', function () {
+    navigator.clipboard.writeText(document.getElementById('prompt-text').textContent).then(function () {
+      promptCopy.textContent = 'copied!';
+      setTimeout(function () { promptCopy.textContent = 'copy prompt'; }, 1500);
+    });
   });
 
   document.getElementById('term-form').addEventListener('submit', function (e) {
