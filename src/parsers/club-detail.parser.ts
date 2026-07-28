@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { CLUB_PARSER_VERSION, type ClubDetail } from '../domain/club';
+import { CLUB_PARSER_VERSION, type ClubDetail, type ClubStaffMember } from '../domain/club';
 import { capture, decodeHtml, numeric, ParserError } from './html';
 
 const clubDetailSchema = z.object({
@@ -9,7 +9,7 @@ const clubDetailSchema = z.object({
   pictures: z.number().nullable(),
   category: z.string().nullable(),
   created: z.string().nullable(),
-  staff: z.array(z.string()),
+  staff: z.array(z.object({ username: z.string().min(1), url: z.string().url(), role: z.string().nullable() })),
   fetchedAt: z.string().datetime(),
   sourceVersion: z.string(),
 });
@@ -19,12 +19,16 @@ function plainLabelValue(html: string, label: string): string | null {
   return capture(html, new RegExp(`${escaped}:<\\/span>([\\s\\S]*?)<\\/div>`, 'i'));
 }
 
-function extractStaff(html: string): string[] {
+function extractStaff(html: string): ClubStaffMember[] {
   const start = html.indexOf('Club Staff');
   const end = html.indexOf('Club Type', start);
   if (start === -1) return [];
   const block = html.slice(start, end === -1 ? start + 3_000 : end);
-  return [...block.matchAll(/<a href="\/profile\/[^"]+">([^<]+)<\/a>\s*\(([^)]+)\)/gi)].map((match) => `${decodeHtml(match[1])} (${decodeHtml(match[2])})`);
+  return [...block.matchAll(/<a href="(\/profile\/[^"]+)">([^<]+)<\/a>\s*\(([^)]+)\)/gi)].map((match) => ({
+    username: decodeHtml(match[2]),
+    url: `https://myanimelist.net${match[1]}`,
+    role: decodeHtml(match[3]) || null,
+  }));
 }
 
 export function parseClubDetail(html: string, malId: number, fetchedAt = new Date().toISOString()): ClubDetail {

@@ -16,9 +16,13 @@ describe('anime detail parser', () => {
     expect(detail.rank).toBe(50);
     expect(detail.popularity).toBe(41);
     expect(detail.members).toBe(2_074_721);
-    expect(detail.genres).toEqual(['Action', 'Award Winning']);
-    expect(detail.themes).toEqual(['Adult Cast', 'Space']);
-    expect(detail.studios).toEqual(['Sunrise']);
+    // Full shape once, so the id/url captured from the anchor href stays covered.
+    expect(detail.genres).toEqual([
+      { malId: 1, name: 'Action', url: 'https://myanimelist.net/anime/genre/1/Action' },
+      { malId: 46, name: 'Award Winning', url: 'https://myanimelist.net/anime/genre/46/Award_Winning' },
+    ]);
+    expect(detail.themes.map((theme) => theme.name)).toEqual(['Adult Cast', 'Space']);
+    expect(detail.studios).toEqual([{ malId: 14, name: 'Sunrise', url: 'https://myanimelist.net/anime/producer/14/Sunrise' }]);
     expect(detail.relations).toEqual([{ relation: 'Adaptation', type: 'manga', malId: 174, title: 'Shooting Star Bebop: Cowboy Bebop' }]);
     expect(detail.externalLinks).toEqual([
       { name: 'Official Site', url: 'http://www.cowboy-bebop.net/' },
@@ -33,8 +37,8 @@ describe('anime detail parser', () => {
   it('handles MAL pages that use singular Genre:/Studio: labels', () => {
     const detail = parseAnimeDetail(singularLabelsHtml, 33352, '2026-07-19T00:00:00.000Z');
     expect(detail.title).toBe('Violet Evergarden');
-    expect(detail.genres).toEqual(['Drama', 'Fantasy']);
-    expect(detail.studios).toEqual(['Kyoto Animation']);
+    expect(detail.genres.map((genre) => genre.name)).toEqual(['Drama', 'Fantasy']);
+    expect(detail.studios.map((studio) => studio.name)).toEqual(['Kyoto Animation']);
     expect(detail.themes).toEqual([]);
   });
 });

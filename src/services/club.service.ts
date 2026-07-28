@@ -1,5 +1,5 @@
 import type { RuntimeConfig } from '../config/env';
-import { CLUB_PARSER_VERSION, type ClubDetail } from '../domain/club';
+import { CLUB_PARSER_VERSION, type ClubDetail, type ClubStaffMember } from '../domain/club';
 import { CLUB_LIST_PARSER_VERSION, type ClubListEntry } from '../domain/club-list';
 import { CLUB_MEMBERS_PARSER_VERSION, type ClubMember } from '../domain/club-member';
 import { parseClubDetail } from '../parsers/club-detail.parser';
@@ -55,7 +55,7 @@ export class ClubService {
     }, requestId);
   }
 
-  async staff(rawId: string, requestId: string): Promise<ServiceResponse<string[]>> {
+  async staff(rawId: string, requestId: string): Promise<ServiceResponse<ClubStaffMember[]>> {
     const result = await this.detail(rawId, requestId);
     return { ...result, data: result.data.staff };
   }

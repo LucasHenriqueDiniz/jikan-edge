@@ -16,10 +16,14 @@ describe('manga detail parser', () => {
     expect(detail.rank).toBe(1);
     expect(detail.popularity).toBe(1);
     expect(detail.members).toBe(804_371);
-    expect(detail.genres).toEqual(['Action', 'Drama']);
-    expect(detail.themes).toEqual(['Gore']);
-    expect(detail.demographics).toEqual(['Seinen']);
-    expect(detail.authors).toEqual(['Miura, Kentarou']);
+    expect(detail.genres).toEqual([
+      { malId: 1, name: 'Action', url: 'https://myanimelist.net/manga/genre/1/Action' },
+      { malId: 8, name: 'Drama', url: 'https://myanimelist.net/manga/genre/8/Drama' },
+    ]);
+    expect(detail.themes.map((theme) => theme.name)).toEqual(['Gore']);
+    expect(detail.demographics.map((demographic) => demographic.name)).toEqual(['Seinen']);
+    // Authors link to /people/, so the ref points at the person page, not a genre page.
+    expect(detail.authors).toEqual([{ malId: 1868, name: 'Miura, Kentarou', url: 'https://myanimelist.net/people/1868/Kentarou_Miura' }]);
     expect(detail.serialization).toBe('Young Animal');
     expect(detail.relations).toEqual([{ relation: 'Adaptation', type: 'anime', malId: 1, title: 'Cowboy Bebop' }]);
     expect(detail.externalLinks).toEqual([{ name: 'Official Site', url: 'https://www.dark-horse.com/' }]);

@@ -1,8 +1,9 @@
 import { z } from 'zod';
 import { MANGA_PARSER_VERSION, type MangaDetail } from '../domain/manga';
-import { capture, decodeHtml, numeric, ParserError } from './html';
+import { anchorRefs, capture, numeric, ParserError } from './html';
 import { extractExternalLinks, extractRelations } from './relations-links';
 
+const namedRefSchema = z.object({ malId: z.number().int().positive(), name: z.string().min(1), url: z.string().url() });
 const relationSchema = z.object({ relation: z.string().min(1), malId: z.number().int().positive(), type: z.enum(['anime', 'manga']), title: z.string().min(1) });
 const externalLinkSchema = z.object({ name: z.string().min(1), url: z.string().url() });
 
@@ -18,11 +19,11 @@ const mangaDetailSchema = z.object({
   chapters: z.number().nullable(),
   status: z.string().nullable(),
   published: z.string().nullable(),
-  authors: z.array(z.string()),
+  authors: z.array(namedRefSchema),
   serialization: z.string().nullable(),
-  genres: z.array(z.string()),
-  themes: z.array(z.string()),
-  demographics: z.array(z.string()),
+  genres: z.array(namedRefSchema),
+  themes: z.array(namedRefSchema),
+  demographics: z.array(namedRefSchema),
   score: z.number().nullable(),
   rank: z.number().nullable(),
   popularity: z.number().nullable(),
@@ -52,10 +53,6 @@ function rawLabelBlock(html: string, ...labels: string[]): string {
   return '';
 }
 
-function anchorTexts(block: string): string[] {
-  return [...block.matchAll(/<a[^>]*>([^<]+)<\/a>/gi)].map((match) => decodeHtml(match[1]));
-}
-
 function rankedValue(html: string, label: string): number | null {
   const escaped = label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   return numeric(capture(html, new RegExp(`${escaped}:<\\/span>\\s*#([\\d,]+)`, 'i')));
@@ -82,11 +79,11 @@ export function parseMangaDetail(html: string, malId: number, fetchedAt = new Da
     chapters: numeric(plainLabelValue(head, 'Chapters')),
     status: plainLabelValue(head, 'Status'),
     published: plainLabelValue(head, 'Published'),
-    authors: anchorTexts(rawLabelBlock(head, 'Authors', 'Author')),
+    authors: anchorRefs(rawLabelBlock(head, 'Authors', 'Author')),
     serialization: plainLabelValue(head, 'Serialization'),
-    genres: anchorTexts(rawLabelBlock(head, 'Genres', 'Genre')),
-    themes: anchorTexts(rawLabelBlock(head, 'Themes', 'Theme')),
-    demographics: anchorTexts(rawLabelBlock(head, 'Demographics', 'Demographic')),
+    genres: anchorRefs(rawLabelBlock(head, 'Genres', 'Genre')),
+    themes: anchorRefs(rawLabelBlock(head, 'Themes', 'Theme')),
+    demographics: anchorRefs(rawLabelBlock(head, 'Demographics', 'Demographic')),
     score: numeric(capture(head, /<span itemprop="ratingValue"[^>]*>([\d.]+)<\/span>/i)),
     rank: rankedValue(head, 'Ranked'),
     popularity: rankedValue(head, 'Popularity'),

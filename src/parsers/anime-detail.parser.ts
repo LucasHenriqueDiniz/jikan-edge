@@ -1,8 +1,9 @@
 import { z } from 'zod';
 import { ANIME_PARSER_VERSION, type AnimeDetail } from '../domain/anime';
-import { capture, decodeHtml, numeric, ParserError } from './html';
+import { anchorRefs, capture, numeric, ParserError } from './html';
 import { extractExternalLinks, extractRelations, extractStreaming } from './relations-links';
 
+const namedRefSchema = z.object({ malId: z.number().int().positive(), name: z.string().min(1), url: z.string().url() });
 const relationSchema = z.object({ relation: z.string().min(1), malId: z.number().int().positive(), type: z.enum(['anime', 'manga']), title: z.string().min(1) });
 const externalLinkSchema = z.object({ name: z.string().min(1), url: z.string().url() });
 const streamingSchema = z.object({ name: z.string().min(1), url: z.string().url(), available: z.boolean() });
@@ -18,9 +19,9 @@ const animeDetailSchema = z.object({
   episodes: z.number().nullable(),
   status: z.string().nullable(),
   aired: z.string().nullable(),
-  studios: z.array(z.string()),
-  genres: z.array(z.string()),
-  themes: z.array(z.string()),
+  studios: z.array(namedRefSchema),
+  genres: z.array(namedRefSchema),
+  themes: z.array(namedRefSchema),
   duration: z.string().nullable(),
   rating: z.string().nullable(),
   score: z.number().nullable(),
@@ -50,10 +51,6 @@ function rawLabelBlock(html: string, ...labels: string[]): string {
   return '';
 }
 
-function anchorTexts(block: string): string[] {
-  return [...block.matchAll(/<a[^>]*>([^<]+)<\/a>/gi)].map((match) => decodeHtml(match[1]));
-}
-
 function rankedValue(html: string, label: string): number | null {
   const escaped = label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   return numeric(capture(html, new RegExp(`${escaped}:<\\/span>\\s*#([\\d,]+)`, 'i')));
@@ -79,9 +76,9 @@ export function parseAnimeDetail(html: string, malId: number, fetchedAt = new Da
     episodes: numeric(plainLabelValue(head, 'Episodes')),
     status: plainLabelValue(head, 'Status'),
     aired: plainLabelValue(head, 'Aired'),
-    studios: anchorTexts(rawLabelBlock(head, 'Studios', 'Studio')),
-    genres: anchorTexts(rawLabelBlock(head, 'Genres', 'Genre')),
-    themes: anchorTexts(rawLabelBlock(head, 'Themes', 'Theme')),
+    studios: anchorRefs(rawLabelBlock(head, 'Studios', 'Studio')),
+    genres: anchorRefs(rawLabelBlock(head, 'Genres', 'Genre')),
+    themes: anchorRefs(rawLabelBlock(head, 'Themes', 'Theme')),
     duration: plainLabelValue(head, 'Duration'),
     rating: plainLabelValue(head, 'Rating'),
     score: numeric(capture(head, /<span itemprop="ratingValue"[^>]*>([\d.]+)<\/span>/i)),

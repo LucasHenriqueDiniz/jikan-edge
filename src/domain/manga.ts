@@ -1,4 +1,5 @@
 import type { ExternalLink, RelationEntry } from './anime';
+import type { NamedRef } from './named-ref';
 
 export interface MangaDetail {
   malId: number;
@@ -12,11 +13,11 @@ export interface MangaDetail {
   chapters: number | null;
   status: string | null;
   published: string | null;
-  authors: string[];
+  authors: NamedRef[];
   serialization: string | null;
-  genres: string[];
-  themes: string[];
-  demographics: string[];
+  genres: NamedRef[];
+  themes: NamedRef[];
+  demographics: NamedRef[];
   score: number | null;
   rank: number | null;
   popularity: number | null;
@@ -39,4 +40,5 @@ export interface MangaListEntry {
   members: number | null;
 }
 
-export const MANGA_PARSER_VERSION = 'manga-html-v1';
+// v2: authors/genres/themes/demographics carry mal_id + url instead of bare names.
+export const MANGA_PARSER_VERSION = 'manga-html-v2';

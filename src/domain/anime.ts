@@ -1,3 +1,5 @@
+import type { NamedRef } from './named-ref';
+
 export interface RelationEntry {
   relation: string;
   malId: number;
@@ -27,9 +29,9 @@ export interface AnimeDetail {
   episodes: number | null;
   status: string | null;
   aired: string | null;
-  studios: string[];
-  genres: string[];
-  themes: string[];
+  studios: NamedRef[];
+  genres: NamedRef[];
+  themes: NamedRef[];
   duration: string | null;
   rating: string | null;
   score: number | null;
@@ -62,4 +64,5 @@ export interface Genre {
   url: string;
 }
 
-export const ANIME_PARSER_VERSION = 'anime-html-v1';
+// v2: studios/genres/themes carry mal_id + url instead of bare names.
+export const ANIME_PARSER_VERSION = 'anime-html-v2';

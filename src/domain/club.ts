@@ -1,3 +1,9 @@
+export interface ClubStaffMember {
+  username: string;
+  url: string;
+  role: string | null;
+}
+
 export interface ClubDetail {
   malId: number;
   title: string;
@@ -5,9 +11,10 @@ export interface ClubDetail {
   pictures: number | null;
   category: string | null;
   created: string | null;
-  staff: string[];
+  staff: ClubStaffMember[];
   fetchedAt: string;
   sourceVersion: string;
 }
 
-export const CLUB_PARSER_VERSION = 'club-html-v1';
+// v2: staff is structured ({username, url, role}) instead of a "name (role)" string.
+export const CLUB_PARSER_VERSION = 'club-html-v2';

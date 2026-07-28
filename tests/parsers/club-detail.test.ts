@@ -12,6 +12,9 @@ describe('club detail parser', () => {
     expect(detail.pictures).toBe(25);
     expect(detail.category).toBe('Anime');
     expect(detail.created).toBe('Mar 29, 2007');
-    expect(detail.staff).toEqual(['Xinil (President)', 'daya (Secretary)']);
+    expect(detail.staff).toEqual([
+      { username: 'Xinil', url: 'https://myanimelist.net/profile/Xinil', role: 'President' },
+      { username: 'daya', url: 'https://myanimelist.net/profile/daya', role: 'Secretary' },
+    ]);
   });
 });
