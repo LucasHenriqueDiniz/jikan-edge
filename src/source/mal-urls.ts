@@ -115,6 +115,11 @@ export function magazinesUrl(): string {
   return `${BASE}/manga/magazine`;
 }
 
+/** Not fetched today — used to build the `url` we hand back for a magazine entity. */
+export function magazineDetailUrl(malId: number): string {
+  return `${BASE}/manga/magazine/${malId}`;
+}
+
 export function scheduleUrl(): string {
   return `${BASE}/anime/season/schedule`;
 }

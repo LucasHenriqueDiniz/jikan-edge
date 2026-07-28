@@ -6,7 +6,7 @@ import { images, malUrl } from './primitives';
 export function producerDetail(d: ProducerDetail) {
   return {
     mal_id: d.malId,
-    url: malUrl('anime', d.malId),
+    url: malUrl('producer', d.malId),
     titles: [{ type: 'Default', title: d.name }],
     images: images(d.imageUrl),
     favorites: d.favorites,

@@ -1,5 +1,6 @@
 import type { RelationEntry } from '../../domain/anime';
 import type { NamedRef } from '../../domain/named-ref';
+import { clubDetailUrl, magazineDetailUrl, producerDetailUrl } from '../../source/mal-urls';
 import type {
   JikanBroadcast,
   JikanDateRange,
@@ -14,8 +15,18 @@ import type {
 
 const MAL_BASE = 'https://myanimelist.net';
 
-/** Canonical MAL URL for an entity we only know by id. Deterministic — never a fetch. */
+/**
+ * Canonical MAL URL for an entity we only know by id. Deterministic — never a fetch.
+ *
+ * Not every type follows `/{type}/{id}`: clubs live at `clubs.php?cid=`, producers under
+ * `/anime/producer/` and magazines under `/manga/magazine/`. Those three delegate to
+ * `src/source/mal-urls.ts`, which is the single source of truth for MAL URLs, so a link we
+ * emit can never drift from the one we fetch.
+ */
 export function malUrl(type: MalEntityType, malId: number): string {
+  if (type === 'clubs') return clubDetailUrl(malId);
+  if (type === 'producer') return producerDetailUrl(malId);
+  if (type === 'magazine') return magazineDetailUrl(malId);
   return `${MAL_BASE}/${type}/${malId}`;
 }
 

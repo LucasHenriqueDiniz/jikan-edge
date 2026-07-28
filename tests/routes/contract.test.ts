@@ -1,12 +1,13 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { expectNoCamelCase, requester } from './contract-support';
 import { parseAnimeDetail } from '../../src/parsers/anime-detail.parser';
 import { parseMangaDetail } from '../../src/parsers/manga-detail.parser';
 import { readFileSync } from 'node:fs';
+import { served } from './contract-support';
 
 const animeHtml = readFileSync('tests/fixtures/anime/detail-valid.html', 'utf8');
 const mangaHtml = readFileSync('tests/fixtures/manga/detail-valid.html', 'utf8');
 
-const served = <T>(data: T) => ({ data, cached: true, stale: false, refreshFailed: false, fetchedAt: '2026-07-28T00:00:00.000Z' });
 
 // Handlers build their service inline from c.env.DB, so there is no injection seam — mocking the
 // modules is what lets a request go through real routing, real middleware, the real mapper and
@@ -31,29 +32,7 @@ vi.mock('../../src/services/manga.service', () => ({
 
 const { default: app } = await import('../../src/app');
 
-/**
- * The single regression net for a 94-route rename: nothing under `data` or `pagination` may keep
- * a camelCase key. `meta` is ours and is deliberately exempt.
- */
-function expectNoCamelCase(value: unknown, path = 'data'): void {
-  if (Array.isArray(value)) {
-    value.forEach((item, index) => expectNoCamelCase(item, `${path}[${index}]`));
-    return;
-  }
-  if (value === null || typeof value !== 'object') return;
-  for (const [key, child] of Object.entries(value)) {
-    expect(/[a-z][A-Z]/.test(key), `camelCase key "${key}" at ${path}`).toBe(false);
-    expectNoCamelCase(child, `${path}.${key}`);
-  }
-}
-
-// The mocked services ignore it, but the handlers still read c.env.DB to construct them.
-const env = { DB: {} as D1Database, WORKER_VERSION: 'test' };
-
-async function get(path: string) {
-  const response = await app.request(`http://localhost${path}`, {}, env);
-  return { response, body: (await response.json()) as Record<string, any> };
-}
+const get = requester(app);
 
 describe('jikan v4 response contract', () => {
   beforeEach(() => vi.clearAllMocks());
