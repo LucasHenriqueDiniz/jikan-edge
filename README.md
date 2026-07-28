@@ -65,7 +65,7 @@ Fresh data is served straight from D1 without touching MyAnimeList. Cache misses
 
 ## Honest differences from Jikan
 
-This project aims for **functional parity, not schema-identical cloning**. Field names are camelCase and response shapes are documented per route.
+Responses follow the **Jikan v4 shape** — field names, entity refs, pagination and error format — so migrating means swapping the base URL. What differs is coverage, not schema: some Jikan routes have no public MyAnimeList page behind them, and some fields MyAnimeList never exposes come back `null`. Both lists are in [`docs/api.md`](docs/api.md) and below.
 
 ### Routes we can't serve (and why)
 

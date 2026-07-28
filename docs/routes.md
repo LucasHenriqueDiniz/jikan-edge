@@ -187,3 +187,19 @@ Espelha a política pública do próprio Jikan (3 req/s, 60 req/min). Estourou �
 Um hit fresh não faz fetch ao MAL. Um miss faz um fetch da fonte, grava o dado normalizado e então `cache_entries`. Cache stale é devolvido se o refresh falhar; sem cache, a falha vira erro HTTP. O lease é por recurso e tem 30 segundos. O refresh é síncrono: ainda não há revalidação assíncrona.
 
 As listas são obtidas de um único documento público do MAL; a paginação exposta é apenas D1, depois de persistir o snapshot. Não existe coleta de múltiplas páginas upstream neste slice.
+
+## Migração para o shape Jikan v4 (2026-07-28)
+
+**Mudança de contrato do `/v1` inteiro.** As rotas e os nomes de query param já eram os do Jikan; o que divergia era o envelope, os nomes/forma dos campos e o formato de erro — ou seja, o `/v1` era "Jikan mas camelCase" e migrar exigia reescrever call site, não trocar base URL. Agora as 93 rotas emitem o shape real do Jikan v4. O contrato completo (envelope, paginação, tabela de erros, campos que não conseguimos preencher) está em `docs/api.md`; esta seção registra só as decisões.
+
+**A tradução vive só na borda.** `src/http/jikan/`, um módulo por grupo de rota, mapeadores explicitamente tipados contra as interfaces de domínio (o compilador pega drift). `src/domain/` e `src/repositories/` seguem camelCase, então o `payload_json` no D1 não muda de forma e a conversão em si não invalidou nenhum cache. **Não** foi usado transform recursivo de chaves: a conversão é reestruturação (`imageUrl` → `images.jpg.image_url`, `titleEnglish` → `titles[]`, relations achatado → agrupado), que renomeação de chave não produz — e as chaves de `ScheduleByDay` são dados, que um transform genérico mutilaria.
+
+**Parsers que subiram de versão** (esses sim invalidam cache, e por isso os bumps): `anime-html-v2` e `manga-html-v2` capturam `mal_id`+`url` de genres/studios/themes/authors/demographics a partir do href da âncora (antes só o texto, o que impedia emitir a entidade `{mal_id,type,name,url}` do Jikan); `club-html-v2` estrutura staff em `{username,url,role}` (era a string `"user (role)"`); `review-html-v2` e `recommendation-html-v2` capturam se a linha é de anime ou mangá. Esse último não era cosmético: os feeds de review/recomendação **de usuário** misturam os dois, então inferir o tipo pela rota rotularia metade das linhas errado.
+
+**`/v1/schedules` voltou a ser lista achatada** — reverte a mudança de 2026-07-27 que introduziu o objeto por dia. O Jikan sempre devolve array. O dia não se perdeu: vai em `broadcast.day` de cada entrada, que é exatamente onde o Jikan o coloca. `?filter=monday..sunday|other|unknown` continua valendo.
+
+**Paginação honesta.** As rotas que servem uma página do MAL sem saber o tamanho do corpus (as 18 que aceitam `page`) reportam `items.total: null` e `has_next_page: false`. Afirmar `total = count` diria que aquela página é o corpus inteiro; um `has_next_page: true` especulativo poria o cliente em loop além do fim. As rotas que servem um documento único completo reportam o total de verdade, porque nesse caso o count **é** o total.
+
+**Lacuna de query params documentada, não corrigida:** o Jikan também aceita `sfw`, `min_score`, `max_score`, `start_date`, `end_date`, `producers`, `letter`, `sort` e `unapproved` em `/anime`; nós aceitamos `score` (não `min_score`/`max_score`) e ignoramos o resto. Param desconhecido é ignorado em silêncio, que é o comportamento seguro.
+
+**Rede de segurança:** `tests/routes/contract.test.ts` percorre a resposta inteira e falha em qualquer chave camelCase sobrevivente sob `data`/`pagination` (`meta` é nosso e está isento). Os testes de parser não foram afetados pela conversão — só pelos 5 bumps de versão acima.

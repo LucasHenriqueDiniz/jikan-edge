@@ -160,10 +160,10 @@ footer a { color: var(--paper-dim); }
         <div class="conv">
           <div class="card">
             <h3>Response envelope</h3>
-            <p>Every success is wrapped in <code>data</code> + <code>meta</code>. Field names are <b>camelCase</b> —
-            functional parity with Jikan, not schema-identical cloning.</p>
+            <p>Field names and shapes are <b>Jikan v4</b>. Lists put <code>pagination</code> before
+            <code>data</code>, as Jikan does. The extra <code>meta</code> key is ours — Jikan clients ignore it.</p>
 <pre class="block">{
-  <span class="k">"data"</span>: { … },
+  <span class="k">"data"</span>: { <span class="k">"mal_id"</span>: <span class="n">1</span>, <span class="k">"images"</span>: { <span class="k">"jpg"</span>: { … } }, … },
   <span class="k">"meta"</span>: {
     <span class="k">"cached"</span>: <span class="n">true</span>,
     <span class="k">"stale"</span>: <span class="n">false</span>,
@@ -350,7 +350,7 @@ footer a { color: var(--paper-dim); }
       { p: '/v1/seasons/upcoming', ex: '/v1/seasons/upcoming', d: 'Upcoming seasons.' },
       { p: '/v1/schedules?filter=', ex: '/v1/schedules?filter=monday', d: 'Weekly airing schedule — monday…sunday, other, unknown.' }
     ]},
-    { id: 'g-top', title: 'Top rankings', note: 'Native MAL pagination, 50 per page. Entries are compact — fetch the detail routes for full data. <code>top/characters</code> includes animeography/mangaography as {malId, title} pairs.', routes: [
+    { id: 'g-top', title: 'Top rankings', note: 'Native MAL pagination, 50 per page. Entries are compact — fetch the detail routes for full data. <code>top/characters</code> includes animeography/mangaography as {mal_id, type, name, url} refs.', routes: [
       { p: '/v1/top/anime?page=', ex: '/v1/top/anime', d: 'Top anime by score.' },
       { p: '/v1/top/manga?page=', ex: '/v1/top/manga', d: 'Top manga by score.' },
       { p: '/v1/top/people?page=', ex: '/v1/top/people', d: 'Most favorited people.' },

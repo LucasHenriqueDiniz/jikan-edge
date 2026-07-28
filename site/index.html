@@ -461,8 +461,8 @@ footer .stamp .kanji { color: var(--vermillion); }
       <div class="jp">ルート</div>
       <h2>96 routes, one worker</h2>
       <p>The full Jikan v4 functional surface, minus the parts MyAnimeList doesn't actually expose
-      (documented below, not swept under the rug). Responses are camelCase and wrapped in
-      <code>{ data, meta }</code>.</p>
+      (documented below, not swept under the rug). Responses use the Jikan v4 shape, plus a
+      <code>meta</code> key Jikan doesn't have.</p>
     </div>
     <div class="routes">
       <div class="route-card reveal">
@@ -585,7 +585,7 @@ footer .stamp .kanji { color: var(--vermillion); }
           <div class="peek-body">
             <div class="peek-rows">
               <div class="peek-title">🎲 a surprise from the cache</div>
-              <div><i>malId</i><b>???</b></div>
+              <div><i>mal_id</i><b>???</b></div>
               <div><i>title</i><b>different every time</b></div>
               <div><i>source</i><b>local D1 catalog</b></div>
             </div>
@@ -649,17 +649,17 @@ footer .stamp .kanji { color: var(--vermillion); }
       <div class="mig-diff" aria-hidden="true">
         <div class="mig-line mig-old">
           <span class="mig-tag">before</span>
-          <code><s>https://api.jikan.moe/v4</s>/anime/1 → <s>mal_id</s>, <s>images.jpg.image_url</s></code>
+          <code><s>https://api.jikan.moe/v4</s>/anime/1 → mal_id, images.jpg.image_url</code>
         </div>
         <div class="mig-line mig-new">
           <span class="mig-tag">after</span>
-          <code>https://jikan-edge.lucas-hdo.workers.dev/v1/anime/1 → malId, imageUrl</code>
+          <code>https://jikan-edge.lucas-hdo.workers.dev/v1/anime/1 → mal_id, images.jpg.image_url</code>
         </div>
       </div>
       <button class="mig-btn" id="prompt-copy"><span class="mig-ico">⧉</span><span class="mig-txt">Copy the agent prompt</span></button>
-      <p class="mig-note">Covers the <code>{ data, meta }</code> envelope, camelCase fields, pagination,
-      <code>429</code> handling and the <a href="/docs#not-served">routes we don't serve</a> — and asks the
-      agent to verify every endpoint against the live API.</p>
+      <p class="mig-note">Field names and shapes are identical to Jikan v4, so the prompt mostly covers the
+      <a href="/docs#not-served">routes we don't serve</a>, the fields MyAnimeList never exposes, and
+      <code>429</code> handling — and asks the agent to verify every endpoint against the live API.</p>
     </div>
   </div>
 </section>
@@ -779,22 +779,28 @@ footer .stamp .kanji { color: var(--vermillion); }
     '1. Base URL: replace https://api.jikan.moe/v4 with https://jikan-edge.lucas-hdo.workers.dev/v1.',
     '   Route paths and groups mirror Jikan v4 (anime, manga, characters, people, users, seasons,',
     '   schedules, top, producers, clubs, magazines, watch, reviews, recommendations, random).',
-    '2. Response envelope: every success is { "data": ..., "meta": { cached, stale, refreshFailed,',
-    '   fetchedAt } }. There is no Jikan-style "pagination" object; pass ?page= (1-based) and read',
-    '   list lengths directly. User lists also accept ?limit= (1-300, default 100).',
-    '3. Field naming: camelCase instead of snake_case (mal_id -> malId, title_english -> titleEnglish).',
-    "   Images are flat URL strings (imageUrl), not Jikan's nested images.jpg/webp objects.",
-    '4. Errors: { "error": { code, message, requestId } } with HTTP status. Handle 429 RATE_LIMITED by',
-    '   honoring the Retry-After header (limits: 30 req/10s and 60 req/min per IP).',
+    '2. Response envelope and field names are Jikan v4: { "pagination": ..., "data": ... } for lists,',
+    '   { "data": ... } for single resources, with mal_id, images.jpg/webp, titles[], and',
+    '   { mal_id, type, name, url } entity refs. One addition: a top-level "meta" key with',
+    '   { cached, stale, refreshFailed, fetchedAt }. Keep it - do not strip it with a strict schema.',
+    '3. Fields MyAnimeList does not expose are present but null (or [] for collections): approved,',
+    '   scored_by, background, title_synonyms, producers/licensors, images.webp, trailer on the',
+    '   detail route, broadcast, season, year, and aired.from/.to/.prop. Dates arrive as one string',
+    '   in aired.string / published.string, never parsed into components.',
+    '4. Errors are Jikan-shaped: { status, type, message, error, requestId }, where "error" carries',
+    '   our specific code. Handle 429 RateLimitException by honoring the Retry-After header',
+    '   (limits: 30 req/10s and 60 req/min per IP).',
     '5. meta.stale === true means a served-from-cache fallback after a failed refresh - treat as valid.',
     '6. Not served (adjust or remove features that depend on them): genres/anime, genres/manga,',
     '   clubs?q= (club search), top/reviews, users/:u/history, users/:u/external, users/userbyid/:id,',
     "   per-episode forum. Also: anime/:id/episodes returns only MAL's first page, streaming may be",
     "   empty (geo-dependent), random/* draws from jikan-edge's local cache only.",
     '',
-    'Steps: find every Jikan call site; swap the base URL; update response parsing to the envelope and',
-    'camelCase fields; adapt pagination and rate-limit handling; then verify each migrated endpoint',
-    'against the live API before finishing.'
+    '7. Pagination: on routes that serve a single upstream page, items.total is null and',
+    '   has_next_page is false - do not treat that as "one page of results exists".',
+    '',
+    'Steps: find every Jikan call site; swap the base URL; adjust for the null-valued fields above and',
+    'rate-limit handling; then verify each migrated endpoint against the live API before finishing.'
   ].join('\n');
   var promptCopy = document.getElementById('prompt-copy');
   var promptTxt = promptCopy.querySelector('.mig-txt');
@@ -863,12 +869,12 @@ footer .stamp .kanji { color: var(--vermillion); }
           if (mySeq !== showSeq) return;
           timeEl.textContent = Math.round(performance.now() - t0) + ' ms';
           reqEl.classList.remove('loading'); reqEl.classList.add('done');
-          var entries = (body.data || []).filter(function (e) { return e.imageUrl; }).slice(0, 4);
+          var entries = (body.data || []).filter(function (e) { return e.images && e.images.jpg.image_url; }).slice(0, 4);
           if (!entries.length) throw new Error('empty');
           cardsEl.innerHTML = entries.map(function (e, i) {
-            var detail = '/v1/' + source.type + '/' + e.malId;
+            var detail = '/v1/' + source.type + '/' + e.mal_id;
             return '<a class="hs-card" style="animation-delay:' + (i * 90) + 'ms" href="' + base + detail + '" target="_blank" rel="noopener" title="GET ' + detail + '">' +
-              '<img src="' + esc(fullImage(e.imageUrl)) + '" alt="" loading="eager">' +
+              '<img src="' + esc(fullImage(e.images.jpg.image_url)) + '" alt="" loading="eager">' +
               '<span class="hs-grad"></span>' +
               '<span class="hs-rank">#' + (e.rank || i + 1) + '</span>' +
               badge(e) +
