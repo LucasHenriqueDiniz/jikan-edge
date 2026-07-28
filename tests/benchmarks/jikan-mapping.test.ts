@@ -64,8 +64,40 @@ describe('jikan mapping cost', () => {
   });
 
   it('300-entry user list: the widest payload any route can produce', () => {
-    // 300 is the documented `limit` ceiling, so this is the worst case for list serialization.
-    const entries: UserMediaListEntry[] = Array.from({ length: 300 }, (_, index) => ({
+    const report = measure('user-list-300', () => JSON.stringify(listOf300()), () => JSON.stringify(jikan.userMediaList(listOf300())));
+    expect(report.after.p95).toBeLessThan(8);
+  });
+
+  /**
+   * Splits the added cost into its two parts: building the Jikan object, and serializing a
+   * bigger one. Only run against the 300-entry list — at detail-route sizes (~10µs) the
+   * timings sit under this environment's noise floor and the split is not readable.
+   */
+  it('attributes the added cost between mapper and serialization', () => {
+    const entries = listOf300();
+    const mapped = jikan.userMediaList(entries);
+    const p95 = (fn: () => unknown) => {
+      for (let i = 0; i < 50; i += 1) fn();
+      const samples: number[] = [];
+      for (let i = 0; i < SAMPLES; i += 1) {
+        const started = performance.now();
+        fn();
+        samples.push(performance.now() - started);
+      }
+      return samples.sort((a, b) => a - b)[Math.floor(SAMPLES * 0.95)];
+    };
+    console.log(JSON.stringify({
+      benchmark: 'user-list-300-split',
+      stringifyDomainOnly: p95(() => JSON.stringify(entries)),
+      mapperOnly: p95(() => jikan.userMediaList(entries)),
+      stringifyMappedOnly: p95(() => JSON.stringify(mapped)),
+    }));
+  });
+});
+
+/** 300 is the documented `limit` ceiling, so this is the worst case for list serialization. */
+function listOf300(): UserMediaListEntry[] {
+  return Array.from({ length: 300 }, (_, index) => ({
       username: 'bench',
       mediaType: 'anime',
       malId: index + 1,
@@ -80,8 +112,5 @@ describe('jikan mapping cost', () => {
       updatedAt: '2024-02-01T00:00:00.000Z',
       fetchedAt: '2026-07-28T00:00:00.000Z',
       sourceVersion: 'bench',
-    }));
-    const report = measure('user-list-300', () => JSON.stringify(entries), () => JSON.stringify(jikan.userMediaList(entries)));
-    expect(report.after.p95).toBeLessThan(8);
-  });
-});
+  }));
+}
