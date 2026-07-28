@@ -4,6 +4,7 @@ import { decodeHtml, numeric, ParserError } from './html';
 
 const entrySchema = z.object({
   malId: z.number().int().positive(),
+  type: z.enum(['anime', 'manga']),
   title: z.string().min(1),
   imageUrl: z.string().url().nullable(),
   username: z.string().nullable(),
@@ -14,9 +15,12 @@ const entrySchema = z.object({
 });
 
 function parseCard(chunk: string): ReviewEntry | null {
-  const idMatch = chunk.match(/href="https:\/\/myanimelist\.net\/(?:anime|manga)\/(\d+)\//i);
+  // The card only names its media type in the link, and the global feed at /reviews mixes
+  // anime and manga — so the type has to come from here, not from the route.
+  const idMatch = chunk.match(/href="https:\/\/myanimelist\.net\/(anime|manga)\/(\d+)\//i);
   if (!idMatch) return null;
-  const malId = Number(idMatch[1]);
+  const type = idMatch[1].toLowerCase() as 'anime' | 'manga';
+  const malId = Number(idMatch[2]);
   const title = decodeHtml(chunk.match(/class="title ga-click"[^>]*>([^<]+)<\/a>/i)?.[1] ?? '');
   const imageUrl = chunk.match(/data-ga-click-type="review-\w+-title-pic"[\s\S]{0,300}?data-src="([^"]+)"/i)?.[1] ?? null;
   const username = chunk.match(/data-ga-click-type="review-\w+-reviewer">([^<]+)<\/a>/i)?.[1] ?? null;
@@ -27,7 +31,7 @@ function parseCard(chunk: string): ReviewEntry | null {
   const textStart = chunk.indexOf(textMarker);
   const textEnd = chunk.indexOf('<div class="rating', textStart);
   const reviewText = textStart === -1 ? null : decodeHtml(chunk.slice(textStart + textMarker.length, textEnd === -1 ? textStart + 6_000 : textEnd)) || null;
-  const candidate = { malId, title, imageUrl, username, date, tag, score, reviewText };
+  const candidate = { malId, type, title, imageUrl, username, date, tag, score, reviewText };
   const parsed = entrySchema.safeParse(candidate);
   return parsed.success ? parsed.data : null;
 }

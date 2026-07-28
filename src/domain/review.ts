@@ -1,5 +1,6 @@
 export interface ReviewEntry {
   malId: number;
+  type: 'anime' | 'manga';
   title: string;
   imageUrl: string | null;
   username: string | null;
@@ -9,4 +10,4 @@ export interface ReviewEntry {
   reviewText: string | null;
 }
 
-export const REVIEW_PARSER_VERSION = 'review-html-v1';
+export const REVIEW_PARSER_VERSION = 'review-html-v2';

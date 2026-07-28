@@ -1,5 +1,6 @@
 export interface RecommendationEntry {
   malId: number;
+  type: 'anime' | 'manga';
   title: string;
   imageUrl: string | null;
   recommendedMalId: number;
@@ -9,4 +10,4 @@ export interface RecommendationEntry {
   username: string | null;
 }
 
-export const RECOMMENDATION_PARSER_VERSION = 'recommendation-html-v1';
+export const RECOMMENDATION_PARSER_VERSION = 'recommendation-html-v2';

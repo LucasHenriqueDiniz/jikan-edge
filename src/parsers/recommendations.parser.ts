@@ -4,6 +4,7 @@ import { decodeHtml, ParserError } from './html';
 
 const entrySchema = z.object({
   malId: z.number().int().positive(),
+  type: z.enum(['anime', 'manga']),
   title: z.string().min(1),
   imageUrl: z.string().url().nullable(),
   recommendedMalId: z.number().int().positive(),
@@ -13,14 +14,16 @@ const entrySchema = z.object({
   username: z.string().nullable(),
 });
 
-function extractSide(chunk: string, side: 1 | 2): { malId: number; title: string; imageUrl: string | null } | null {
+function extractSide(chunk: string, side: 1 | 2): { malId: number; type: 'anime' | 'manga'; title: string; imageUrl: string | null } | null {
   const idMatch = chunk.match(new RegExp(`id="#raArea${side}_(\\d+)"`, 'i'));
   if (!idMatch || idMatch.index === undefined) return null;
   const malId = Number(idMatch[1]);
   const window = chunk.slice(idMatch.index, idMatch.index + 1_500);
   const imageUrl = window.match(/data-src="([^"]+)"/i)?.[1] ?? null;
   const title = decodeHtml(window.match(/<strong>([^<]+)<\/strong>/i)?.[1] ?? '');
-  return { malId, title, imageUrl };
+  // The anchor is the only place the media type appears; /recommendations mixes both.
+  const type = (chunk.match(new RegExp(`myanimelist\\.net/(anime|manga)/${malId}/`, 'i'))?.[1]?.toLowerCase() ?? 'anime') as 'anime' | 'manga';
+  return { malId, type, title, imageUrl };
 }
 
 function parseCard(chunk: string): RecommendationEntry | null {
@@ -30,7 +33,7 @@ function parseCard(chunk: string): RecommendationEntry | null {
   const content = decodeHtml(chunk.match(/recommendations-user-recs-text[^>]*>([\s\S]*?)<\/div>/i)?.[1] ?? '') || null;
   const username = chunk.match(/rec by <a href="\/profile\/[^"]*">([^<]+)<\/a>/i)?.[1] ?? null;
   const candidate = {
-    malId: first.malId, title: first.title, imageUrl: first.imageUrl,
+    malId: first.malId, type: first.type, title: first.title, imageUrl: first.imageUrl,
     recommendedMalId: second.malId, recommendedTitle: second.title, recommendedImageUrl: second.imageUrl,
     content, username: username ? decodeHtml(username) : null,
   };
