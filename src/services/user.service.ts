@@ -22,7 +22,7 @@ import { RECOMMENDATION_PARSER_VERSION, type RecommendationEntry } from '../doma
 import { parseRecommendations } from '../parsers/recommendations.parser';
 import { ServiceError, type ServiceResponse, sourceError, withCache } from './cacheable';
 
-const UPDATES_PARSER_VERSION = 'user-html-v1:updates';
+const UPDATES_PARSER_VERSION = `${PARSER_VERSION}:updates`;
 
 export interface UserFullProfile { profile: UserProfile; statistics: UserStatistics; favorites: Favorites; updates: UserUpdates }
 

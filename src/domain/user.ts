@@ -41,7 +41,7 @@ export interface UserStatistics {
   manga: MangaStatistics;
 }
 
-export const PARSER_VERSION = 'user-html-v1';
+export const PARSER_VERSION = 'user-html-v2';
 
 export function usernameKey(username: string): string {
   return username.trim().toLowerCase();

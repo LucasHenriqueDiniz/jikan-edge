@@ -52,24 +52,33 @@ export function parseUserProfile(html: string, requestedUsername: string, fetche
   return validated.data;
 }
 
+// Status counts live in `<a class="... circle anime watching">Watching</a><span ...>1</span>`;
+// anchoring on `>Label</a>` avoids the class names, graph pixel widths and `lh10` digits nearby.
 function statusCount(html: string, label: string): number {
   const escaped = label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  return numeric(capture(html, new RegExp(`${escaped}[^0-9]{0,100}([0-9,]+)`, 'i'))) ?? 0;
+  return numeric(capture(html, new RegExp(`>${escaped}<\\/a>\\s*<span[^>]*>\\s*([\\d,]+)`, 'i'))) ?? 0;
+}
+
+// Totals live in `<span class="...">Label</span><span class="...">1,234</span>` (labels are
+// "Total Entries", "Episodes", "Chapters", "Volumes" — not "Episodes Watched"/"Chapters Read").
+function dataValue(html: string, label: string): number | null {
+  const escaped = label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  return numeric(capture(html, new RegExp(`>${escaped}<\\/span>\\s*<span[^>]*>\\s*([\\d,]+)`, 'i')));
 }
 
 function parseAnimeBucket(html: string): AnimeStatistics {
   const data = section(html, 'Anime Stats', 8_000);
   return {
-    watching: statusCount(data, 'Watching'), completed: statusCount(data, 'Completed'), onHold: statusCount(data, 'On-Hold'), dropped: statusCount(data, 'Dropped'), planToWatch: statusCount(data, 'Plan to Watch'), totalEntries: statusCount(data, 'Total Entries'),
-    episodesWatched: numeric(capture(data, /Episodes Watched:\s*<\/span>\s*([\d,]+)/i)), meanScore: numeric(capture(data, /Mean Score:\s*<\/span>\s*<span[^>]*>\s*([\d.]+)/i)),
+    watching: statusCount(data, 'Watching'), completed: statusCount(data, 'Completed'), onHold: statusCount(data, 'On-Hold'), dropped: statusCount(data, 'Dropped'), planToWatch: statusCount(data, 'Plan to Watch'), totalEntries: dataValue(data, 'Total Entries') ?? 0,
+    episodesWatched: dataValue(data, 'Episodes'), meanScore: numeric(capture(data, /Mean Score:\s*<\/span>\s*<span[^>]*>\s*([\d.]+)/i)),
   };
 }
 
 function parseMangaBucket(html: string): MangaStatistics {
   const data = section(html, 'Manga Stats', 8_000);
   return {
-    reading: statusCount(data, 'Reading'), completed: statusCount(data, 'Completed'), onHold: statusCount(data, 'On-Hold'), dropped: statusCount(data, 'Dropped'), planToRead: statusCount(data, 'Plan to Read'), totalEntries: statusCount(data, 'Total Entries'),
-    chaptersRead: numeric(capture(data, /Chapters Read:\s*<\/span>\s*([\d,]+)/i)), volumesRead: numeric(capture(data, /Volumes Read:\s*<\/span>\s*([\d,]+)/i)), meanScore: numeric(capture(data, /Mean Score:\s*<\/span>\s*<span[^>]*>\s*([\d.]+)/i)),
+    reading: statusCount(data, 'Reading'), completed: statusCount(data, 'Completed'), onHold: statusCount(data, 'On-Hold'), dropped: statusCount(data, 'Dropped'), planToRead: statusCount(data, 'Plan to Read'), totalEntries: dataValue(data, 'Total Entries') ?? 0,
+    chaptersRead: dataValue(data, 'Chapters'), volumesRead: dataValue(data, 'Volumes'), meanScore: numeric(capture(data, /Mean Score:\s*<\/span>\s*<span[^>]*>\s*([\d.]+)/i)),
   };
 }
 
