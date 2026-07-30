@@ -8,7 +8,7 @@ This file starts on 2026-07-30 and does not reconstruct earlier history.
 
 ## 2026-07-30
 
-Published versions: `116479bb`, `7d5fea93`, `f2185eaf`.
+Published versions: `116479bb`, `7d5fea93`, `f2185eaf`, `48dbfd6a`.
 
 A day on a single theme: data that existed at the source and the API either withheld or got wrong without saying so. Found by sweeping all 98 routes in production, not by a bug report.
 
