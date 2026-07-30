@@ -23,8 +23,12 @@ import { parseRecommendations } from '../parsers/recommendations.parser';
 import { ServiceError, type ServiceResponse, sourceError, withCache } from './cacheable';
 
 const UPDATES_PARSER_VERSION = `${PARSER_VERSION}:updates`;
-/** 10 pages of 300 covers every list we have seen; it bounds one user's refresh, nothing wider. */
-const MAX_LIST_PAGES = 10;
+/**
+ * Bounds one user's refresh, nothing wider. The largest list measured so far is 2,354 entries (8 pages), so
+ * 20 leaves real headroom — and hitting the cap now raises `LIST_TOO_LARGE` instead of quietly storing a
+ * prefix, which means the number is wrong loudly rather than the data being wrong silently.
+ */
+const MAX_LIST_PAGES = 20;
 
 export interface UserFullProfile { profile: UserProfile; statistics: UserStatistics; favorites: Favorites; updates: UserUpdates }
 
@@ -155,18 +159,30 @@ export class UserService {
       const collected: UserMediaListEntry[] = [];
       // The classic layout returns the whole list in one document and ignores `offset`; only the modern one
       // pages. The cap bounds a single user's refresh — it is not a crawl of MAL.
-      for (let pageIndex = 0; pageIndex < MAX_LIST_PAGES; pageIndex += 1) {
+      let exhausted = false;
+      for (let pageIndex = 0; pageIndex < MAX_LIST_PAGES && !exhausted; pageIndex += 1) {
         const offset = pageIndex * LIST_PAGE_SIZE;
         const source = await this.source.getHtml(mediaType === 'anime' ? animeListUrl(username, offset) : mangaListUrl(username, offset), [marker]);
         if (source.kind !== 'success') throw sourceError(source);
         const snapshot = parseUserMediaListSnapshot(source.value, username, mediaType, fetchedAt);
         // A later page that comes back empty is simply the end of the list, not a rejected snapshot.
-        if (snapshot.kind === 'partial' && snapshot.items.length === 0 && pageIndex > 0) break;
+        if (snapshot.kind === 'partial' && snapshot.items.length === 0 && pageIndex > 0) { exhausted = true; break; }
         if (snapshot.kind !== 'complete') throw new ServiceError('UPSTREAM_SUSPICIOUS', 502, `List snapshot rejected: ${snapshot.kind === 'empty' ? snapshot.kind : snapshot.reason}.`);
         collected.push(...snapshot.items);
-        if (listLayout(source.value) === 'classic' || snapshot.items.length < LIST_PAGE_SIZE) break;
+        if (listLayout(source.value) === 'classic' || snapshot.items.length < LIST_PAGE_SIZE) exhausted = true;
       }
+      // Leaving the loop with the last page still full means there are more entries than the cap allows.
+      // Storing what we have would be the same silent truncation this guard exists to prevent.
+      if (!exhausted) throw new ServiceError('LIST_TOO_LARGE', 501, `List exceeds the ${MAX_LIST_PAGES * LIST_PAGE_SIZE} entries this API reads in one refresh.`);
       const deduped = [...new Map(collected.map((entry) => [entry.malId, entry])).values()];
+      // MAL's list page never states how many entries the list has, so the only cross-check available is the
+      // profile's own counter, already stored by a previous profile refresh. Missing entries are what the
+      // truncation bug looked like (273 served against 360 declared); a surplus is not — a stale counter
+      // simply predates entries the user has since added.
+      const declaredTotal = (await this.users.getStatistics(key))?.[mediaType].totalEntries ?? null;
+      if (declaredTotal !== null && declaredTotal > 0 && deduped.length < declaredTotal) {
+        throw new ServiceError('UPSTREAM_SUSPICIOUS', 502, `List snapshot rejected: extracted ${deduped.length} of ${declaredTotal} declared entries.`);
+      }
       await this.users.replaceList(key, mediaType, deduped);
       return this.users.listEntries(key, mediaType, page, limit);
     }, requestId);

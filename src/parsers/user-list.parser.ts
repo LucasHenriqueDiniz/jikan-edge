@@ -19,7 +19,13 @@ export const LIST_PAGE_SIZE = 300;
  */
 export type ListLayout = 'classic' | 'modern';
 
-export interface ListCompletenessEvidence { declaredTotal: number | null; extractedTotal: number; uniqueTotal: number; sourceBytes: number; pageCount: number; terminalMarkerFound: boolean; duplicateIds: number[]; }
+/**
+ * Per-page evidence only. There is deliberately no `declaredTotal` here: MAL's list page never states how
+ * many entries the list holds — the counters beside "All Anime" are drawn by JS — so the field could only
+ * ever be null and read as if completeness had been checked. The real cross-check lives in the service,
+ * which compares the assembled list against the profile's own counter.
+ */
+export interface ListCompletenessEvidence { extractedTotal: number; uniqueTotal: number; sourceBytes: number; pageCount: number; terminalMarkerFound: boolean; duplicateIds: number[]; }
 export type ListParseResult =
   | { kind: 'complete'; items: UserMediaListEntry[]; evidence: ListCompletenessEvidence }
   | { kind: 'empty'; items: []; evidence: ListCompletenessEvidence }
@@ -145,7 +151,7 @@ function finalize(html: string, matchedItems: number, entries: Map<number, UserM
 }
 
 function evidence(html: string, extractedTotal: number, entries: Map<number, UserMediaListEntry>, duplicateIds: number[]): ListCompletenessEvidence {
-  return { declaredTotal: null, extractedTotal, uniqueTotal: entries.size, sourceBytes: new TextEncoder().encode(html).byteLength, pageCount: 1, terminalMarkerFound: /<\/html>\s*$/i.test(html), duplicateIds };
+  return { extractedTotal, uniqueTotal: entries.size, sourceBytes: new TextEncoder().encode(html).byteLength, pageCount: 1, terminalMarkerFound: /<\/html>\s*$/i.test(html), duplicateIds };
 }
 
 export function parseUserMediaList(html: string, username: string, mediaType: MediaType, fetchedAt = new Date().toISOString()): UserMediaListEntry[] {
