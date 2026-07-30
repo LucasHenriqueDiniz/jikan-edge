@@ -8,7 +8,7 @@ This file starts on 2026-07-30 and does not reconstruct earlier history.
 
 ## 2026-07-30 (second release of the day)
 
-Published version: `42f848f4`.
+Published versions: `42f848f4`, `c098b3b5`.
 
 Two things landed together: the self-hosting fix below, and a content sweep that compared every
 route against the official Jikan v4.
@@ -97,10 +97,12 @@ flagged.
   Before, only the user lists had it and everything else returned a bare array with no way to know
   whether another page existed. `total` is a number only on the user lists, which are counted
   locally; elsewhere it is `null`, because MAL prints no total and deriving one would be invention.
-- **Search filters `sort`, `letter`, `genres_exclude` and `min_score`**, each verified against the
-  live search rather than assumed. `genres_exclude` cannot be combined with `genres`: MAL's flag
-  inverts the meaning of every genre on the request rather than adding an exclusion, so passing both
-  is a contradiction and is refused.
+- **Search filters `sort`, `letter`, `genres_exclude`, `min_score`, `start_date` and `end_date`**,
+  each verified against the live search rather than assumed. Dates take Jikan's `YYYY-MM-DD`.
+  `genres_exclude` cannot be combined with `genres`: MAL's flag inverts the meaning of every genre
+  on the request rather than adding an exclusion, so passing both is a contradiction and is refused.
+  One edge on the dates, from the source rather than from us: an entry whose date MyAnimeList does
+  not have is **included** by either bound rather than filtered out.
 
 ### Fixed
 

@@ -19,6 +19,7 @@ const MAX_QUERY_LENGTH = 64;
 export interface TitleSearchFilters {
   type?: string; status?: string; rating?: string; score?: string; minScore?: string;
   genres?: string; genresExclude?: string; orderBy?: string; sort?: string; letter?: string;
+  startDate?: string; endDate?: string;
 }
 
 // All values verified against real anime.php/manga.php responses (server-side filtering confirmed;
@@ -68,6 +69,26 @@ function buildTitleSearchParams(type: 'anime' | 'manga', filters: TitleSearchFil
       extra.push(['genre[]', String(genreId)]);
     }
     if (filters.genresExclude) extra.push(['gx', '1']);
+  }
+  // MAL's advanced search splits each bound into three selects — month, day, year, in that order:
+  // `sm`/`sd`/`sy` for the start bound and `em`/`ed`/`ey` for the end one. Verified against the
+  // live search and against the results' own Aired field: `ey=2005&em=12&ed=31` on "naruto" returns
+  // titles from 2003, 2004 and 2005 and nothing later.
+  //
+  // One edge worth knowing rather than hiding: an entry whose date MAL does not have ("Aired: Not
+  // available") is *included* by either bound rather than filtered out.
+  for (const [value, name, keys] of [
+    [filters.startDate, 'start_date', ['sm', 'sd', 'sy']],
+    [filters.endDate, 'end_date', ['em', 'ed', 'ey']],
+  ] as const) {
+    if (!value) continue;
+    const match = value.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if (!match) throw new ServiceError('INVALID_FILTER', 400, `"${name}" must be a date in YYYY-MM-DD form.`);
+    const [, year, month, day] = match;
+    if (Number(month) < 1 || Number(month) > 12 || Number(day) < 1 || Number(day) > 31) {
+      throw new ServiceError('INVALID_FILTER', 400, `"${name}" is not a real date.`);
+    }
+    extra.push([keys[0], String(Number(month))], [keys[1], String(Number(day))], [keys[2], year]);
   }
   if (filters.letter) {
     if (!/^[A-Za-z]$/.test(filters.letter)) throw new ServiceError('INVALID_FILTER', 400, '"letter" must be a single letter.');

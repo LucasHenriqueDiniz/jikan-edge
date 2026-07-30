@@ -24,7 +24,7 @@ export const QUERY_CONTRACT: Record<string, readonly string[]> = {
   '/v1/users/:username/mangalist': ['page', 'limit'],
 
   // Anime
-  '/v1/anime': ['q', 'page', 'type', 'status', 'rating', 'score', 'min_score', 'genres', 'genres_exclude', 'order_by', 'sort', 'letter'],
+  '/v1/anime': ['q', 'page', 'type', 'status', 'rating', 'score', 'min_score', 'genres', 'genres_exclude', 'order_by', 'sort', 'letter', 'start_date', 'end_date'],
   '/v1/anime/:id': [],
   '/v1/anime/:id/full': [],
   '/v1/anime/:id/relations': [],
@@ -47,7 +47,7 @@ export const QUERY_CONTRACT: Record<string, readonly string[]> = {
   '/v1/anime/:id/moreinfo': [],
 
   // Manga
-  '/v1/manga': ['q', 'page', 'type', 'status', 'score', 'min_score', 'genres', 'genres_exclude', 'order_by', 'sort', 'letter'],
+  '/v1/manga': ['q', 'page', 'type', 'status', 'score', 'min_score', 'genres', 'genres_exclude', 'order_by', 'sort', 'letter', 'start_date', 'end_date'],
   '/v1/manga/:id': [],
   '/v1/manga/:id/full': [],
   '/v1/manga/:id/relations': [],
@@ -132,8 +132,6 @@ export const UNSUPPORTED_PARAMS: Record<string, string> = {
   max_score: 'Not supported: MyAnimeList\'s search form offers a single minimum-score dropdown, which is what "score" and "min_score" map to.',
   producers: 'Not supported: MyAnimeList\'s search URL has no producer filter. Producer catalogues live at /v1/producers/:id.',
   unapproved: 'Not supported: this API reads the public pages, which list approved entries only.',
-  start_date: 'Not supported: the date fields on MyAnimeList\'s advanced search were not confirmed to filter server-side.',
-  end_date: 'Not supported: the date fields on MyAnimeList\'s advanced search were not confirmed to filter server-side.',
   preliminary: 'Not supported: MyAnimeList does not separate preliminary reviews on the public pages.',
   spoilers: 'Not supported: MyAnimeList does not separate spoiler reviews on the public pages.',
   kids: 'Not supported: no equivalent switch on the public pages.',
