@@ -50,6 +50,16 @@ function listDate(value: unknown): string | null {
   return Number.isNaN(Date.parse(iso)) ? null : iso;
 }
 
+/**
+ * A title that reads as a number arrives as a JSON *number*, not a string — MAL does not quote it. Real cases
+ * on one list alone: `86` (86 Eighty-Six), `1`, `663114`. Treating only strings as titles emptied those rows,
+ * and one empty title failed the schema and took the entire snapshot down with it.
+ */
+function text(value: unknown): string {
+  if (typeof value === 'string') return decodeEntities(value).trim();
+  return typeof value === 'number' && Number.isFinite(value) ? String(value) : '';
+}
+
 /** Zero is MAL's "unset" for score, episode count and chapter count alike — not a real value. */
 function positive(value: unknown): number | null {
   return typeof value === 'number' && Number.isFinite(value) && value > 0 ? value : null;
@@ -78,7 +88,7 @@ function modernEntries(html: string, username: string, mediaType: MediaType, fet
     return {
       username, mediaType,
       malId: Number(row[`${prefix}_id`]),
-      title: typeof title === 'string' ? decodeEntities(title).trim() : '',
+      title: text(title),
       imageUrl: typeof image === 'string' && image.length > 0 ? decodeEntities(image) : null,
       status: statusPair ? (mediaType === 'anime' ? statusPair[0] : statusPair[1]) : null,
       score: positive(row.score),

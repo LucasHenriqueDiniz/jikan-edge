@@ -53,6 +53,20 @@ describe('modern list layout', () => {
     expect(entries[0]?.title).toBe('Fate&Stay <Night>  Extra');
   });
 
+  // MAL leaves a numeric-looking title unquoted, so it arrives as a JSON number. Reading only strings emptied
+  // those rows, and a single empty title failed the schema and rejected the whole page — one entry like
+  // "86 Eighty-Six" was enough to 502 an entire list.
+  it('accepts a title MAL encoded as a number', () => {
+    const items = [
+      { status: 2, score: 9, num_watched_episodes: 11, anime_num_episodes: 11, anime_id: 41457, anime_title: 86, anime_image_path: 'https://cdn.myanimelist.net/images/anime/1987/117507.jpg', start_date_string: null, finish_date_string: null, updated_at: 0 },
+      { status: 2, score: 1, num_watched_episodes: 1, anime_num_episodes: 1, anime_id: 29978, anime_title: 1, anime_image_path: 'https://cdn.myanimelist.net/images/anime/12/81163.jpg', start_date_string: null, finish_date_string: null, updated_at: 0 },
+    ];
+    const html = `<!doctype html><html><body><table data-items="${JSON.stringify(items).replace(/"/g, '&quot;')}"></table></body></html>`;
+    const result = parseUserMediaListSnapshot(html, 'tester', 'anime', '2026-07-30T00:00:00.000Z');
+    expect(result.kind).toBe('complete');
+    expect(result.kind === 'complete' && result.items.map((entry) => entry.title)).toEqual(['86', '1']);
+  });
+
   // `anime_num_episodes: 0` on One Piece means "still airing, count unknown", not zero episodes.
   it('never reports a zero count as a real value', () => {
     const entries = parseUserAnimeList(modernAnime, 'Xinil', '2026-07-30T00:00:00.000Z');
