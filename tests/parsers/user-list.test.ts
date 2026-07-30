@@ -7,6 +7,7 @@ import { listLayout, parseUserMediaListSnapshot } from '../../src/parsers/user-l
 const modernAnime = readFileSync('tests/fixtures/users/anime-list-modern.html', 'utf8');
 const modernManga = readFileSync('tests/fixtures/users/manga-list-modern.html', 'utf8');
 const classicAnime = readFileSync('tests/fixtures/users/anime-list.html', 'utf8');
+const classicManga = readFileSync('tests/fixtures/users/manga-list.html', 'utf8');
 
 // MAL renders the list in whichever layout the user picked. Only the classic table used to be read, so every
 // modern-layout account matched zero rows and the completeness guard turned that into a 502.
@@ -75,13 +76,61 @@ describe('modern list layout', () => {
   });
 });
 
-describe('user list parsers', () => {
+// The fixtures below are real rows lifted from Amayacrab's own list pages, one per status group, keeping
+// MAL's markup byte for byte. The hand-written stubs they replaced carried no progress cell at all, which
+// is why a parser that read the row-number cell as the progress passed the suite for as long as it did.
+describe('classic list layout', () => {
+  const classicAnimeEntries = parseUserAnimeList(classicAnime, 'amayacrab', '2026-07-19T00:00:00.000Z');
+  const classicMangaEntries = parseUserMangaList(classicManga, 'amayacrab', '2026-07-19T00:00:00.000Z');
+
   it('parses anime list rows without fetching', () => {
-    const entries = parseUserAnimeList(readFileSync('tests/fixtures/users/anime-list.html', 'utf8'), 'amayacrab', '2026-07-19T00:00:00.000Z');
-    expect(entries).toHaveLength(2); expect(entries[0]).toMatchObject({ malId: 1, title: 'Cowboy Bebop', score: 9 });
+    expect(classicAnimeEntries).toHaveLength(7);
+    expect(classicAnimeEntries[0]).toMatchObject({ malId: 918, title: 'Gintama', score: null });
   });
+
   it('parses manga list rows without fetching', () => {
-    const entries = parseUserMangaList(readFileSync('tests/fixtures/users/manga-list.html', 'utf8'), 'amayacrab', '2026-07-19T00:00:00.000Z');
-    expect(entries).toHaveLength(1); expect(entries[0]).toMatchObject({ malId: 2, title: 'Berserk', score: 10 });
+    expect(classicMangaEntries).toHaveLength(3);
+    expect(classicMangaEntries[1]).toMatchObject({ malId: 132247, score: 5 });
+  });
+
+  // Every row opens with a per-group row counter that reads `1`. A window reaching back before the title
+  // anchor picked that up instead of the real cell: Accel World came out as 1 episode watched, not 16.
+  it('reads the progress cell, not the row number', () => {
+    // The fixture keeps that counter cell, so this only passes if the window stays inside the right column.
+    expect(classicAnime).toContain('<td align="center" width="30" class="td1" style="border-left-width: 1px;">');
+    expect(classicAnimeEntries.find((entry) => entry.malId === 11759)).toMatchObject({ progress: 16, total: 24 });
+  });
+
+  it('keeps a row from reading its neighbour: every entry gets its own numbers', () => {
+    expect(classicAnimeEntries.map((entry) => [entry.malId, entry.progress, entry.total])).toEqual([
+      [918, 101, 201],     // Watching   — 101/201
+      [12291, 12, 12],     // Completed  — bare `12`, and the anime has 12 episodes
+      [25015, 1, 1],       // Completed  — a movie
+      [20787, 3, 13],      // On-Hold    — 3/13
+      [11759, 16, 24],     // Dropped    — 16/24
+      [57892, 7, 12],      // Dropped    — 7/12
+      [34636, null, 24],   // Plan to Watch — `-/24`, nothing watched yet
+    ]);
+  });
+
+  // MAL collapses the cell to one number only when the entry is complete, so that number is both sides.
+  it('treats the collapsed cell as watched-equals-total, and `-` as unknown', () => {
+    expect(classicMangaEntries.find((entry) => entry.malId === 132247)).toMatchObject({ progress: 268, total: 268 });
+    expect(classicMangaEntries.find((entry) => entry.malId === 166182)).toMatchObject({ progress: 18, total: null });
+  });
+
+  // The classic path used to decode `&amp;` and nothing else, so quotes and apostrophes reached the API raw.
+  it('decodes entities in the title like the modern layout already did', () => {
+    expect(classicMangaEntries.find((entry) => entry.malId === 166182)?.title)
+      .toBe('"Ano Toki Tasukete Itadaita Monster Musume desu.": Isekai Ossan Kyoushi Totsuzen no Moteki ni Konwaku suru');
+    expect(classicMangaEntries.find((entry) => entry.malId === 132247)?.title).toBe("A Returner's Magic Should Be Special");
+    expect(classicAnimeEntries.find((entry) => entry.malId === 57892)?.title)
+      .toBe('Hazurewaku no "Joutai Ijou Skill" de Saikyou ni Natta Ore ga Subete wo Juurin suru made');
+  });
+
+  // An unscored entry renders `score-na`, not a number — it must not inherit the score of the row above.
+  it('leaves an unscored entry null instead of borrowing a score', () => {
+    expect(classicAnimeEntries.find((entry) => entry.malId === 918)?.score).toBeNull();
+    expect(classicMangaEntries.find((entry) => entry.malId === 166182)?.score).toBeNull();
   });
 });

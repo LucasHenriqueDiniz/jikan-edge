@@ -36,9 +36,11 @@ export function listLayout(html: string): ListLayout {
   return /data-items="/.test(html) ? 'modern' : 'classic';
 }
 
-/** Only `&quot;` has to go before `JSON.parse` — MAL escapes an in-title quote as `\&quot;`, which decodes to
- *  valid JSON escaping. The rest are decoded per string value afterwards, so a literal `&amp;quot;` in a title
- *  cannot turn into a delimiter. `&amp;` goes last, or it would re-introduce the other entities. */
+/** Used by both layouts. Only `&quot;` has to go before `JSON.parse` — MAL escapes an in-title quote as
+ *  `\&quot;`, which decodes to valid JSON escaping. The rest are decoded per string value afterwards, so a
+ *  literal `&amp;quot;` in a title cannot turn into a delimiter. `&amp;` goes last, or it would re-introduce
+ *  the other entities. The classic path used to decode `&amp;` alone, so titles reached the API still holding
+ *  `&quot;` and `&#039;` — 16 of AMayacrab's 227 manga titles. */
 function decodeEntities(value: string): string {
   return value.replace(/&quot;/g, '"').replace(/&#0?39;/g, "'").replace(/&apos;/g, "'")
     .replace(/&nbsp;/g, ' ').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&');
@@ -108,6 +110,48 @@ function modernEntries(html: string, username: string, mediaType: MediaType, fet
   });
 }
 
+/**
+ * The classic table gives every entry its own `<table>`, and that table opens with a plain row-number cell
+ * (`<td align="center" width="30">1</td>`, restarting at 1 per status group). A window that started 1.5 KB
+ * *before* the title anchor therefore read that counter — or a neighbouring row's cell — as the progress:
+ * 311 of AMayacrab's 360 anime rows came out wrong (Accel World reported 1 episode instead of 16).
+ * Bound the row by its own `<table>`, never crossing into the previous or next entry.
+ */
+function classicRow(html: string, anchors: RegExpExecArray[] | RegExpMatchArray[], index: number): string {
+  const start = anchors[index]?.index ?? 0;
+  const previous = index === 0 ? 0 : (anchors[index - 1]?.index ?? 0);
+  const next = anchors[index + 1]?.index ?? html.length;
+  // Fall back to the anchor itself if this layout has no per-row table to hang the window on: reading a
+  // little less of the row is recoverable, reading the row above it is what produced the wrong numbers.
+  const opening = html.lastIndexOf('<table', start);
+  const closing = html.indexOf('</table>', start);
+  return html.slice(opening > previous ? opening : start, closing === -1 ? next : Math.min(closing, next));
+}
+
+/**
+ * MAL renders the progress cell two ways, and only one of them carries a total:
+ *   `<span id="output918">101</span>/201` — anything still in progress; either side can be `-` (unknown
+ *   total on an airing series, no episodes watched on a plan-to-watch entry).
+ *   `12` — bare, used only for completed entries, where watched equals the total. Verified against the
+ *   source: Acchi Kocchi renders `12` and the anime has 12 episodes; A Returner's Magic renders `268`
+ *   against 268 chapters.
+ * The span id is not a reliable key — anime uses the MAL id (`output918`), manga the list-entry id
+ * (`chap169785032`) — so match the cell, not the id. `width="70"` is what distinguishes the progress
+ * column from the row number (30), score (45), type (50), tags (125) and priority (80).
+ */
+function classicProgress(row: string): { progress: number | null; total: number | null } {
+  const counted = /<span id="(?:output|chap)\d+">\s*([^<]*?)\s*<\/span>\s*\/\s*([^\s<]*)/i.exec(row);
+  if (counted) return { progress: dash(counted[1]), total: dash(counted[2]) };
+  const complete = numeric(/<td[^>]*width="70"[^>]*>\s*([\d,]+)\s*<\/td>/i.exec(row)?.[1] ?? null);
+  return { progress: complete, total: complete };
+}
+
+/** MAL writes an unknown count as `-`. `numeric` already rejects that, but `Number('')` is `0`, so an empty
+ *  cell would otherwise be served as a real zero instead of "not stated". */
+function dash(value: string | undefined): number | null {
+  return value === undefined || value === '-' || value === '' ? null : numeric(value);
+}
+
 export function parseUserMediaListSnapshot(html: string, username: string, mediaType: MediaType, fetchedAt = new Date().toISOString()): ListParseResult {
   const route = mediaType === 'anime' ? 'anime' : 'manga';
   const entries = new Map<number, UserMediaListEntry>();
@@ -125,15 +169,16 @@ export function parseUserMediaListSnapshot(html: string, username: string, media
   }
 
   const expression = new RegExp(`<a\\s+href="/${route}/(\\d+)/[^\"]*"[^>]*class="animetitle"[^>]*>[\\s\\S]{0,300}?<span>([\\s\\S]*?)<\\/span>`, 'gi');
-  for (const match of html.matchAll(expression)) {
+  const anchors = [...html.matchAll(expression)];
+  for (const [index, match] of anchors.entries()) {
     matchedItems += 1;
     const malId = Number(match[1]);
-    const title = match[2].replace(/<[^>]+>/g, '').replace(/&amp;/g, '&').trim();
-    const start = match.index ?? 0; const context = html.slice(Math.max(0, start - 1_500), start + 1_500);
-    const imageUrl = capture(context, /<img[^>]+(?:data-src|src)="([^"]+)"/i);
-    const score = numeric(capture(context, /score-label[^>]*>\s*([\d.]+)\s*</i));
-    const progress = numeric(capture(context, /<td[^>]*>\s*(\d+)\s*<\/td>/i));
-    const candidate: UserMediaListEntry = { username, mediaType, malId, title, imageUrl, status: null, score, progress, total: null, startedAt: null, finishedAt: null, updatedAt: null, fetchedAt };
+    const title = decodeEntities(match[2].replace(/<[^>]+>/g, '')).trim();
+    const row = classicRow(html, anchors, index);
+    const imageUrl = capture(row, /<img[^>]+(?:data-src|src)="([^"]+)"/i);
+    const score = numeric(capture(row, /score-label[^>]*>\s*([\d.]+)\s*</i));
+    const { progress, total } = classicProgress(row);
+    const candidate: UserMediaListEntry = { username, mediaType, malId, title, imageUrl, status: null, score, progress, total, startedAt: null, finishedAt: null, updatedAt: null, fetchedAt };
     const parsed = entrySchema.safeParse(candidate);
     if (!parsed.success) return { kind: 'invalid', reason: 'invalid_list_item', evidence: evidence(html, matchedItems, entries, []) };
     entries.set(malId, parsed.data);
