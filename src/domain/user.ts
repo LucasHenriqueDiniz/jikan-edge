@@ -20,7 +20,9 @@ export interface AnimeStatistics {
   dropped: number;
   planToWatch: number;
   totalEntries: number;
+  rewatched: number | null;
   episodesWatched: number | null;
+  daysWatched: number | null;
   meanScore: number | null;
 }
 
@@ -31,8 +33,10 @@ export interface MangaStatistics {
   dropped: number;
   planToRead: number;
   totalEntries: number;
+  reread: number | null;
   chaptersRead: number | null;
   volumesRead: number | null;
+  daysRead: number | null;
   meanScore: number | null;
 }
 
@@ -41,7 +45,7 @@ export interface UserStatistics {
   manga: MangaStatistics;
 }
 
-export const PARSER_VERSION = 'user-html-v1';
+export const PARSER_VERSION = 'user-html-v2';
 
 export function usernameKey(username: string): string {
   return username.trim().toLowerCase();

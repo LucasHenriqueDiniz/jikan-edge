@@ -52,24 +52,65 @@ export function parseUserProfile(html: string, requestedUsername: string, fetche
   return validated.data;
 }
 
-function statusCount(html: string, label: string): number {
+/**
+ * The profile page renders Anime Stats and then Manga Stats. Bound each bucket at the next heading so
+ * one media type can never fall through to the other's numbers when a label is missing.
+ */
+function statsSection(html: string, marker: 'Anime Stats' | 'Manga Stats'): string {
+  const start = html.indexOf(marker);
+  if (start === -1) return '';
+  const rest = html.slice(start);
+  const boundary = marker === 'Anime Stats' ? rest.indexOf('Manga Stats', marker.length) : -1;
+  return (boundary === -1 ? rest : rest.slice(0, boundary)).slice(0, 12_000);
+}
+
+/** Narrows a bucket to one of its two `<ul>`s, so generic labels ("Completed", "Episodes") cannot match the update feed below. */
+function statsList(section: string, className: 'stats-status' | 'stats-data'): string {
+  const start = section.indexOf(className);
+  if (start === -1) return '';
+  const end = section.indexOf('</ul>', start);
+  return end === -1 ? section.slice(start) : section.slice(start, end);
+}
+
+/**
+ * Reads one list row, where the label closes its own tag and the count is the entire text of the next span:
+ *   <a ... class="... anime completed">Completed</a><span class="di-ib fl-r lh10">233</span>
+ *   <span class="di-ib fl-l fn-grey2">Episodes</span><span class="di-ib fl-r">8,481</span>
+ * Anchoring on the closing tag keeps attribute noise out of the capture — a looser pattern reads the graph
+ * bar's `style="width: 221.9px"` or the `lh10` utility class as if it were the count.
+ */
+function rowValue(html: string, label: string): number | null {
   const escaped = label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  return numeric(capture(html, new RegExp(`${escaped}[^0-9]{0,100}([0-9,]+)`, 'i'))) ?? 0;
+  return numeric(capture(html, new RegExp(`>\\s*${escaped}\\s*<\\/(?:a|span)>\\s*<span[^>]*>\\s*([\\d,]+)\\s*<`, 'i')));
+}
+
+/** `<span class="fn-grey2 fw-n">Days: </span>142.3` — a decimal that sits outside any tag. */
+function daysValue(html: string): number | null {
+  return numeric(capture(html, /Days:\s*<\/span>\s*([\d,]+(?:\.\d+)?)/i));
+}
+
+/** Null when the profile has no scored entries, where MAL renders `N/A` in place of the number. */
+function meanScoreValue(html: string): number | null {
+  return numeric(capture(html, /Mean Score:\s*<\/span>\s*<span[^>]*>\s*([\d.]+)/i));
 }
 
 function parseAnimeBucket(html: string): AnimeStatistics {
-  const data = section(html, 'Anime Stats', 8_000);
+  const data = statsSection(html, 'Anime Stats');
+  const status = statsList(data, 'stats-status');
+  const totals = statsList(data, 'stats-data');
   return {
-    watching: statusCount(data, 'Watching'), completed: statusCount(data, 'Completed'), onHold: statusCount(data, 'On-Hold'), dropped: statusCount(data, 'Dropped'), planToWatch: statusCount(data, 'Plan to Watch'), totalEntries: statusCount(data, 'Total Entries'),
-    episodesWatched: numeric(capture(data, /Episodes Watched:\s*<\/span>\s*([\d,]+)/i)), meanScore: numeric(capture(data, /Mean Score:\s*<\/span>\s*<span[^>]*>\s*([\d.]+)/i)),
+    watching: rowValue(status, 'Watching') ?? 0, completed: rowValue(status, 'Completed') ?? 0, onHold: rowValue(status, 'On-Hold') ?? 0, dropped: rowValue(status, 'Dropped') ?? 0, planToWatch: rowValue(status, 'Plan to Watch') ?? 0, totalEntries: rowValue(totals, 'Total Entries') ?? 0,
+    rewatched: rowValue(totals, 'Rewatched'), episodesWatched: rowValue(totals, 'Episodes'), daysWatched: daysValue(data), meanScore: meanScoreValue(data),
   };
 }
 
 function parseMangaBucket(html: string): MangaStatistics {
-  const data = section(html, 'Manga Stats', 8_000);
+  const data = statsSection(html, 'Manga Stats');
+  const status = statsList(data, 'stats-status');
+  const totals = statsList(data, 'stats-data');
   return {
-    reading: statusCount(data, 'Reading'), completed: statusCount(data, 'Completed'), onHold: statusCount(data, 'On-Hold'), dropped: statusCount(data, 'Dropped'), planToRead: statusCount(data, 'Plan to Read'), totalEntries: statusCount(data, 'Total Entries'),
-    chaptersRead: numeric(capture(data, /Chapters Read:\s*<\/span>\s*([\d,]+)/i)), volumesRead: numeric(capture(data, /Volumes Read:\s*<\/span>\s*([\d,]+)/i)), meanScore: numeric(capture(data, /Mean Score:\s*<\/span>\s*<span[^>]*>\s*([\d.]+)/i)),
+    reading: rowValue(status, 'Reading') ?? 0, completed: rowValue(status, 'Completed') ?? 0, onHold: rowValue(status, 'On-Hold') ?? 0, dropped: rowValue(status, 'Dropped') ?? 0, planToRead: rowValue(status, 'Plan to Read') ?? 0, totalEntries: rowValue(totals, 'Total Entries') ?? 0,
+    reread: rowValue(totals, 'Reread'), chaptersRead: rowValue(totals, 'Chapters'), volumesRead: rowValue(totals, 'Volumes'), daysRead: daysValue(data), meanScore: meanScoreValue(data),
   };
 }
 
