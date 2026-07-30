@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import type { ExternalLink } from '../domain/anime';
-import { PRODUCER_FULL_PARSER_VERSION, type ProducerFull } from '../domain/producer-full';
+import type { ProducerFull } from '../domain/producer-full';
 import { decodeHtml, ParserError } from './html';
 import { parseProducerDetail } from './producer-detail.parser';
 
@@ -38,5 +38,5 @@ export function parseProducerFull(html: string, malId: number, fetchedAt = new D
   const extra = { about: extractAbout(html), external: extractExternal(html) };
   const validated = extraSchema.safeParse(extra);
   if (!validated.success) throw new ParserError('invalid_producer_full');
-  return { ...detail, ...validated.data, sourceVersion: PRODUCER_FULL_PARSER_VERSION };
+  return { ...detail, ...validated.data };
 }

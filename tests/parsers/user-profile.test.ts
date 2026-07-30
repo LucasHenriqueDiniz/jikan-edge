@@ -32,6 +32,18 @@ describe('user profile parser', () => {
     expect(statistics.manga.daysRead).toBe(3.1);
     expect(statistics.manga.reread).toBe(0);
   });
+  // Both buckets use the same labels and sit ~2 KB apart, so a fixed-size window around "Anime Stats"
+  // reaches into "Manga Stats": an anime row that disappears must read as absent, never as the manga number.
+  it('does not read the manga bucket when an anime row is missing', () => {
+    const withoutAnimeRows = html
+      .replace(/<li[^>]*><a[^>]*circle anime completed">Completed<\/a>.*?<\/li>/, '')
+      .replace(/<li[^>]*><span[^>]*>Total Entries<\/span><span[^>]*>16<\/span><\/li>/, '');
+    const statistics = parseUserStatistics(withoutAnimeRows);
+    expect(statistics.anime.completed).toBe(0);
+    expect(statistics.anime.totalEntries).toBe(0);
+    expect(statistics.manga.completed).toBe(4);
+    expect(statistics.manga.totalEntries).toBe(7);
+  });
 });
 
 describe('user favorites parser', () => {

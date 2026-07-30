@@ -7,7 +7,6 @@ export interface ClubDetail {
   created: string | null;
   staff: string[];
   fetchedAt: string;
-  sourceVersion: string;
 }
 
 export const CLUB_PARSER_VERSION = 'club-html-v1';

@@ -19,27 +19,27 @@ const bindings = env as unknown as { DB: D1Database; TEST_MIGRATIONS: import('cl
 const fetchedAt = '2026-07-19T00:00:00.000Z';
 
 function detail(malId: number): AnimeDetail {
-  return { malId, title: `Anime ${malId}`, titleEnglish: null, titleJapanese: null, imageUrl: null, synopsis: null, type: 'TV', episodes: 26, status: 'Finished Airing', aired: null, studios: [], genres: [], themes: [], duration: null, rating: null, score: 8.5, rank: 1, popularity: 1, members: 100, favorites: 10, source: null, relations: [], externalLinks: [], streaming: [], fetchedAt, sourceVersion: 'test' };
+  return { malId, title: `Anime ${malId}`, titleEnglish: null, titleJapanese: null, imageUrl: null, synopsis: null, type: 'TV', episodes: 26, status: 'Finished Airing', aired: null, studios: [], genres: [], themes: [], duration: null, rating: null, score: 8.5, rank: 1, popularity: 1, members: 100, favorites: 10, source: null, relations: [], externalLinks: [], streaming: [], fetchedAt };
 }
 
 function mangaDetail(malId: number): MangaDetail {
-  return { malId, title: `Manga ${malId}`, titleEnglish: null, titleJapanese: null, imageUrl: null, synopsis: null, type: 'Manga', volumes: 10, chapters: 80, status: 'Publishing', published: null, authors: [], serialization: null, genres: [], themes: [], demographics: [], score: 8.5, rank: 1, popularity: 1, members: 100, favorites: 10, relations: [], externalLinks: [], fetchedAt, sourceVersion: 'test' };
+  return { malId, title: `Manga ${malId}`, titleEnglish: null, titleJapanese: null, imageUrl: null, synopsis: null, type: 'Manga', volumes: 10, chapters: 80, status: 'Publishing', published: null, authors: [], serialization: null, genres: [], themes: [], demographics: [], score: 8.5, rank: 1, popularity: 1, members: 100, favorites: 10, relations: [], externalLinks: [], fetchedAt };
 }
 
 function characterDetail(malId: number): CharacterDetail {
-  return { malId, name: `Character ${malId}`, nameKanji: null, imageUrl: null, about: null, favorites: 10, fetchedAt, sourceVersion: 'test' };
+  return { malId, name: `Character ${malId}`, nameKanji: null, imageUrl: null, about: null, favorites: 10, fetchedAt };
 }
 
 function producerDetail(malId: number): ProducerDetail {
-  return { malId, name: `Producer ${malId}`, imageUrl: null, established: null, favorites: 5, fetchedAt, sourceVersion: 'test' };
+  return { malId, name: `Producer ${malId}`, imageUrl: null, established: null, favorites: 5, fetchedAt };
 }
 
 function clubDetail(malId: number): ClubDetail {
-  return { malId, title: `Club ${malId}`, members: 100, pictures: 5, category: 'Anime', created: null, staff: [], fetchedAt, sourceVersion: 'test' };
+  return { malId, title: `Club ${malId}`, members: 100, pictures: 5, category: 'Anime', created: null, staff: [], fetchedAt };
 }
 
 function personDetail(malId: number): PersonDetail {
-  return { malId, name: `Person ${malId}`, givenName: null, familyName: null, alternateNames: null, birthday: null, website: null, imageUrl: null, about: null, favorites: 5, fetchedAt, sourceVersion: 'test' };
+  return { malId, name: `Person ${malId}`, givenName: null, familyName: null, alternateNames: null, birthday: null, website: null, imageUrl: null, about: null, favorites: 5, fetchedAt };
 }
 
 beforeAll(async () => applyD1Migrations(bindings.DB, bindings.TEST_MIGRATIONS));

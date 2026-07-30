@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { MANGA_PARSER_VERSION, type MangaDetail } from '../domain/manga';
+import type { MangaDetail } from '../domain/manga';
 import { capture, decodeHtml, numeric, ParserError } from './html';
 import { extractExternalLinks, extractRelations } from './relations-links';
 
@@ -31,7 +31,6 @@ const mangaDetailSchema = z.object({
   relations: z.array(relationSchema),
   externalLinks: z.array(externalLinkSchema),
   fetchedAt: z.string().datetime(),
-  sourceVersion: z.string(),
 });
 
 function plainLabelValue(html: string, ...labels: string[]): string | null {
@@ -95,7 +94,6 @@ export function parseMangaDetail(html: string, malId: number, fetchedAt = new Da
     relations: extractRelations(html),
     externalLinks: extractExternalLinks(html),
     fetchedAt,
-    sourceVersion: MANGA_PARSER_VERSION,
   };
   const validated = mangaDetailSchema.safeParse(detail);
   if (!validated.success) throw new ParserError('invalid_manga_detail');

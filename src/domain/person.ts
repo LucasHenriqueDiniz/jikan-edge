@@ -10,7 +10,6 @@ export interface PersonDetail {
   about: string | null;
   favorites: number | null;
   fetchedAt: string;
-  sourceVersion: string;
 }
 
 export const PERSON_PARSER_VERSION = 'person-html-v1';

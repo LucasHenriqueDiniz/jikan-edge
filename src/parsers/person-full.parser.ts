@@ -1,4 +1,4 @@
-import { PERSON_FULL_PARSER_VERSION, type PersonFull } from '../domain/person-full';
+import type { PersonFull } from '../domain/person-full';
 import { parsePersonDetail } from './person-detail.parser';
 import { parsePersonAnimeStaff, parsePersonManga, parsePersonVoiceActingRoles } from './person-media.parser';
 
@@ -12,6 +12,5 @@ export function parsePersonFull(html: string, malId: number, fetchedAt = new Dat
     anime: parsePersonAnimeStaff(html),
     manga: parsePersonManga(html),
     voices: parsePersonVoiceActingRoles(html),
-    sourceVersion: PERSON_FULL_PARSER_VERSION,
   };
 }

@@ -25,7 +25,6 @@ export interface MangaDetail {
   relations: RelationEntry[];
   externalLinks: ExternalLink[];
   fetchedAt: string;
-  sourceVersion: string;
 }
 
 export interface MangaListEntry {

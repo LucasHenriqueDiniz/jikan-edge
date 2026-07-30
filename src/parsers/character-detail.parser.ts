@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { CHARACTER_PARSER_VERSION, type CharacterDetail } from '../domain/character';
+import type { CharacterDetail } from '../domain/character';
 import { capture, decodeHtml, numeric, ParserError } from './html';
 
 const characterDetailSchema = z.object({
@@ -10,7 +10,6 @@ const characterDetailSchema = z.object({
   about: z.string().nullable(),
   favorites: z.number().nullable(),
   fetchedAt: z.string().datetime(),
-  sourceVersion: z.string(),
 });
 
 function extractImage(html: string): string | null {
@@ -41,7 +40,6 @@ export function parseCharacterDetail(html: string, malId: number, fetchedAt = ne
     about: extractAbout(head),
     favorites: numeric(capture(head, /Member Favorites:\s*([\d,]+)/i)),
     fetchedAt,
-    sourceVersion: CHARACTER_PARSER_VERSION,
   };
   const validated = characterDetailSchema.safeParse(detail);
   if (!validated.success) throw new ParserError('invalid_character_detail');

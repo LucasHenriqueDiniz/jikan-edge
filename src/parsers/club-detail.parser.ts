@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { CLUB_PARSER_VERSION, type ClubDetail } from '../domain/club';
+import type { ClubDetail } from '../domain/club';
 import { capture, decodeHtml, numeric, ParserError } from './html';
 
 const clubDetailSchema = z.object({
@@ -11,7 +11,6 @@ const clubDetailSchema = z.object({
   created: z.string().nullable(),
   staff: z.array(z.string()),
   fetchedAt: z.string().datetime(),
-  sourceVersion: z.string(),
 });
 
 function plainLabelValue(html: string, label: string): string | null {
@@ -39,7 +38,6 @@ export function parseClubDetail(html: string, malId: number, fetchedAt = new Dat
     created: plainLabelValue(stats, 'Created'),
     staff: extractStaff(html),
     fetchedAt,
-    sourceVersion: CLUB_PARSER_VERSION,
   };
   const validated = clubDetailSchema.safeParse(detail);
   if (!validated.success) throw new ParserError('invalid_club_detail');

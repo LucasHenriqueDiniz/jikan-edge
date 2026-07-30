@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { STATISTICS_PARSER_VERSION, type EntryStatistics } from '../domain/statistics';
+import type { EntryStatistics } from '../domain/statistics';
 import { capture, numeric, ParserError } from './html';
 
 const statusSchema = z.object({
@@ -7,7 +7,7 @@ const statusSchema = z.object({
   dropped: z.number().nullable(), planned: z.number().nullable(), total: z.number().nullable(),
 });
 const scoreSchema = z.object({ score: z.number().int().min(1).max(10), votes: z.number().int().min(0), percentage: z.number() });
-const statisticsSchema = z.object({ status: statusSchema, scores: z.array(scoreSchema), fetchedAt: z.string().datetime(), sourceVersion: z.string() });
+const statisticsSchema = z.object({ status: statusSchema, scores: z.array(scoreSchema), fetchedAt: z.string().datetime() });
 
 function plainLabelValue(html: string, ...labels: string[]): string | null {
   for (const label of labels) {
@@ -39,7 +39,6 @@ export function parseStatistics(html: string, fetchedAt = new Date().toISOString
     },
     scores: extractScores(head),
     fetchedAt,
-    sourceVersion: STATISTICS_PARSER_VERSION,
   };
   const validated = statisticsSchema.safeParse(statistics);
   if (!validated.success) throw new ParserError('invalid_statistics');

@@ -1,4 +1,4 @@
-import { CHARACTER_FULL_PARSER_VERSION, type CharacterFull } from '../domain/character-full';
+import type { CharacterFull } from '../domain/character-full';
 import { parseCharacterDetail } from './character-detail.parser';
 import { parseCharacterAnimeography, parseCharacterMangaography, parseCharacterVoiceActors } from './character-media.parser';
 
@@ -12,6 +12,5 @@ export function parseCharacterFull(html: string, malId: number, fetchedAt = new 
     anime: parseCharacterAnimeography(html),
     manga: parseCharacterMangaography(html),
     voices: parseCharacterVoiceActors(html),
-    sourceVersion: CHARACTER_FULL_PARSER_VERSION,
   };
 }

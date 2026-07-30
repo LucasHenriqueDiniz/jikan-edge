@@ -17,7 +17,6 @@ export interface EntryStatistics {
   status: StatusStats;
   scores: ScoreStat[];
   fetchedAt: string;
-  sourceVersion: string;
 }
 
 export const STATISTICS_PARSER_VERSION = 'statistics-html-v1';

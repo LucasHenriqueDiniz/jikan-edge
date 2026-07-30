@@ -42,7 +42,6 @@ export interface AnimeDetail {
   externalLinks: ExternalLink[];
   streaming: StreamingEntry[];
   fetchedAt: string;
-  sourceVersion: string;
 }
 
 export interface AnimeListEntry {

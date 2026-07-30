@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { ANIME_FULL_PARSER_VERSION, type AnimeFull } from '../domain/anime-full';
+import type { AnimeFull } from '../domain/anime-full';
 import type { AnimeThemeSongs, ThemeSong } from '../domain/anime-theme';
 import { decodeHtml, ParserError } from './html';
 import { parseAnimeDetail } from './anime-detail.parser';
@@ -40,5 +40,5 @@ export function parseAnimeFull(html: string, malId: number, fetchedAt = new Date
   const themeSongs = extractThemeSongs(html);
   const validated = themeSongsSchema.safeParse(themeSongs);
   if (!validated.success) throw new ParserError('invalid_anime_full');
-  return { ...detail, themeSongs: validated.data, sourceVersion: ANIME_FULL_PARSER_VERSION };
+  return { ...detail, themeSongs: validated.data };
 }

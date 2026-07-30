@@ -5,7 +5,6 @@ export interface ProducerDetail {
   established: string | null;
   favorites: number | null;
   fetchedAt: string;
-  sourceVersion: string;
 }
 
 export const PRODUCER_PARSER_VERSION = 'producer-html-v1';

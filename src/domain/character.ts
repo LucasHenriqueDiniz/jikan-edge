@@ -6,7 +6,6 @@ export interface CharacterDetail {
   about: string | null;
   favorites: number | null;
   fetchedAt: string;
-  sourceVersion: string;
 }
 
 export const CHARACTER_PARSER_VERSION = 'character-html-v1';

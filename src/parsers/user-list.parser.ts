@@ -1,12 +1,11 @@
 import { z } from 'zod';
 import type { MediaType, UserMediaListEntry } from '../domain/list-entry';
-import { PARSER_VERSION } from '../domain/user';
 import { capture, numeric, ParserError } from './html';
 
 const entrySchema = z.object({
   username: z.string().min(1), mediaType: z.enum(['anime', 'manga']), malId: z.number().int().positive(), title: z.string().min(1),
   imageUrl: z.string().url().nullable(), status: z.string().nullable(), score: z.number().nullable(), progress: z.number().nullable(), total: z.number().nullable(),
-  startedAt: z.string().nullable(), finishedAt: z.string().nullable(), updatedAt: z.string().nullable(), fetchedAt: z.string().datetime(), sourceVersion: z.string(),
+  startedAt: z.string().nullable(), finishedAt: z.string().nullable(), updatedAt: z.string().nullable(), fetchedAt: z.string().datetime(),
 });
 
 export interface ListCompletenessEvidence { declaredTotal: number | null; extractedTotal: number; uniqueTotal: number; sourceBytes: number; pageCount: number; terminalMarkerFound: boolean; duplicateIds: number[]; }
@@ -29,7 +28,7 @@ export function parseUserMediaListSnapshot(html: string, username: string, media
     const imageUrl = capture(context, /<img[^>]+(?:data-src|src)="([^"]+)"/i);
     const score = numeric(capture(context, /score-label[^>]*>\s*([\d.]+)\s*</i));
     const progress = numeric(capture(context, /<td[^>]*>\s*(\d+)\s*<\/td>/i));
-    const candidate: UserMediaListEntry = { username, mediaType, malId, title, imageUrl, status: null, score, progress, total: null, startedAt: null, finishedAt: null, updatedAt: null, fetchedAt, sourceVersion: PARSER_VERSION };
+    const candidate: UserMediaListEntry = { username, mediaType, malId, title, imageUrl, status: null, score, progress, total: null, startedAt: null, finishedAt: null, updatedAt: null, fetchedAt };
     const parsed = entrySchema.safeParse(candidate);
     if (!parsed.success) return { kind: 'invalid', reason: 'invalid_list_item', evidence: evidence(html, matchedItems, entries, []) };
     entries.set(malId, parsed.data);

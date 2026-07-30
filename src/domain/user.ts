@@ -10,7 +10,6 @@ export interface UserProfile {
   joinedAt: string | null;
   lastOnlineAt: string | null;
   fetchedAt: string;
-  sourceVersion: string;
 }
 
 export interface AnimeStatistics {

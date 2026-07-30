@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { PERSON_PARSER_VERSION, type PersonDetail } from '../domain/person';
+import type { PersonDetail } from '../domain/person';
 import { capture, numeric, ParserError } from './html';
 
 const personDetailSchema = z.object({
@@ -14,7 +14,6 @@ const personDetailSchema = z.object({
   about: z.string().nullable(),
   favorites: z.number().nullable(),
   fetchedAt: z.string().datetime(),
-  sourceVersion: z.string(),
 });
 
 // Some fields (notably "Family name") are not individually wrapped in their own <div>, so a plain
@@ -51,7 +50,6 @@ export function parsePersonDetail(html: string, malId: number, fetchedAt = new D
     about: capture(head, /js-people-informantion-more">([\s\S]*?)<\/div>/i),
     favorites: numeric(labelValue(head, 'Member Favorites')),
     fetchedAt,
-    sourceVersion: PERSON_PARSER_VERSION,
   };
   const validated = personDetailSchema.safeParse(detail);
   if (!validated.success) throw new ParserError('invalid_person_detail');

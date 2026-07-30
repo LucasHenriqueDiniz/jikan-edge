@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { ANIME_PARSER_VERSION, type AnimeDetail } from '../domain/anime';
+import type { AnimeDetail } from '../domain/anime';
 import { capture, decodeHtml, numeric, ParserError } from './html';
 import { extractExternalLinks, extractRelations, extractStreaming } from './relations-links';
 
@@ -33,7 +33,6 @@ const animeDetailSchema = z.object({
   externalLinks: z.array(externalLinkSchema),
   streaming: z.array(streamingSchema),
   fetchedAt: z.string().datetime(),
-  sourceVersion: z.string(),
 });
 
 function plainLabelValue(html: string, label: string): string | null {
@@ -94,7 +93,6 @@ export function parseAnimeDetail(html: string, malId: number, fetchedAt = new Da
     externalLinks: extractExternalLinks(html),
     streaming: extractStreaming(html),
     fetchedAt,
-    sourceVersion: ANIME_PARSER_VERSION,
   };
   const validated = animeDetailSchema.safeParse(detail);
   if (!validated.success) throw new ParserError('invalid_anime_detail');

@@ -14,5 +14,4 @@ export interface UserMediaListEntry {
   finishedAt: string | null;
   updatedAt: string | null;
   fetchedAt: string;
-  sourceVersion: string;
 }

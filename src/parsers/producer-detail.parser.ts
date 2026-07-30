@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { PRODUCER_PARSER_VERSION, type ProducerDetail } from '../domain/producer';
+import type { ProducerDetail } from '../domain/producer';
 import { capture, numeric, ParserError } from './html';
 
 const producerDetailSchema = z.object({
@@ -9,7 +9,6 @@ const producerDetailSchema = z.object({
   established: z.string().nullable(),
   favorites: z.number().nullable(),
   fetchedAt: z.string().datetime(),
-  sourceVersion: z.string(),
 });
 
 function plainLabelValue(html: string, label: string): string | null {
@@ -32,7 +31,6 @@ export function parseProducerDetail(html: string, malId: number, fetchedAt = new
     established: plainLabelValue(head, 'Established'),
     favorites: numeric(plainLabelValue(head, 'Member Favorites')),
     fetchedAt,
-    sourceVersion: PRODUCER_PARSER_VERSION,
   };
   const validated = producerDetailSchema.safeParse(detail);
   if (!validated.success) throw new ParserError('invalid_producer_detail');

@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { PARSER_VERSION, type AnimeStatistics, type MangaStatistics, type UserProfile, type UserStatistics, usernameKey } from '../domain/user';
+import { type AnimeStatistics, type MangaStatistics, type UserProfile, type UserStatistics, usernameKey } from '../domain/user';
 import { capture, numeric, ParserError } from './html';
 
 const profileSchema = z.object({
@@ -14,7 +14,6 @@ const profileSchema = z.object({
   joinedAt: z.string().nullable(),
   lastOnlineAt: z.string().nullable(),
   fetchedAt: z.string().datetime(),
-  sourceVersion: z.string(),
 });
 
 function section(html: string, marker: string, maxLength = 8_000): string {
@@ -45,11 +44,31 @@ export function parseUserProfile(html: string, requestedUsername: string, fetche
     joinedAt: labelledValue(status, 'Joined'),
     lastOnlineAt: labelledValue(status, 'Last Online'),
     fetchedAt,
-    sourceVersion: PARSER_VERSION,
   };
   const validated = profileSchema.safeParse(profile);
   if (!validated.success || usernameKey(validated.data.canonicalUsername) !== usernameKey(canonical)) throw new ParserError('invalid_profile');
   return validated.data;
+}
+
+// The profile renders Anime Stats and then Manga Stats. The two headings sit ~2 KB apart — well inside the
+// 8 KB window this used to take — so an anime bucket missing a label silently fell through to the manga
+// number below it. Cut the anime bucket at the next heading instead.
+function statsSection(html: string, marker: 'Anime Stats' | 'Manga Stats'): string {
+  const start = html.indexOf(marker);
+  if (start === -1) return '';
+  const rest = html.slice(start);
+  const boundary = marker === 'Anime Stats' ? rest.indexOf('Manga Stats', marker.length) : -1;
+  return boundary === -1 ? rest.slice(0, 12_000) : rest.slice(0, boundary);
+}
+
+// Each bucket holds two lists (`stats-status`, `stats-data`) followed by the "Last * Updates" feed, which
+// repeats the same status words. Narrowing to the right `<ul>` keeps generic labels — "Completed",
+// "Episodes" — from reaching that feed.
+function statsList(section: string, className: 'stats-status' | 'stats-data'): string {
+  const start = section.indexOf(className);
+  if (start === -1) return '';
+  const end = section.indexOf('</ul>', start);
+  return end === -1 ? section.slice(start) : section.slice(start, end);
 }
 
 // Status counts live in `<a class="... circle anime watching">Watching</a><span ...>1</span>`;
@@ -78,18 +97,20 @@ function meanScore(html: string): number | null {
 }
 
 function parseAnimeBucket(html: string): AnimeStatistics {
-  const data = section(html, 'Anime Stats', 8_000);
+  const data = statsSection(html, 'Anime Stats');
+  const status = statsList(data, 'stats-status'); const totals = statsList(data, 'stats-data');
   return {
-    watching: statusCount(data, 'Watching'), completed: statusCount(data, 'Completed'), onHold: statusCount(data, 'On-Hold'), dropped: statusCount(data, 'Dropped'), planToWatch: statusCount(data, 'Plan to Watch'), totalEntries: dataValue(data, 'Total Entries') ?? 0,
-    rewatched: dataValue(data, 'Rewatched'), episodesWatched: dataValue(data, 'Episodes'), daysWatched: daysValue(data), meanScore: meanScore(data),
+    watching: statusCount(status, 'Watching'), completed: statusCount(status, 'Completed'), onHold: statusCount(status, 'On-Hold'), dropped: statusCount(status, 'Dropped'), planToWatch: statusCount(status, 'Plan to Watch'), totalEntries: dataValue(totals, 'Total Entries') ?? 0,
+    rewatched: dataValue(totals, 'Rewatched'), episodesWatched: dataValue(totals, 'Episodes'), daysWatched: daysValue(data), meanScore: meanScore(data),
   };
 }
 
 function parseMangaBucket(html: string): MangaStatistics {
-  const data = section(html, 'Manga Stats', 8_000);
+  const data = statsSection(html, 'Manga Stats');
+  const status = statsList(data, 'stats-status'); const totals = statsList(data, 'stats-data');
   return {
-    reading: statusCount(data, 'Reading'), completed: statusCount(data, 'Completed'), onHold: statusCount(data, 'On-Hold'), dropped: statusCount(data, 'Dropped'), planToRead: statusCount(data, 'Plan to Read'), totalEntries: dataValue(data, 'Total Entries') ?? 0,
-    reread: dataValue(data, 'Reread'), chaptersRead: dataValue(data, 'Chapters'), volumesRead: dataValue(data, 'Volumes'), daysRead: daysValue(data), meanScore: meanScore(data),
+    reading: statusCount(status, 'Reading'), completed: statusCount(status, 'Completed'), onHold: statusCount(status, 'On-Hold'), dropped: statusCount(status, 'Dropped'), planToRead: statusCount(status, 'Plan to Read'), totalEntries: dataValue(totals, 'Total Entries') ?? 0,
+    reread: dataValue(totals, 'Reread'), chaptersRead: dataValue(totals, 'Chapters'), volumesRead: dataValue(totals, 'Volumes'), daysRead: daysValue(data), meanScore: meanScore(data),
   };
 }
 
