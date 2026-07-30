@@ -11,7 +11,7 @@ This file starts on 2026-07-30 and does not reconstruct earlier history.
 **Not deployed yet** — the published version id goes here when it is.
 
 Prompted by [issue #1](https://github.com/LucasHenriqueDiniz/jikan-edge/issues/1): the first person to
-self-host this got `500 INTERNAL_ERROR` on all 96 routes, and nothing in the response or the README
+self-host this got `500 INTERNAL_ERROR` on every route, and nothing in the response or the README
 said why.
 
 ### Added

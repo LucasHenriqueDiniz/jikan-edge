@@ -400,7 +400,7 @@ footer .stamp .kanji { color: var(--vermillion); }
           <span class="copy" id="baseurl-copy">copy</span>
         </div>
         <div class="facts">
-          <span><b>96</b> routes</span>
+          <span><b>97</b> routes</span>
           <span><b>7&nbsp;ms</b> p50</span>
           <span><b>no</b> auth</span>
           <span><b>free</b> forever</span>
@@ -849,6 +849,11 @@ footer .stamp .kanji { color: var(--vermillion); }
       { path: '/v1/top/people', type: 'people' }
     ];
     var idx = 0, showSeq = 0, hovering = false;
+    // The API serves the full-size image now, so this is a no-op against a current deploy. It stays
+    // because this page talks to whatever is *published*, not to the code next to it: removing it
+    // once already left the hero rendering 50x78 stamps stretched across a 2:3 card, for the whole
+    // window between the parser fix landing and the deploy going out.
+    function fullImage(url) { return url ? url.replace(/\/r\/\d+x\d+/, '').replace(/\?s=.*$/, '') : null; }
     function badge(e) {
       if (e.score) return '<span class="hs-score">★ ' + e.score + '</span>';
       if (e.favorites) return '<span class="hs-score">♥ ' + Number(e.favorites).toLocaleString('en-US') + '</span>';
@@ -870,7 +875,7 @@ footer .stamp .kanji { color: var(--vermillion); }
           cardsEl.innerHTML = entries.map(function (e, i) {
             var detail = '/v1/' + source.type + '/' + e.malId;
             return '<a class="hs-card" style="animation-delay:' + (i * 90) + 'ms" href="' + base + detail + '" target="_blank" rel="noopener" title="GET ' + detail + '">' +
-              '<img src="' + esc(e.imageUrl) + '" alt="" loading="eager">' +
+              '<img src="' + esc(fullImage(e.imageUrl)) + '" alt="" loading="eager">' +
               '<span class="hs-grad"></span>' +
               '<span class="hs-rank">#' + (e.rank || i + 1) + '</span>' +
               badge(e) +
