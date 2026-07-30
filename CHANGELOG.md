@@ -6,9 +6,12 @@ Changes that matter to anyone **consuming** the API. The technical detail behind
 
 This file starts on 2026-07-30 and does not reconstruct earlier history.
 
-## Unreleased
+## 2026-07-30 (second release of the day)
 
-**Not deployed yet** — the published version id goes here when it is.
+Published version: `42f848f4`.
+
+Two things landed together: the self-hosting fix below, and a content sweep that compared every
+route against the official Jikan v4.
 
 Prompted by [issue #1](https://github.com/LucasHenriqueDiniz/jikan-edge/issues/1): the first person to
 self-host this got `500 INTERNAL_ERROR` on every route, and nothing in the response or the README
