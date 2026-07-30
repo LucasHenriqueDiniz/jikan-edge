@@ -1,4 +1,4 @@
-import type { MediaType, UserMediaListEntry } from '../domain/list-entry';
+import { LIST_PARSER_VERSION, type MediaType, type UserMediaListEntry } from '../domain/list-entry';
 import { PARSER_VERSION, type UserProfile, type UserStatistics } from '../domain/user';
 
 export class UserRepository {
@@ -30,7 +30,7 @@ export class UserRepository {
   async replaceList(key: string, mediaType: MediaType, entries: UserMediaListEntry[]): Promise<void> {
     const statements: D1PreparedStatement[] = [this.db.prepare('DELETE FROM user_media_list_entries WHERE username_key = ? AND media_type = ?').bind(key, mediaType)];
     for (const entry of entries) statements.push(this.db.prepare(`INSERT INTO user_media_list_entries(username_key, media_type, mal_id, title, image_url, status, score, progress, total, started_at, finished_at, updated_at, fetched_at, parser_version)
-      VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)`).bind(key, mediaType, entry.malId, entry.title, entry.imageUrl, entry.status, entry.score, entry.progress, entry.total, entry.startedAt, entry.finishedAt, entry.updatedAt, entry.fetchedAt, PARSER_VERSION));
+      VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)`).bind(key, mediaType, entry.malId, entry.title, entry.imageUrl, entry.status, entry.score, entry.progress, entry.total, entry.startedAt, entry.finishedAt, entry.updatedAt, entry.fetchedAt, LIST_PARSER_VERSION));
     await this.db.batch(statements);
   }
 

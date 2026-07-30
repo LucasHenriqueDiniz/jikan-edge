@@ -8,12 +8,16 @@ export function userSubPageUrl(username: string, sub: 'friends' | 'clubs' | 'rev
   return `${BASE}/profile/${encodeURIComponent(username)}/${sub}`;
 }
 
-export function animeListUrl(username: string): string {
-  return `${BASE}/animelist/${encodeURIComponent(username)}`;
+// `status=7` is MAL's "All" tab. Without it the page ships a partial list: the modern layout embeds a single
+// entry and loads the rest over XHR, and the classic layout renders fewer rows than the profile declares
+// (AMayacrab: 273 of 360). With it, both layouts serve the whole list from the public page.
+// `offset` pages the modern layout in blocks of 300; the classic layout ignores it and returns everything.
+export function animeListUrl(username: string, offset = 0): string {
+  return `${BASE}/animelist/${encodeURIComponent(username)}?status=7${offset > 0 ? `&offset=${offset}` : ''}`;
 }
 
-export function mangaListUrl(username: string): string {
-  return `${BASE}/mangalist/${encodeURIComponent(username)}`;
+export function mangaListUrl(username: string, offset = 0): string {
+  return `${BASE}/mangalist/${encodeURIComponent(username)}?status=7${offset > 0 ? `&offset=${offset}` : ''}`;
 }
 
 export function animeDetailUrl(malId: number): string {

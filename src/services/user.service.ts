@@ -1,7 +1,7 @@
 import type { RuntimeConfig } from '../config/env';
-import type { MediaType } from '../domain/list-entry';
+import { LIST_PARSER_VERSION, type MediaType, type UserMediaListEntry } from '../domain/list-entry';
 import { PARSER_VERSION, type UserProfile, type UserStatistics, usernameKey } from '../domain/user';
-import { parseUserMediaListSnapshot } from '../parsers/user-list.parser';
+import { LIST_PAGE_SIZE, listLayout, parseUserMediaListSnapshot } from '../parsers/user-list.parser';
 import { parseUserProfile, parseUserStatistics } from '../parsers/user-profile.parser';
 import { CacheRepository } from '../repositories/cache.repository';
 import { RefreshLockRepository } from '../repositories/refresh-lock.repository';
@@ -23,6 +23,8 @@ import { parseRecommendations } from '../parsers/recommendations.parser';
 import { ServiceError, type ServiceResponse, sourceError, withCache } from './cacheable';
 
 const UPDATES_PARSER_VERSION = `${PARSER_VERSION}:updates`;
+/** 10 pages of 300 covers every list we have seen; it bounds one user's refresh, nothing wider. */
+const MAX_LIST_PAGES = 10;
 
 export interface UserFullProfile { profile: UserProfile; statistics: UserStatistics; favorites: Favorites; updates: UserUpdates }
 
@@ -147,13 +149,25 @@ export class UserService {
 
   async mediaList(username: string, mediaType: MediaType, requestId: string, page: number, limit: number): Promise<ServiceResponse<{ entries: Awaited<ReturnType<UserRepository['listEntries']>>['entries']; total: number }>> {
     const key = this.validateUsername(username); const cacheKey = `user:${key}:${mediaType}-list`;
-    return this.withCache(cacheKey, this.config.listTtlSeconds, PARSER_VERSION, async () => this.users.listEntries(key, mediaType, page, limit), async () => {
-      const source = await this.source.getHtml(mediaType === 'anime' ? animeListUrl(username) : mangaListUrl(username), [mediaType === 'anime' ? 'Anime List' : 'Manga List']);
-      if (source.kind !== 'success') throw sourceError(source);
+    return this.withCache(cacheKey, this.config.listTtlSeconds, LIST_PARSER_VERSION, async () => this.users.listEntries(key, mediaType, page, limit), async () => {
+      const marker = mediaType === 'anime' ? 'Anime List' : 'Manga List';
       const fetchedAt = new Date().toISOString();
-      const snapshot = parseUserMediaListSnapshot(source.value, username, mediaType, fetchedAt);
-      if (snapshot.kind !== 'complete') throw new ServiceError('UPSTREAM_SUSPICIOUS', 502, `List snapshot rejected: ${snapshot.kind === 'empty' ? snapshot.kind : snapshot.reason}.`);
-      await this.users.replaceList(key, mediaType, snapshot.items);
+      const collected: UserMediaListEntry[] = [];
+      // The classic layout returns the whole list in one document and ignores `offset`; only the modern one
+      // pages. The cap bounds a single user's refresh — it is not a crawl of MAL.
+      for (let pageIndex = 0; pageIndex < MAX_LIST_PAGES; pageIndex += 1) {
+        const offset = pageIndex * LIST_PAGE_SIZE;
+        const source = await this.source.getHtml(mediaType === 'anime' ? animeListUrl(username, offset) : mangaListUrl(username, offset), [marker]);
+        if (source.kind !== 'success') throw sourceError(source);
+        const snapshot = parseUserMediaListSnapshot(source.value, username, mediaType, fetchedAt);
+        // A later page that comes back empty is simply the end of the list, not a rejected snapshot.
+        if (snapshot.kind === 'partial' && snapshot.items.length === 0 && pageIndex > 0) break;
+        if (snapshot.kind !== 'complete') throw new ServiceError('UPSTREAM_SUSPICIOUS', 502, `List snapshot rejected: ${snapshot.kind === 'empty' ? snapshot.kind : snapshot.reason}.`);
+        collected.push(...snapshot.items);
+        if (listLayout(source.value) === 'classic' || snapshot.items.length < LIST_PAGE_SIZE) break;
+      }
+      const deduped = [...new Map(collected.map((entry) => [entry.malId, entry])).values()];
+      await this.users.replaceList(key, mediaType, deduped);
       return this.users.listEntries(key, mediaType, page, limit);
     }, requestId);
   }
