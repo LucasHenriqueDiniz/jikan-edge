@@ -66,11 +66,22 @@ function dataValue(html: string, label: string): number | null {
   return numeric(capture(html, new RegExp(`>${escaped}<\\/span>\\s*<span[^>]*>\\s*([\\d,]+)`, 'i')));
 }
 
+// Unlike every other stat, the "Days" value sits *outside* a span (`<span ...>Days: </span>12.5`),
+// so neither `dataValue` nor the `Mean Score:` pattern (whose value is wrapped in `<span
+// class="score-label">`) reaches it — hence a third shape. Fractional, so `[\d.,]` not `[\d,]`.
+function daysValue(html: string): number | null {
+  return numeric(capture(html, /Days:\s*<\/span>\s*([\d.,]+)/i));
+}
+
+function meanScore(html: string): number | null {
+  return numeric(capture(html, /Mean Score:\s*<\/span>\s*<span[^>]*>\s*([\d.]+)/i));
+}
+
 function parseAnimeBucket(html: string): AnimeStatistics {
   const data = section(html, 'Anime Stats', 8_000);
   return {
     watching: statusCount(data, 'Watching'), completed: statusCount(data, 'Completed'), onHold: statusCount(data, 'On-Hold'), dropped: statusCount(data, 'Dropped'), planToWatch: statusCount(data, 'Plan to Watch'), totalEntries: dataValue(data, 'Total Entries') ?? 0,
-    episodesWatched: dataValue(data, 'Episodes'), meanScore: numeric(capture(data, /Mean Score:\s*<\/span>\s*<span[^>]*>\s*([\d.]+)/i)),
+    rewatched: dataValue(data, 'Rewatched'), episodesWatched: dataValue(data, 'Episodes'), daysWatched: daysValue(data), meanScore: meanScore(data),
   };
 }
 
@@ -78,7 +89,7 @@ function parseMangaBucket(html: string): MangaStatistics {
   const data = section(html, 'Manga Stats', 8_000);
   return {
     reading: statusCount(data, 'Reading'), completed: statusCount(data, 'Completed'), onHold: statusCount(data, 'On-Hold'), dropped: statusCount(data, 'Dropped'), planToRead: statusCount(data, 'Plan to Read'), totalEntries: dataValue(data, 'Total Entries') ?? 0,
-    chaptersRead: dataValue(data, 'Chapters'), volumesRead: dataValue(data, 'Volumes'), meanScore: numeric(capture(data, /Mean Score:\s*<\/span>\s*<span[^>]*>\s*([\d.]+)/i)),
+    reread: dataValue(data, 'Reread'), chaptersRead: dataValue(data, 'Chapters'), volumesRead: dataValue(data, 'Volumes'), daysRead: daysValue(data), meanScore: meanScore(data),
   };
 }
 

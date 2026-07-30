@@ -9,7 +9,7 @@ import type { UserMediaListEntry } from '../../src/domain/list-entry';
 const bindings = env as unknown as { DB: D1Database; TEST_MIGRATIONS: import('cloudflare:test').D1Migration[] };
 const fetchedAt = '2026-07-19T00:00:00.000Z';
 const profile: UserProfile = { username: 'CaseUser', canonicalUsername: 'CaseUser', profileUrl: 'https://myanimelist.net/profile/CaseUser', avatarUrl: null, about: null, gender: null, location: null, birthday: null, joinedAt: null, lastOnlineAt: null, fetchedAt, sourceVersion: 'test' };
-const statistics: UserStatistics = { anime: { watching: 1, completed: 2, onHold: 0, dropped: 0, planToWatch: 3, totalEntries: 6, episodesWatched: 12, meanScore: 8 }, manga: { reading: 1, completed: 0, onHold: 0, dropped: 0, planToRead: 0, totalEntries: 1, chaptersRead: 5, volumesRead: 1, meanScore: 7 } };
+const statistics: UserStatistics = { anime: { watching: 1, completed: 2, onHold: 0, dropped: 0, planToWatch: 3, totalEntries: 6, rewatched: 1, episodesWatched: 12, daysWatched: 0.5, meanScore: 8 }, manga: { reading: 1, completed: 0, onHold: 0, dropped: 0, planToRead: 0, totalEntries: 1, reread: 0, chaptersRead: 5, volumesRead: 1, daysRead: 0.1, meanScore: 7 } };
 function entry(id: number, type: 'anime' | 'manga' = 'anime'): UserMediaListEntry { return { username: 'caseuser', mediaType: type, malId: id, title: `Title ${id}`, imageUrl: null, status: null, score: null, progress: null, total: null, startedAt: null, finishedAt: null, updatedAt: null, fetchedAt, sourceVersion: 'test' }; }
 
 beforeAll(async () => applyD1Migrations(bindings.DB, bindings.TEST_MIGRATIONS));

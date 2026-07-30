@@ -23,6 +23,15 @@ describe('user profile parser', () => {
     expect(statistics.manga.volumesRead).toBe(41);
     expect(statistics.manga.meanScore).toBe(8);
   });
+  // `Days` is the one stat whose value is bare text after the label span; `Rewatched`/`Reread`
+  // share the `stats-data` shape but were simply never read.
+  it('extracts days and rewatched/reread counts', () => {
+    const statistics = parseUserStatistics(html);
+    expect(statistics.anime.daysWatched).toBe(12.5);
+    expect(statistics.anime.rewatched).toBe(1);
+    expect(statistics.manga.daysRead).toBe(3.1);
+    expect(statistics.manga.reread).toBe(0);
+  });
 });
 
 describe('user favorites parser', () => {
