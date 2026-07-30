@@ -101,6 +101,8 @@ npm run benchmark     # parser p95 smoke tests
 
 Architecture, source policy and local-dev details: [`docs/`](docs/README.md).
 
+Breaking changes and fixes that affect consumers are listed in [`CHANGELOG.md`](CHANGELOG.md).
+
 ## Landing site
 
 The public landing page (jikan.moe-style, with a live request demo) lives in [`site/`](site/index.html) and is served by the same Worker via Cloudflare static assets: `/` serves the site, `/v1/*` and `/health` fall through to the API. No build step — it's a single static HTML file deployed together with `wrangler deploy`.
