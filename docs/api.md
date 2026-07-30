@@ -16,4 +16,17 @@ Todas as respostas de recurso retornam `{ data, meta }`. Erros retornam `{ error
 
 Parâmetro que a rota não declara é 400: `UNKNOWN_PARAMETER` se o nome não existe em lugar nenhum, `UNSUPPORTED_PARAMETER` se existe no Jikan v4 e esta API não o honra — nesse caso a mensagem diz por quê e aponta o substituto.
 
+## Formas que diferem do Jikan v4
+
+Renomear campo não basta — estas mudam de **forma**, e um `mal_id → malId` mecânico deixa `undefined` em silêncio:
+
+| Jikan v4 | aqui |
+| --- | --- |
+| `images.jpg.image_url` | `images.medium` — a chave também se chama `images`, mas é `{ small, medium, large }`, sem divisão jpg/webp. Qualquer um dos três é `null` onde o CDN do MAL não tem aquele tamanho. `imageUrl` também existe e é sempre igual a `images.medium`. |
+| `genres[].mal_id` | `genres[].malId` — arrays de `{ malId, name, url }`, o mesmo para `themes`, `demographics`, `studios`, `authors`, `producers` e `licensors` |
+| `serialization` (string) | `serializations` (array de `MalRef`) |
+| `aired.prop.from.year` | `aired.from` — `{ from, to, string }`, datas `YYYY-MM-DD` ou `null`, sem o aninhamento `prop`. `string` preserva a redação do próprio MAL. |
+| busca de mangá com `episodes` | `volumes` |
+| — | `url` em toda entidade, com o link canônico do MAL |
+
 > Esta página cobre só o núcleo de usuários. O contrato completo das 98 rotas, com as limitações conhecidas de cada grupo, está em [`routes.md`](routes.md). As mudanças que afetam quem consome estão no [`CHANGELOG.md`](../CHANGELOG.md).

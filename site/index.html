@@ -649,11 +649,11 @@ footer .stamp .kanji { color: var(--vermillion); }
       <div class="mig-diff" aria-hidden="true">
         <div class="mig-line mig-old">
           <span class="mig-tag">before</span>
-          <code><s>https://api.jikan.moe/v4</s>/anime/1 → <s>mal_id</s>, <s>images.jpg.image_url</s>, <s>aired.prop</s></code>
+          <code><s>https://api.jikan.moe/v4</s>/anime/1 → <s>mal_id</s>, <s>images.jpg.image_url</s>, <s>aired.prop.from.year</s></code>
         </div>
         <div class="mig-line mig-new">
           <span class="mig-tag">after</span>
-          <code>https://jikan-edge.lucas-hdo.workers.dev/v1/anime/1 → malId, imageUrl, images, aired.from</code>
+          <code>https://jikan-edge.lucas-hdo.workers.dev/v1/anime/1 → malId, images.medium, aired.from</code>
         </div>
       </div>
       <button class="mig-btn" id="prompt-copy"><span class="mig-ico">⧉</span><span class="mig-txt">Copy the agent prompt</span></button>
@@ -784,21 +784,43 @@ footer .stamp .kanji { color: var(--vermillion); }
     '   Route paths and groups mirror Jikan v4 (anime, manga, characters, people, users, seasons,',
     '   schedules, top, producers, clubs, magazines, watch, reviews, recommendations, random).',
     '2. Response envelope: every success is { "data": ..., "meta": { cached, stale, refreshFailed,',
-    '   fetchedAt } }. There is no Jikan-style "pagination" object; pass ?page= (1-based) and read',
-    '   list lengths directly. User lists also accept ?limit= (1-300, default 100).',
+    '   fetchedAt } }. Paginated routes add meta.pagination = { page, limit, count, total,',
+    '   hasNextPage }. It sits inside meta, not at the top level as in Jikan. total is null on every',
+    '   route served from a MyAnimeList page (MAL publishes no total); it is a number only on the two',
+    '   user list routes. Use hasNextPage to decide whether to keep paging - do not compute it from',
+    '   total. ?limit= exists ONLY on users/:u/animelist and /mangalist (1-300, default 100); on any',
+    '   other route it returns 400.',
     '3. Field naming: camelCase instead of snake_case (mal_id -> malId, title_english -> titleEnglish).',
-    "   Images are flat URL strings (imageUrl), not Jikan's nested images.jpg/webp objects.",
-    '4. Errors: { "error": { code, message, requestId } } with HTTP status. Handle 429 RATE_LIMITED by',
+    '4. Shapes that differ beyond the naming - these need real code changes, not a rename:',
+    '   - images.jpg.image_url -> images.medium. The key is also called "images" here but the shape is',
+    "     different: { small, medium, large }, no jpg/webp split. Any of the three can be null where",
+    '     MAL has no such size (a character has no large, a person has no small). imageUrl is also',
+    '     present and always equals images.medium.',
+    '   - genres/themes/demographics/studios/authors/producers/licensors: arrays of',
+    '     { malId, name, url }, same idea as Jikan but camelCase keys.',
+    '   - serializations replaces the singular serialization, and is an array.',
+    '   - aired/published: { from, to, string }. from/to are YYYY-MM-DD or null; there is no',
+    "     aired.prop.* nesting. string keeps MAL's own wording.",
+    '   - manga search results carry volumes, not episodes.',
+    '   - every entity carries url (the canonical MyAnimeList link).',
+    '5. Errors: { "error": { code, message, requestId } } with HTTP status. Handle 429 RATE_LIMITED by',
     '   honoring the Retry-After header (limits: 30 req/10s and 60 req/min per IP).',
-    '5. meta.stale === true means a served-from-cache fallback after a failed refresh - treat as valid.',
-    '6. Not served (adjust or remove features that depend on them):',
+    '6. Query parameters are strict: anything the route does not accept returns 400 rather than being',
+    '   ignored. UNKNOWN_PARAMETER means the name does not exist; UNSUPPORTED_PARAMETER means Jikan',
+    '   has it and this API does not, and the message says why. Refused on search: sfw, max_score,',
+    '   producers, genres_exclude, unapproved, preliminary, spoilers, kids, continuing. Accepted:',
+    '   q, page, type, status, rating (anime), score, min_score, genres, magazines (manga), order_by,',
+    '   sort, letter, start_date, end_date. Multiple genre ids mean "has all of them", not "has any".',
+    '7. meta.stale === true means a served-from-cache fallback after a failed refresh - treat as valid.',
+    '8. Not served (adjust or remove features that depend on them):',
     '   clubs?q= (club search), top/reviews, users/:u/history, users/:u/external, users/userbyid/:id,',
     "   per-episode forum. Also: anime/:id/episodes returns only MAL's first page, streaming may be",
     "   empty (geo-dependent), random/* draws from jikan-edge's local cache only.",
     '',
     'Steps: find every Jikan call site; swap the base URL; update response parsing to the envelope and',
-    'camelCase fields; adapt pagination and rate-limit handling; then verify each migrated endpoint',
-    'against the live API before finishing.'
+    'camelCase fields; rewrite the shapes listed in point 4, which silently produce undefined if only',
+    'renamed; adapt pagination and rate-limit handling; drop or replace any refused query parameter;',
+    'then verify each migrated endpoint against the live API before finishing.'
   ].join('\n');
   var promptCopy = document.getElementById('prompt-copy');
   var promptTxt = promptCopy.querySelector('.mig-txt');
