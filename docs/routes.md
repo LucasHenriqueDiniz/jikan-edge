@@ -202,4 +202,13 @@ As listas são obtidas de um único documento público do MAL; a paginação exp
 
 **Lacuna de query params documentada, não corrigida:** o Jikan também aceita `sfw`, `min_score`, `max_score`, `start_date`, `end_date`, `producers`, `letter`, `sort` e `unapproved` em `/anime`; nós aceitamos `score` (não `min_score`/`max_score`) e ignoramos o resto. Param desconhecido é ignorado em silêncio, que é o comportamento seguro.
 
-**Rede de segurança:** `tests/routes/contract.test.ts` percorre a resposta inteira e falha em qualquer chave camelCase sobrevivente sob `data`/`pagination` (`meta` é nosso e está isento). Os testes de parser não foram afetados pela conversão — só pelos 5 bumps de versão acima.
+**Rede de segurança:** `tests/routes/*.contract.test.ts` (um arquivo por grupo) percorre a resposta inteira e falha em qualquer chave camelCase sobrevivente sob `data`/`pagination` (`meta` é nosso e está isento). Cobre **as 92 rotas**, e `tests/routes/coverage.test.ts` impede regressão: um `app.get('/v1/...')` novo sem teste de contrato quebra a suíte. Os testes de parser não foram afetados pela conversão — só pelos 5 bumps de versão acima.
+
+**Dois bugs de `url` que a cobertura pegou** (2026-07-28), ambos link que o cliente seguiria:
+
+- Clube era linkado como `/clubs/{id}`; o MAL serve em `clubs.php?cid={id}`, então **todo URL de clube dava 404**.
+- Detalhe de produtor passava `'anime'` como tipo de entidade e emitia `/anime/{id}` — não link morto, mas **link vivo para um anime sem relação nenhuma** com o produtor. Passa despercebido em revisão visual porque a URL parece válida.
+
+Correção estrutural, não pontual: `malUrl()` delega os tipos irregulares (clube, produtor, revista) para `src/source/mal-urls.ts`, que já é a fonte única de URLs do MAL — assim o link que emitimos não diverge do que buscamos. Revista ganhou `magazineDetailUrl` por isso: fica em `/manga/magazine/`, e cairia na mesma armadilha. O padrão `/{tipo}/{id}` só vale para anime, manga, character e people.
+
+**Custo medido:** ver `docs/results/2026-07-28-jikan-shape-mapping-cost.md`. No pior caso possível (lista de 300, o teto de `limit`) a conversão adiciona ~0,3ms, dos quais ~80% é serializar o payload maior, não construir o objeto. Nas rotas de detalhe o acréscimo fica abaixo do piso de ruído do ambiente e não é mensurável. Falta remedir em produção com `wrangler tail`, contra cpuTime real.
