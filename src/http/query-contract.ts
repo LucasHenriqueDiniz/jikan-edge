@@ -129,7 +129,13 @@ export const QUERY_CONTRACT: Record<string, readonly string[]> = {
 export const UNSUPPORTED_PARAMS: Record<string, string> = {
   limit: 'Not supported outside the user list routes: this API serves one MyAnimeList page per request, so a limit would either slice that page (a different result from Jikan\'s) or require crawling several pages upstream.',
   sfw: 'Not supported: MyAnimeList has no server-side safe-for-work switch, and approximating one by excluding a few genre ids would be a guess wearing the name of a guarantee. Use "genres_exclude" or "rating".',
-  max_score: 'Not supported: MyAnimeList\'s search form offers a single minimum-score dropdown, which is what "score" and "min_score" map to.',
+  // Not impossible, but not free either: MyAnimeList's form has one score dropdown and it is a
+  // minimum, so an upper bound could only be applied after parsing the page. Dropping entries from
+  // a 50-row page would leave `meta.pagination.count` short of the page size, which is what
+  // `hasNextPage` is derived from — the filter would arrive at the cost of a lying paginator.
+  // Filling the page back up means fetching several pages per request, which is the sweeping this
+  // project's source policy avoids.
+  max_score: 'Not supported: MyAnimeList\'s search form offers a single minimum-score dropdown, which is what "score" and "min_score" map to. An upper bound could only be applied after the fact, which would make this route\'s page size and "hasNextPage" wrong.',
   // Jikan supports these against its own database. This API reads MyAnimeList's search page, and
   // each of the three was measured against it rather than assumed.
   producers: 'Not supported: MyAnimeList\'s search page has a producer field, but it no longer filters — searching "gundam" with and without it returns the same results. Producer catalogues live at /v1/producers/:id.',
