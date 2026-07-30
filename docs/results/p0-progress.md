@@ -2,6 +2,8 @@
 
 Data: 2026-07-19.
 
+> **Correção posterior (2026-07-30).** A conclusão sobre listas registrada abaixo estava errada e virou bug em produção: os 273 links eram a lista **truncada** (o perfil declara 360), `offset` existe e funciona como query param, e a generalização de "snapshot inteiro em um fetch" veio de um único perfil que por acaso usava o layout clássico. O estado correto está em [`docs/sources/mal-list-delivery.md`](../sources/mal-list-delivery.md). O texto original segue abaixo como registro do que se sabia na data.
+
 ## Feito nesta etapa
 
 - Lista pública de `AMayacrab` inspecionada diretamente: anime retornou 273 links em 595.422 bytes; manga, 227 links em 509.234 bytes. Em ambos os HTMLs não houve `offset`, `page`, `ajax` ou `xhr`. Para esse usuário, a lista é snapshot inteiro em um fetch por mídia.

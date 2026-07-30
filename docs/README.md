@@ -5,7 +5,7 @@
 | `research/` | pesquisas externas, com fontes e data | iniciada |
 | `architecture/` | princípios e decisões de arquitetura | iniciada |
 | `planning/` | escopo, riscos, experimentos e marcos | iniciada |
-| `sources/` | futuros mapas de fontes e evidências de coleta | reservada |
+| `sources/` | como cada fonte do MAL entrega o dado, com as medições que sustentam isso — hoje [`mal-list-delivery.md`](sources/mal-list-delivery.md) | ativa |
 | `adr/` | decisões arquiteturais formais quando houver alternativas maduras | reservada |
 
 ## Fluxo documental
