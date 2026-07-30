@@ -18,7 +18,10 @@ export interface CacheDeps { cache: CacheRepository; locks: RefreshLockRepositor
 
 export async function withCache<T>(deps: CacheDeps, key: string, ttl: number, parserVersion: string, read: () => Promise<T | null>, refresh: () => Promise<T>, owner: string): Promise<ServiceResponse<T>> {
   const [cache, stored] = await Promise.all([deps.cache.get(key), read()]);
-  if (cache && stored && deps.cache.isFresh(cache)) return { data: stored, cached: true, stale: false, refreshFailed: false, fetchedAt: cache.fetchedAt };
+  // A snapshot is only reusable if the parser that wrote it still agrees with the current one: a parser fix
+  // changes the values (or the shape) of an already-stored row, and TTL alone would keep serving the old one.
+  const usable = cache !== null && cache.parserVersion === parserVersion;
+  if (cache && stored && usable && deps.cache.isFresh(cache)) return { data: stored, cached: true, stale: false, refreshFailed: false, fetchedAt: cache.fetchedAt };
   const locked = await deps.locks.acquire(key, owner);
   if (!locked) {
     if (stored && cache) return { data: stored, cached: true, stale: true, refreshFailed: false, fetchedAt: cache.fetchedAt };
