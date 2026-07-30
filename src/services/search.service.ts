@@ -18,7 +18,7 @@ const MAX_QUERY_LENGTH = 64;
 
 export interface TitleSearchFilters {
   type?: string; status?: string; rating?: string; score?: string; minScore?: string;
-  genres?: string; genresExclude?: string; orderBy?: string; sort?: string; letter?: string;
+  genres?: string; magazines?: string; orderBy?: string; sort?: string; letter?: string;
   startDate?: string; endDate?: string;
 }
 
@@ -28,7 +28,15 @@ const ANIME_TYPE_MAP: Record<string, string> = { tv: '1', ova: '2', movie: '3', 
 const MANGA_TYPE_MAP: Record<string, string> = { manga: '1', novel: '2', lightnovel: '2', oneshot: '3', doujin: '4', manhwa: '5', manhua: '6' };
 const STATUS_MAP: Record<string, string> = { airing: '1', publishing: '1', complete: '2', finished: '2', upcoming: '3' };
 const RATING_MAP: Record<string, string> = { g: '1', pg: '2', pg13: '3', r17: '4', r: '5', rx: '6' };
-const ORDER_BY_MAP: Record<string, string> = { score: '3', episodes: '4', volumes: '4', type: '6' };
+// The `o=` column codes, each checked against the live results rather than taken from Jikan's
+// legacy builder: `episodes` sorts 500/293/220, `id` sorts 64614/64501/64487, `members` puts Naruto
+// and Shippuuden first, `rated` groups by classification. **`title` (code 0) is not here on
+// purpose** — it returns the same order for both directions and is not alphabetical, so MAL is
+// ignoring it, and offering it would be an ordering that does not order.
+const ORDER_BY_MAP: Record<string, string> = {
+  start_date: '2', score: '3', episodes: '4', volumes: '4', end_date: '5',
+  type: '6', members: '7', rating: '8', mal_id: '9',
+};
 
 function buildTitleSearchParams(type: 'anime' | 'manga', filters: TitleSearchFilters): [string, string][] {
   const extra: [string, string][] = [];
@@ -54,21 +62,24 @@ function buildTitleSearchParams(type: 'anime' | 'manga', filters: TitleSearchFil
     if (!Number.isInteger(score) || score < 1 || score > 10 || String(score) !== rawScore) throw new ServiceError('INVALID_FILTER', 400, '"score" must be an integer 1-10.');
     extra.push(['score', String(score)]);
   }
-  // `gx=1` flips the meaning of every `genre[]` on the request from "include" to "exclude", so the
-  // two cannot be combined — verified against the live search: `genre[]=12` returns 17 results and
-  // `genre[]=12&gx=1` returns 20 disjoint ones.
-  if (filters.genres && filters.genresExclude) {
-    throw new ServiceError('INVALID_FILTER', 400, 'MyAnimeList applies one genre mode per request; pass "genres" or "genres_exclude", not both.');
-  }
-  const genreList = filters.genres ?? filters.genresExclude;
-  if (genreList) {
-    const name = filters.genres ? 'genres' : 'genres_exclude';
-    for (const raw of genreList.split(',')) {
+  // Multiple ids are ANDed by MyAnimeList, not ORed: on "love", `genre[]=12` returns 16 and
+  // `genre[]=49` returns 3, but the two together return 0 — an entry has to carry every id given.
+  if (filters.genres) {
+    for (const raw of filters.genres.split(',')) {
       const genreId = Number.parseInt(raw.trim(), 10);
-      if (!Number.isInteger(genreId) || genreId <= 0) throw new ServiceError('INVALID_FILTER', 400, `"${name}" must be comma-separated positive genre ids.`);
+      if (!Number.isInteger(genreId) || genreId <= 0) throw new ServiceError('INVALID_FILTER', 400, '"genres" must be comma-separated positive genre ids.');
       extra.push(['genre[]', String(genreId)]);
     }
-    if (filters.genresExclude) extra.push(['gx', '1']);
+  }
+  // A magazine filter exists for manga only, as `mid=`. Confirmed: "berserk" alone returns 50
+  // results, `mid=2` (Young Animal) narrows it to the 2 that actually run there.
+  if (filters.magazines) {
+    if (type !== 'manga') throw new ServiceError('INVALID_FILTER', 400, '"magazines" only applies to manga search.');
+    const ids = filters.magazines.split(',').map((raw) => Number.parseInt(raw.trim(), 10));
+    if (ids.length !== 1 || !Number.isInteger(ids[0]) || ids[0] <= 0) {
+      throw new ServiceError('INVALID_FILTER', 400, '"magazines" takes a single positive magazine id; MyAnimeList\'s search accepts one.');
+    }
+    extra.push(['mid', String(ids[0])]);
   }
   // MAL's advanced search splits each bound into three selects — month, day, year, in that order:
   // `sm`/`sd`/`sy` for the start bound and `em`/`ed`/`ey` for the end one. Verified against the

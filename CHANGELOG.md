@@ -8,7 +8,7 @@ This file starts on 2026-07-30 and does not reconstruct earlier history.
 
 ## 2026-07-30 (second release of the day)
 
-Published versions: `42f848f4`, `c098b3b5`.
+Published versions: `42f848f4`, `c098b3b5`, `1320a613`.
 
 Two things landed together: the self-hosting fix below, and a content sweep that compared every
 route against the official Jikan v4.
@@ -97,12 +97,25 @@ flagged.
   Before, only the user lists had it and everything else returned a bare array with no way to know
   whether another page existed. `total` is a number only on the user lists, which are counted
   locally; elsewhere it is `null`, because MAL prints no total and deriving one would be invention.
-- **Search filters `sort`, `letter`, `genres_exclude`, `min_score`, `start_date` and `end_date`**,
-  each verified against the live search rather than assumed. Dates take Jikan's `YYYY-MM-DD`.
-  `genres_exclude` cannot be combined with `genres`: MAL's flag inverts the meaning of every genre
-  on the request rather than adding an exclusion, so passing both is a contradiction and is refused.
-  One edge on the dates, from the source rather than from us: an entry whose date MyAnimeList does
-  not have is **included** by either bound rather than filtered out.
+- **Search filters `sort`, `letter`, `min_score`, `start_date`, `end_date` and `magazines`** (manga
+  only). Dates take Jikan's `YYYY-MM-DD`. One edge belongs to the source rather than to us: an entry
+  whose date MyAnimeList does not have is **included** by either bound rather than filtered out.
+- **`order_by` went from 3 accepted values to 9**: `start_date`, `score`, `episodes`/`volumes`,
+  `end_date`, `type`, `members`, `rating`, `mal_id`. `title` is deliberately absent — MyAnimeList
+  returns the same order in both directions for it, so offering it would be a sort that does not
+  sort.
+- **`genres` with several ids means "has all of them", not "has any"** — that is MyAnimeList's
+  behaviour, not a choice here: on "love", genre 12 returns 16 results and genre 49 returns 3, and
+  the two together return zero.
+
+### Withdrawn the same day
+
+- **`genres_exclude` was announced earlier in this release and does not work.** The check behind it
+  compared result *counts* — 17 without the flag, 20 with it — and stopped there. Comparing the
+  actual entries, 16 of the 18 results are the same ones the un-inverted filter returns: MyAnimeList
+  ignores the flag. It now answers `400` with that evidence in the message. The same investigation
+  retired `producers`: the field exists on the search page but no longer filters — "gundam" with and
+  without it returns the same set.
 
 ### Fixed
 

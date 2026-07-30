@@ -133,7 +133,7 @@ app.get('/v1/users', async (c) => {
 });
 
 app.get('/v1/anime', async (c) => {
-  try { const filters = { type: c.req.query('type'), status: c.req.query('status'), rating: c.req.query('rating'), score: c.req.query('score'), minScore: c.req.query('min_score'), genres: c.req.query('genres'), genresExclude: c.req.query('genres_exclude'), orderBy: c.req.query('order_by'), sort: c.req.query('sort'), letter: c.req.query('letter'), startDate: c.req.query('start_date'), endDate: c.req.query('end_date') }; const result = await searchService(c).anime(c.req.query('q'), c.get('page'), filters, c.get('requestId')); cacheHeader(c, result); return c.json(success(result.data, { cached: result.cached, stale: result.stale, refreshFailed: result.refreshFailed, fetchedAt: result.fetchedAt, pagination: paginationMeta(c.get('page'), SEARCH_PAGE_SIZE, result.data.length) })); }
+  try { const filters = { type: c.req.query('type'), status: c.req.query('status'), rating: c.req.query('rating'), score: c.req.query('score'), minScore: c.req.query('min_score'), genres: c.req.query('genres'), orderBy: c.req.query('order_by'), sort: c.req.query('sort'), letter: c.req.query('letter'), startDate: c.req.query('start_date'), endDate: c.req.query('end_date') }; const result = await searchService(c).anime(c.req.query('q'), c.get('page'), filters, c.get('requestId')); cacheHeader(c, result); return c.json(success(result.data, { cached: result.cached, stale: result.stale, refreshFailed: result.refreshFailed, fetchedAt: result.fetchedAt, pagination: paginationMeta(c.get('page'), SEARCH_PAGE_SIZE, result.data.length) })); }
   catch (error) { return errorResponse(c, error, c.get('requestId')); }
 });
 app.get('/v1/anime/:id', async (c) => {
@@ -242,7 +242,7 @@ app.get('/v1/seasons/:year/:season', async (c) => {
 });
 
 app.get('/v1/manga', async (c) => {
-  try { const filters = { type: c.req.query('type'), status: c.req.query('status'), score: c.req.query('score'), minScore: c.req.query('min_score'), genres: c.req.query('genres'), genresExclude: c.req.query('genres_exclude'), orderBy: c.req.query('order_by'), sort: c.req.query('sort'), letter: c.req.query('letter'), startDate: c.req.query('start_date'), endDate: c.req.query('end_date') }; const result = await searchService(c).manga(c.req.query('q'), c.get('page'), filters, c.get('requestId')); cacheHeader(c, result); return c.json(success(result.data, { cached: result.cached, stale: result.stale, refreshFailed: result.refreshFailed, fetchedAt: result.fetchedAt, pagination: paginationMeta(c.get('page'), SEARCH_PAGE_SIZE, result.data.length) })); }
+  try { const filters = { type: c.req.query('type'), status: c.req.query('status'), score: c.req.query('score'), minScore: c.req.query('min_score'), genres: c.req.query('genres'), magazines: c.req.query('magazines'), orderBy: c.req.query('order_by'), sort: c.req.query('sort'), letter: c.req.query('letter'), startDate: c.req.query('start_date'), endDate: c.req.query('end_date') }; const result = await searchService(c).manga(c.req.query('q'), c.get('page'), filters, c.get('requestId')); cacheHeader(c, result); return c.json(success(result.data, { cached: result.cached, stale: result.stale, refreshFailed: result.refreshFailed, fetchedAt: result.fetchedAt, pagination: paginationMeta(c.get('page'), SEARCH_PAGE_SIZE, result.data.length) })); }
   catch (error) { return errorResponse(c, error, c.get('requestId')); }
 });
 app.get('/v1/manga/:id', async (c) => {

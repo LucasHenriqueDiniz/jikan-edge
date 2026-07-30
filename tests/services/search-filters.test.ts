@@ -22,6 +22,26 @@ async function params(filters: Record<string, string>): Promise<URLSearchParams>
   return new URL(seen as unknown as string).searchParams;
 }
 
+describe('genres and magazines', () => {
+  // MAL ANDs multiple ids rather than ORing them: on "love", genre 12 returns 16 results and genre
+  // 49 returns 3, but both together return 0.
+  it('sends one genre[] per id, which MyAnimeList treats as "must have all"', async () => {
+    const q = await params({ genres: '1,46' });
+    expect(q.getAll('genre[]')).toEqual(['1', '46']);
+  });
+
+  it('refuses a genre list that is not ids', async () => {
+    await expect(params({ genres: 'action' })).rejects.toThrow(/positive genre ids/);
+  });
+
+  // The exclude flag was shipped earlier today and did not work: with gx=1 set, 16 of 18 results
+  // were the same entries the plain filter returns. It is refused now rather than faked.
+  it('no longer sends the exclude flag, which MyAnimeList ignores', async () => {
+    const q = await params({ genres: '12' });
+    expect(q.get('gx')).toBeNull();
+  });
+});
+
 describe('date filters', () => {
   // MAL's advanced search splits each bound into three selects, month first: sm/sd/sy for the
   // start bound, em/ed/ey for the end one.
