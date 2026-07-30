@@ -237,7 +237,6 @@ footer a { color: var(--paper-dim); }
           <table>
             <thead><tr><th>Jikan route</th><th>Status</th><th>Why</th></tr></thead>
             <tbody>
-              <tr><td><code>/genres/anime|manga</code></td><td><span class="tag">500</span></td><td>MAL serves a truncated genre sidebar (~12 of 40+ entries) to Cloudflare's network. We refuse to cache incomplete data as complete.</td></tr>
               <tr><td><code>/clubs?q=</code></td><td><span class="tag">q ignored</span></td><td>MAL's club search does no server-side filtering — the real search is an internal JS endpoint our source policy forbids.</td></tr>
               <tr><td><code>/top/reviews</code></td><td><span class="tag">not served</span></td><td>MAL has no review ranking mechanism (no sort-by-helpful, day-only dates). It would just be <code>/reviews/anime</code> in a costume.</td></tr>
               <tr><td><code>/users/:u/history</code></td><td><span class="tag">not served</span></td><td>The history page is empty without login. <code>/users/:u/userupdates</code> covers the public equivalent.</td></tr>
@@ -355,6 +354,10 @@ footer a { color: var(--paper-dim); }
       { p: '/v1/top/manga?page=', ex: '/v1/top/manga', d: 'Top manga by score.' },
       { p: '/v1/top/people?page=', ex: '/v1/top/people', d: 'Most favorited people.' },
       { p: '/v1/top/characters?page=', ex: '/v1/top/characters', d: 'Most favorited characters.' }
+    ]},
+    { id: 'g-genres', title: 'Genres', note: 'The whole taxonomy in one cached document — 78 entries for anime, 79 for manga — each with its title <code>count</code> and its <code>type</code>. <code>filter</code> accepts <code>genres</code>, <code>explicit_genres</code>, <code>themes</code> or <code>demographics</code>; anything else is a 400. Use the ids with the <code>genres</code> filter on anime/manga search.', routes: [
+      { p: '/v1/genres/anime?filter=', ex: '/v1/genres/anime?filter=demographics', d: 'Anime genre taxonomy.' },
+      { p: '/v1/genres/manga?filter=', ex: '/v1/genres/manga?filter=themes', d: 'Manga genre taxonomy.' }
     ]},
     { id: 'g-producers', title: 'Producers', note: 'The directory covers ~895 producers/studios; <code>q</code> filters locally over the cached directory.', routes: [
       { p: '/v1/producers?q=', ex: '/v1/producers?q=bones', d: 'Producer directory with optional name filter.' },

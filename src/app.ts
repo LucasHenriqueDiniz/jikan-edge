@@ -198,7 +198,7 @@ app.get('/v1/anime/:id/moreinfo', async (c) => {
   catch (error) { return errorResponse(c, error, c.get('requestId')); }
 });
 app.get('/v1/genres/anime', async (c) => {
-  try { const result = await animeService(c).genres(c.get('requestId')); cacheHeader(c, result); return c.json(success(result.data, { cached: result.cached, stale: result.stale, refreshFailed: result.refreshFailed, fetchedAt: result.fetchedAt })); }
+  try { const result = await animeService(c).genres(c.req.query('filter'), c.get('requestId')); cacheHeader(c, result); return c.json(success(result.data, { cached: result.cached, stale: result.stale, refreshFailed: result.refreshFailed, fetchedAt: result.fetchedAt })); }
   catch (error) { return errorResponse(c, error, c.get('requestId')); }
 });
 app.get('/v1/top/anime', async (c) => {
@@ -279,7 +279,7 @@ app.get('/v1/manga/:id/moreinfo', async (c) => {
   catch (error) { return errorResponse(c, error, c.get('requestId')); }
 });
 app.get('/v1/genres/manga', async (c) => {
-  try { const result = await mangaService(c).genres(c.get('requestId')); cacheHeader(c, result); return c.json(success(result.data, { cached: result.cached, stale: result.stale, refreshFailed: result.refreshFailed, fetchedAt: result.fetchedAt })); }
+  try { const result = await mangaService(c).genres(c.req.query('filter'), c.get('requestId')); cacheHeader(c, result); return c.json(success(result.data, { cached: result.cached, stale: result.stale, refreshFailed: result.refreshFailed, fetchedAt: result.fetchedAt })); }
   catch (error) { return errorResponse(c, error, c.get('requestId')); }
 });
 app.get('/v1/top/manga', async (c) => {

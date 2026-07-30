@@ -1,5 +1,6 @@
 import type { RuntimeConfig } from '../config/env';
-import { ANIME_PARSER_VERSION, type AnimeDetail, type AnimeListEntry, type ExternalLink, type Genre, type RelationEntry, type StreamingEntry } from '../domain/anime';
+import { ANIME_PARSER_VERSION, type AnimeDetail, type AnimeListEntry, type ExternalLink, type RelationEntry, type StreamingEntry } from '../domain/anime';
+import { GENRE_PARSER_VERSION, type GenreTaxonomyEntry } from '../domain/genre';
 import { ANIME_FULL_PARSER_VERSION, type AnimeFull } from '../domain/anime-full';
 import type { AnimeThemeSongs } from '../domain/anime-theme';
 import { VIDEOS_PARSER_VERSION, type EpisodeVideoEntry, type TitleVideos } from '../domain/videos';
@@ -16,7 +17,7 @@ import { TITLE_RECOMMENDATIONS_PARSER_VERSION, type TitleRecommendation } from '
 import { TITLE_REVIEWS_PARSER_VERSION, type TitleReview } from '../domain/title-review';
 import { parseAnimeDetail } from '../parsers/anime-detail.parser';
 import { parseAnimeFull } from '../parsers/anime-full.parser';
-import { parseAnimeGenres } from '../parsers/anime-genres.parser';
+import { parseGenreTaxonomy } from '../parsers/genre-taxonomy.parser';
 import { parseCharacters, parseStaff } from '../parsers/characters-staff.parser';
 import { parseStatistics } from '../parsers/statistics.parser';
 import { parsePictures } from '../parsers/pictures.parser';
@@ -40,6 +41,7 @@ import { RefreshLockRepository } from '../repositories/refresh-lock.repository';
 import { MalClient } from '../source/mal-client';
 import { animeDetailUrl, charactersUrl, episodeDetailUrl, episodesUrl, forumUrl, genreTaxonomyUrl, moreInfoUrl, newsUrl, picturesUrl, scheduleUrl, seasonArchiveUrl, seasonByYearUrl, seasonNowUrl, seasonUpcomingUrl, statisticsUrl, titleRecommendationsUrl, titleReviewsUrl, topAnimeUrl, videosUrl } from '../source/mal-urls';
 import { ServiceError, type ServiceResponse, sourceError, withCache } from './cacheable';
+import { parseGenreFilter } from './genre-filter';
 
 const GENRES_CACHE_KEY = 'catalog:genres:anime';
 interface AnimeCharactersAndStaff { characters: CharacterRole[]; staff: StaffMember[] }
@@ -213,15 +215,17 @@ export class AnimeService {
     return { ...result, data: result.data.themeSongs };
   }
 
-  async genres(requestId: string): Promise<ServiceResponse<Genre[]>> {
-    return withCache({ cache: this.cache, locks: this.locks }, GENRES_CACHE_KEY, this.config.catalogTtlSeconds, ANIME_PARSER_VERSION, () => this.catalog.get<Genre[]>(GENRES_CACHE_KEY), async () => {
-      const source = await this.source.getHtml(genreTaxonomyUrl(), ['genre']);
+  async genres(rawFilter: string | undefined, requestId: string): Promise<ServiceResponse<GenreTaxonomyEntry[]>> {
+    const filter = parseGenreFilter(rawFilter);
+    const result = await withCache({ cache: this.cache, locks: this.locks }, GENRES_CACHE_KEY, this.config.catalogTtlSeconds, GENRE_PARSER_VERSION, () => this.catalog.get<GenreTaxonomyEntry[]>(GENRES_CACHE_KEY), async () => {
+      const source = await this.source.getHtml(genreTaxonomyUrl('anime'), ['category-type', 'name="genre[]"']);
       if (source.kind !== 'success') throw sourceError(source);
-      const value = parseAnimeGenres(source.value);
+      const value = parseGenreTaxonomy(source.value, 'anime');
       const fetchedAt = new Date().toISOString();
-      await this.catalog.put(GENRES_CACHE_KEY, value, fetchedAt, ANIME_PARSER_VERSION);
+      await this.catalog.put(GENRES_CACHE_KEY, value, fetchedAt, GENRE_PARSER_VERSION);
       return value;
     }, requestId);
+    return filter ? { ...result, data: result.data.filter((entry) => entry.type === filter) } : result;
   }
 
   async topAnime(rawPage: string | undefined, requestId: string): Promise<ServiceResponse<AnimeListEntry[]>> {

@@ -6,6 +6,13 @@
       "runtimeExecutable": "npx",
       "runtimeArgs": ["wrangler", "dev", "--local", "--port", "8787"],
       "port": 8787
+    },
+    {
+      "// note": "Runs on Cloudflare's real network (and against the remote D1). Required to reproduce anything that depends on how MAL answers requests coming from Cloudflare, e.g. the genre taxonomy.",
+      "name": "jikan-edge-remote",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": ["wrangler", "dev", "--remote", "--port", "8788"],
+      "port": 8788
     }
   ]
 }

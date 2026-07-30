@@ -467,7 +467,7 @@ footer .stamp .kanji { color: var(--vermillion); }
     <div class="routes">
       <div class="route-card reveal">
         <h3>Anime <span class="count">20 routes</span></h3>
-        <div class="chips"><span>search + filters</span><span>detail</span><span>full</span><span>characters</span><span>staff</span><span>episodes</span><span>videos</span><span>pictures</span><span>statistics</span><span>news</span><span>forum</span><span>relations</span><span>themes</span><span>external</span><span>streaming</span><span>recommendations</span><span>reviews</span><span>moreinfo</span><span>userupdates</span></div>
+        <div class="chips"><span>search + filters</span><span>detail</span><span>full</span><span>characters</span><span>staff</span><span>episodes</span><span>videos</span><span>pictures</span><span>statistics</span><span>news</span><span>forum</span><span>relations</span><span>themes</span><span>external</span><span>streaming</span><span>recommendations</span><span>reviews</span><span>moreinfo</span><span>userupdates</span><span>genres</span></div>
         <div class="peek">
           <div class="peek-req">GET /v1/anime/1</div>
           <div class="peek-body">
@@ -484,7 +484,7 @@ footer .stamp .kanji { color: var(--vermillion); }
       </div>
       <div class="route-card reveal">
         <h3>Manga <span class="count">14 routes</span></h3>
-        <div class="chips"><span>search + filters</span><span>detail</span><span>full</span><span>characters</span><span>pictures</span><span>statistics</span><span>news</span><span>forum</span><span>relations</span><span>external</span><span>recommendations</span><span>reviews</span><span>moreinfo</span><span>userupdates</span></div>
+        <div class="chips"><span>search + filters</span><span>detail</span><span>full</span><span>characters</span><span>pictures</span><span>statistics</span><span>news</span><span>forum</span><span>relations</span><span>external</span><span>recommendations</span><span>reviews</span><span>moreinfo</span><span>userupdates</span><span>genres</span></div>
         <div class="peek">
           <div class="peek-req">GET /v1/manga/2</div>
           <div class="peek-body">
@@ -787,7 +787,7 @@ footer .stamp .kanji { color: var(--vermillion); }
     '4. Errors: { "error": { code, message, requestId } } with HTTP status. Handle 429 RATE_LIMITED by',
     '   honoring the Retry-After header (limits: 30 req/10s and 60 req/min per IP).',
     '5. meta.stale === true means a served-from-cache fallback after a failed refresh - treat as valid.',
-    '6. Not served (adjust or remove features that depend on them): genres/anime, genres/manga,',
+    '6. Not served (adjust or remove features that depend on them):',
     '   clubs?q= (club search), top/reviews, users/:u/history, users/:u/external, users/userbyid/:id,',
     "   per-episode forum. Also: anime/:id/episodes returns only MAL's first page, streaming may be",
     "   empty (geo-dependent), random/* draws from jikan-edge's local cache only.",

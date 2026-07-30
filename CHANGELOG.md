@@ -16,7 +16,7 @@ A day on a single theme: data that existed at the source and the API either with
 
 - **`sourceVersion` is gone from every response.** The field appeared on profiles, statistics, list entries and on anime, manga, character, person, club and producer details. It published the internal cache-invalidation token (`user-html-v3`, `anime-html-v1`, …) and was being read as the API version — which is the `v1` in the path and **has never changed**. If you read this field, stop: it was never contract. The cache mechanism is untouched; it simply stopped being public.
 
-  For roughly 6 h after the deploy the field still showed up in cached responses written before the change. That was transitional, not a regression.
+  For a few hours after the first deploy the field still showed up in responses served from rows written before the change. A migration now strips it from those rows, so it is gone everywhere rather than fading out over a TTL cycle.
 
 ### Fixed
 
@@ -44,13 +44,16 @@ A day on a single theme: data that existed at the source and the API either with
 
 - **New `501 LIST_TOO_LARGE` error** when a list runs past the 6,000 entries the API reads in one refresh. It is the only code that does not come from the source. Before this limit existed explicitly, the overflow was truncated silently.
 
+- **`GET /v1/genres/anime` and `GET /v1/genres/manga` work.** They used to return 500 — MAL serves the genre sidebar of its browse pages truncated to ~12 entries for requests coming from Cloudflare's network, and the API refuses to cache a partial taxonomy as if it were whole. The full taxonomy turned out to be on a different public page (the search page's content filter), which arrives intact: **78 entries for anime, 79 for manga**, verified from Cloudflare's own network rather than from a developer machine.
+
+  Each entry now carries `count` (titles in that genre) and `type` — `genres`, `explicit_genres`, `themes` or `demographics`, the same four categories Jikan uses — and `?filter=` narrows the list to one of them (`400 INVALID_FILTER` otherwise). The ids are the ones the `genres` filter on anime/manga search expects.
+
 - **A completeness guard on lists**: the assembled list is checked against the profile's own `totalEntries`. Extracting fewer entries than declared is now rejected with the counts in the message (`extracted 273 of 360`) instead of becoming an incomplete 200. Extracting more is accepted — a counter cached before the user added entries is legitimately behind.
 
 ### Operational notes
 
-- No database migrations. The new statistics fields are JSON in columns that already existed.
-- The list cache version is separate from the profile one, so this fix invalidated lists only — cached profiles and statistics were not dragged into a mass refetch.
-- `GET /v1/genres/anime` and `GET /v1/genres/manga` still return 500. That is a known, documented limitation rather than a regression: MAL serves a truncated genre bar to Cloudflare's network, and the project would rather refuse than cache incomplete data as if it were complete.
+- The statistics fields needed no migration — they are JSON in columns that already existed. One migration did ship, and it only rewrites stored payloads: it strips the leftover `sourceVersion` key and drops the two cached genre rows, whose content was the old truncated taxonomy.
+- The list cache version is separate from the profile one, so this fix invalidated lists only — cached profiles and statistics were not dragged into a mass refetch. The genre taxonomy has its own cache version too, for the same reason.
 
 ## Before 2026-07-30
 

@@ -1,5 +1,7 @@
 # `genres/anime` e `genres/manga` — MAL reduz o conteúdo para a rede da Cloudflare
 
+> **Resolvido em 2026-07-30** trocando a fonte da taxonomia (a barra lateral continua truncada; a página de busca não). Ver "Estado atual" no fim do documento. O diagnóstico abaixo fica como registro.
+
 Data: 2026-07-26. Descoberto ao implementar o catálogo de manga e notar que `/v1/genres/manga` retornava só 12 gêneros (real: ~300+, contando gêneros de todo tipo de conteúdo listado na barra lateral). Investigação mostrou que o mesmo já afetava `/v1/genres/anime` desde o primeiro deploy — só não tinha sido notado porque a validação anterior olhou uma prévia truncada da resposta, não a contagem total.
 
 ## Evidência
@@ -22,9 +24,30 @@ Páginas de **detalhe individual** (anime, manga) e de **ranking** (top anime, t
 
 ## Estado atual
 
-**Bloqueado**, na mesma categoria de "Pessoa: detalhe" e outras rotas marcadas como bloqueadas em `docs/planning/jikan-v4-route-validation.md`. Não é um bug de parser — é uma restrição de rede externa sem solução identificada nesta sessão. Não tentei contornar com headers alternativos, rotação de IP ou outras técnicas — isso esbarraria nas regras do projeto contra scraping mais agressivo.
+**Resolvido em 2026-07-30 pelo caminho 2** (fonte alternativa). O bloqueio era da página de navegação por gênero, não da taxonomia em si.
 
-Próximos passos possíveis (não implementados):
-1. Aceitar a lista reduzida como "melhor esforço" e documentar explicitamente no contrato da rota que pode vir incompleta — contradiz a filosofia atual do projeto, exigiria decisão explícita do usuário.
-2. Investigar se outro caminho de origem (ex. uma página diferente que também liste a taxonomia completa de gêneros) tem o mesmo problema.
-3. Deixar bloqueado e não expor a rota até uma solução aparecer.
+### Fonte que funciona
+
+O bloco "Content Filter" da página de busca (`https://myanimelist.net/anime.php?cat=genre` e `manga.php?cat=genre`) traz a taxonomia inteira em markup de formulário, já separada nas quatro categorias que o Jikan expõe e com a contagem de títulos por gênero:
+
+```html
+<div class="fs10 fw-b mb4 category-type">Genres</div>
+  <input id="genre-1" name="genre[]" type="checkbox" value="1" ...><p>Action (5,003)</p>
+```
+
+| Origem do fetch | Entradas de gênero | Documento |
+| --- | ---: | ---: |
+| PowerShell direto (rede residencial) | 78 anime / 79 manga | 335 KB / 277 KB |
+| Worker na borda da Cloudflare (`wrangler dev --remote`, 2026-07-30) | **78 anime / 79 manga** | — |
+
+A resposta veio com `meta.stale: false`, ou seja, refresh real bem-sucedido, não fallback de cache. A distribuição bateu exatamente com o fetch direto: 18 genres, 3 explicit genres, 52 themes e 5 demographics no anime; a mesma coisa no manga com 53 themes.
+
+Essa evidência não é nova, aliás: o probe de 2026-07-19 (`docs/results/2026-07-19-p0-source-route-probe.md`) já tinha medido `anime.php?cat=genre` com 78 entradas **por um Worker publicado**. A implementação original escolheu a barra lateral mesmo assim, e o problema só apareceu uma semana depois. Vale como lembrete: a evidência do probe estava certa e foi contrariada na implementação sem que ninguém notasse.
+
+### Por que a barra lateral trunca e esta página não
+
+Sem explicação confirmada. O padrão observado — páginas de navegação/agregação por gênero reduzidas, páginas de detalhe, ranking e busca íntegras — continua valendo, e a página de busca cai do lado íntegro. Não houve tentativa de contornar o comportamento da barra lateral (headers alternativos, rotação de IP): a rota passou a usar uma fonte pública diferente, dentro das mesmas regras.
+
+### O que mudou no código
+
+`parseAnimeGenres`/`parseMangaGenres` (um parser por tipo, lendo `<span class="genre">`) foram substituídos por um `parseGenreTaxonomy(html, type)` só. O guard de completude deixou de ser "≥ 20 itens" e passou a exigir as quatro categorias presentes **e** ≥ 40 entradas — um documento reduzido perde categoria inteira antes de perder contagem. Payload ganhou `count` e `type`; a rota ganhou `?filter=`. Ver `docs/routes.md`.

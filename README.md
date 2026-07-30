@@ -35,8 +35,8 @@ Every response is wrapped in `{ "data": ..., "meta": { cached, stale, refreshFai
 
 | Group | Routes |
 | --- | --- |
-| Anime | search (with `type`/`status`/`rating`/`score`/`genres`/`order_by` filters), detail, full, characters, staff, episodes, episode detail, videos, pictures, statistics, news, forum, relations, themes, external, streaming, recommendations, reviews, moreinfo, userupdates |
-| Manga | search (with filters), detail, full, characters, pictures, statistics, news, forum, relations, external, recommendations, reviews, moreinfo, userupdates |
+| Anime | search (with `type`/`status`/`rating`/`score`/`genres`/`order_by` filters), detail, full, characters, staff, episodes, episode detail, videos, pictures, statistics, news, forum, relations, themes, external, streaming, recommendations, reviews, moreinfo, userupdates, genre taxonomy (`?filter=genres\|explicit_genres\|themes\|demographics`) |
+| Manga | search (with filters), detail, full, characters, pictures, statistics, news, forum, relations, external, recommendations, reviews, moreinfo, userupdates, genre taxonomy |
 | Characters / People | detail, full, anime, manga, voices, pictures, news (people), search, top |
 | Users | profile, full, about, statistics, favorites, updates, friends, clubs, reviews, recommendations, animelist, mangalist, search |
 | Seasons | now, by year/season, upcoming, archive, weekly schedule (`?filter=monday..sunday\|other\|unknown`) |
@@ -73,7 +73,6 @@ Each of these was investigated against the real MyAnimeList pages, with the evid
 
 | Jikan route | Status here | Why |
 | --- | --- | --- |
-| `GET /genres/anime`, `GET /genres/manga` | Returns `500` | MAL serves a truncated genre sidebar (~12 of 40+/300+ entries) specifically to requests from Cloudflare's network. We refuse to cache incomplete data as if it were complete. |
 | `GET /clubs?q=` (club search) | `q` is ignored (index only) | `clubs.php?q=` performs **no** server-side filtering — any query returns the same list. MAL's real club search is an internal JS/AJAX endpoint, which this project's source policy forbids. |
 | `GET /top/reviews` | Not served | MAL has no review ranking mechanism (no sort-by-helpful, day-only date granularity). Serving it would be `reviews/anime` wearing a costume. |
 | `GET /users/{user}/history` | Not served | The MAL history page renders empty without login. `GET /v1/users/{user}/userupdates` covers the public equivalent from the profile page. |

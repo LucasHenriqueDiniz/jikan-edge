@@ -41,8 +41,11 @@ export function seasonUpcomingUrl(): string {
   return `${BASE}/anime/season/later`;
 }
 
-export function genreTaxonomyUrl(): string {
-  return `${BASE}/anime/genre/1/Action`;
+// The search page's content filter, not the genre browse page (`/anime/genre/1/Action`): MAL serves
+// that page's genre sidebar truncated to ~12 entries for requests from Cloudflare's network, while
+// this one carries all 78/79 entries with their categories and counts.
+export function genreTaxonomyUrl(type: 'anime' | 'manga'): string {
+  return `${BASE}/${type}.php?cat=genre`;
 }
 
 export function mangaDetailUrl(malId: number): string {
@@ -52,10 +55,6 @@ export function mangaDetailUrl(malId: number): string {
 export function topMangaUrl(page: number): string {
   const limit = (page - 1) * 50;
   return limit > 0 ? `${BASE}/topmanga.php?limit=${limit}` : `${BASE}/topmanga.php`;
-}
-
-export function genreTaxonomyMangaUrl(): string {
-  return `${BASE}/manga/genre/1/Action`;
 }
 
 export function characterDetailUrl(malId: number): string {

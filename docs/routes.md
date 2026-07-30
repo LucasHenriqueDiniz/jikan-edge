@@ -44,7 +44,7 @@ Base publicada: `https://jikan-edge.lucas-hdo.workers.dev`.
 | GET | `/v1/anime/:id/recommendations` | `https://myanimelist.net/anime/:id/x/userrecs` | `catalog_lists`, `cache_entries` | 6 h |
 | GET | `/v1/anime/:id/reviews?page=` | `https://myanimelist.net/anime/:id/x/reviews` | `catalog_lists`, `cache_entries` | 6 h |
 | GET | `/v1/anime/:id/moreinfo` | `https://myanimelist.net/anime/:id/x/moreinfo` | `catalog_lists`, `cache_entries` | 6 h |
-| GET | `/v1/genres/anime` | `https://myanimelist.net/anime/genre/1/Action` (barra lateral de gêneros) | `catalog_lists`, `cache_entries` | **bloqueado (500)** — ver nota abaixo |
+| GET | `/v1/genres/anime?filter=` | `https://myanimelist.net/anime.php?cat=genre` (bloco "Content Filter" da busca) | `catalog_lists`, `cache_entries` | 6 h |
 | GET | `/v1/top/anime?page=` | `https://myanimelist.net/topanime.php` (paginação nativa do MAL, 50/página) | `catalog_lists`, `cache_entries` | 6 h |
 | GET | `/v1/seasons` | `https://myanimelist.net/anime/season/archive` | `catalog_lists`, `cache_entries` | 6 h |
 | GET | `/v1/seasons/now` | `https://myanimelist.net/anime/season` | `catalog_lists`, `cache_entries` | 6 h |
@@ -64,7 +64,7 @@ Base publicada: `https://jikan-edge.lucas-hdo.workers.dev`.
 | GET | `/v1/manga/:id/reviews?page=` | `https://myanimelist.net/manga/:id/x/reviews` | `catalog_lists`, `cache_entries` | 6 h |
 | GET | `/v1/manga/:id/moreinfo` | `https://myanimelist.net/manga/:id/x/moreinfo` | `catalog_lists`, `cache_entries` | 6 h |
 | GET | `/v1/manga/:id/userupdates` | `https://myanimelist.net/manga/:id/x/stats` (mesma página de statistics) | `catalog_lists`, `cache_entries` | 6 h |
-| GET | `/v1/genres/manga` | `https://myanimelist.net/manga/genre/1/Action` | `catalog_lists`, `cache_entries` | **bloqueado (500)** — ver nota abaixo |
+| GET | `/v1/genres/manga?filter=` | `https://myanimelist.net/manga.php?cat=genre` (bloco "Content Filter" da busca) | `catalog_lists`, `cache_entries` | 6 h |
 | GET | `/v1/top/manga?page=` | `https://myanimelist.net/topmanga.php` | `catalog_lists`, `cache_entries` | 6 h |
 | GET | `/v1/top/people?page=` | `https://myanimelist.net/people.php` (paginação nativa `limit=`, 50/página) | `catalog_lists`, `cache_entries` | 6 h |
 | GET | `/v1/top/characters?page=` | `https://myanimelist.net/character.php` (paginação nativa `limit=`, 50/página) | `catalog_lists`, `cache_entries` | 6 h |
@@ -105,7 +105,9 @@ Base publicada: `https://jikan-edge.lucas-hdo.workers.dev`.
 
 `page` começa em 1; `limit` é limitado a 1–300 (padrão 100, só se aplica às listas de usuário — `top/anime`/`top/manga` paginam por página nativa do MAL, sem `limit`). Usernames aceitam somente ASCII alfanumérico, `_` e `-`, com até 32 caracteres. IDs numéricos (anime/manga/character/producer/club) devem ser inteiros positivos (400 se não forem). `:season` aceita `winter`/`spring`/`summer`/`fall`. Todas as respostas incluem `meta`; erros incluem `error.code` e `requestId`.
 
-**`genres/anime` e `genres/manga` retornam 500**: o MAL serve uma taxonomia de gêneros reduzida (~12-13 itens, real é 40+/300+) especificamente para requisições vindas da rede da Cloudflare — confirmado comparando fetch direto vs. Worker publicado. O parser rejeita esse resultado incompleto em vez de aceitar silenciosamente. Ver [docs/results/2026-07-26-genre-taxonomy-cloudflare-network-block.md](results/2026-07-26-genre-taxonomy-cloudflare-network-block.md).
+**`genres/anime` e `genres/manga` voltaram a servir em 2026-07-30, trocando a fonte.** O bloqueio anterior (500) era da *barra lateral* da página de navegação por gênero (`/anime/genre/1/Action`), que o MAL entrega truncada em ~12 itens para requisições vindas da rede da Cloudflare. A taxonomia completa está no bloco "Content Filter" da página de busca (`anime.php?cat=genre`), que **não** sofre a redução — verificado rodando o Worker na borda real da Cloudflare (`wrangler dev --remote`, config `jikan-edge-remote` em `.claude/launch.json`): 78 entradas para anime e 79 para manga, `meta.stale: false`. O sintoma original continua registrado em [docs/results/2026-07-26-genre-taxonomy-cloudflare-network-block.md](results/2026-07-26-genre-taxonomy-cloudflare-network-block.md).
+
+A fonte nova é mais rica que a antiga, então o payload mudou de forma: cada entrada agora é `{ malId, name, url, count, type }`, onde `count` é o número de títulos daquele gênero e `type` é a categoria do MAL — `genres`, `explicit_genres`, `themes` ou `demographics` (as mesmas quatro do Jikan). `?filter=` aceita exatamente esses quatro valores e filtra a lista já cacheada (400 `INVALID_FILTER` para qualquer outro). A ordem é a do documento: categoria por categoria, alfabética dentro de cada uma. O parser recusa o documento se faltar uma categoria inteira ou se vierem menos de 40 entradas — a mesma regra de "não cachear taxonomia parcial como completa", agora ancorada em quatro sinais em vez de um.
 
 Simplificações conhecidas: `top/anime`, `top/manga`, `top/people`, `seasons/*` retornam campos enxutos (`AnimeListEntry`/`MangaListEntry`/`TopPersonEntry`), não o detalhe completo — use `/v1/anime/:id`/`/v1/manga/:id`/`/v1/people/:id` para o detalhe. `character`/`producer`/`club` retornam metadados básicos (nome, imagem, favoritos, etc.), sem listas relacionadas de anime/manga/membros/papéis de dublagem.
 
@@ -196,7 +198,7 @@ Campos que o layout clássico nunca carregou agora vêm preenchidos quando a fon
 
 **Lote de paridade final (2026-07-26)**: `GET /v1/producers?q=` (diretório real de ~895 produtoras em `/anime/producer`, mesmo formato do diretório de revistas, com filtro `q` aplicado localmente sobre o cache), `GET /v1/seasons` (arquivo de temporadas de `/anime/season/archive`, agrupado por ano decrescente), `GET /v1/anime/:id/videos` (página `/x/video` com três seções distintas: Trailers/PVs, Music Videos e vídeos de episódio), `GET /v1/anime/:id/videos/episodes` (projeção da mesma página), `GET /v1/anime/:id/episodes/:episode` (página real de episódio individual: título, título alternativo, duração, data de exibição e sinopse), `GET /v1/anime/:id/themes` (projeção do campo `themeSongs` já extraído pelo `full` — sem fetch novo), e `GET /v1/clubs/:id/relations` (seções Anime/Manga/Character Relations da própria página do clube — mesmo fetch do detalhe, cache separado).
 
-Ainda fora (todas com evidência documentada): fórum por episódio individual, busca de clubes (ver nota acima), `/v1/top/reviews` (ver nota acima), `/v1/users/:username/history` (ver nota acima), `/v1/users/:username/external` (o perfil do MAL não expõe links externos estruturados — não há fonte real), `genres/anime|manga` (bloqueio de rede, ver nota acima).
+Ainda fora (todas com evidência documentada): fórum por episódio individual, busca de clubes (ver nota acima), `/v1/top/reviews` (ver nota acima), `/v1/users/:username/history` (ver nota acima), `/v1/users/:username/external` (o perfil do MAL não expõe links externos estruturados — não há fonte real). `genres/anime|manga` saiu desta lista em 2026-07-30 (fonte trocada, ver nota acima).
 
 ## Rate limiting
 

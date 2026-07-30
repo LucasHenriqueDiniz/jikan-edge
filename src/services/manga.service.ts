@@ -1,6 +1,7 @@
 import type { RuntimeConfig } from '../config/env';
 import { MANGA_PARSER_VERSION, type MangaDetail, type MangaListEntry } from '../domain/manga';
-import type { ExternalLink, Genre, RelationEntry } from '../domain/anime';
+import type { ExternalLink, RelationEntry } from '../domain/anime';
+import { GENRE_PARSER_VERSION, type GenreTaxonomyEntry } from '../domain/genre';
 import { MAGAZINE_PARSER_VERSION, type Magazine } from '../domain/magazine';
 import { CHARACTERS_STAFF_PARSER_VERSION, type CharacterRole } from '../domain/characters-staff';
 import { STATISTICS_PARSER_VERSION, type EntryStatistics } from '../domain/statistics';
@@ -11,7 +12,7 @@ import { MORE_INFO_PARSER_VERSION, type MoreInfo } from '../domain/more-info';
 import { TITLE_RECOMMENDATIONS_PARSER_VERSION, type TitleRecommendation } from '../domain/title-recommendation';
 import { TITLE_REVIEWS_PARSER_VERSION, type TitleReview } from '../domain/title-review';
 import { parseMangaDetail } from '../parsers/manga-detail.parser';
-import { parseMangaGenres } from '../parsers/manga-genres.parser';
+import { parseGenreTaxonomy } from '../parsers/genre-taxonomy.parser';
 import { parseTopManga } from '../parsers/top-manga.parser';
 import { parseMagazines } from '../parsers/magazines.parser';
 import { parseCharacters } from '../parsers/characters-staff.parser';
@@ -32,7 +33,7 @@ import { MalClient } from '../source/mal-client';
 import {
   charactersUrl,
   forumUrl,
-  genreTaxonomyMangaUrl,
+  genreTaxonomyUrl,
   magazinesUrl,
   mangaDetailUrl,
   moreInfoUrl,
@@ -44,6 +45,7 @@ import {
   topMangaUrl,
 } from '../source/mal-urls';
 import { ServiceError, type ServiceResponse, sourceError, withCache } from './cacheable';
+import { parseGenreFilter } from './genre-filter';
 
 const GENRES_CACHE_KEY = 'catalog:genres:manga';
 const MAGAZINES_CACHE_KEY = 'catalog:magazines';
@@ -106,15 +108,17 @@ export class MangaService {
     }, requestId);
   }
 
-  async genres(requestId: string): Promise<ServiceResponse<Genre[]>> {
-    return withCache({ cache: this.cache, locks: this.locks }, GENRES_CACHE_KEY, this.config.catalogTtlSeconds, MANGA_PARSER_VERSION, () => this.catalog.get<Genre[]>(GENRES_CACHE_KEY), async () => {
-      const source = await this.source.getHtml(genreTaxonomyMangaUrl(), ['genre']);
+  async genres(rawFilter: string | undefined, requestId: string): Promise<ServiceResponse<GenreTaxonomyEntry[]>> {
+    const filter = parseGenreFilter(rawFilter);
+    const result = await withCache({ cache: this.cache, locks: this.locks }, GENRES_CACHE_KEY, this.config.catalogTtlSeconds, GENRE_PARSER_VERSION, () => this.catalog.get<GenreTaxonomyEntry[]>(GENRES_CACHE_KEY), async () => {
+      const source = await this.source.getHtml(genreTaxonomyUrl('manga'), ['category-type', 'name="genre[]"']);
       if (source.kind !== 'success') throw sourceError(source);
-      const value = parseMangaGenres(source.value);
+      const value = parseGenreTaxonomy(source.value, 'manga');
       const fetchedAt = new Date().toISOString();
-      await this.catalog.put(GENRES_CACHE_KEY, value, fetchedAt, MANGA_PARSER_VERSION);
+      await this.catalog.put(GENRES_CACHE_KEY, value, fetchedAt, GENRE_PARSER_VERSION);
       return value;
     }, requestId);
+    return filter ? { ...result, data: result.data.filter((entry) => entry.type === filter) } : result;
   }
 
   async topManga(rawPage: string | undefined, requestId: string): Promise<ServiceResponse<MangaListEntry[]>> {
