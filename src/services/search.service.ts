@@ -1,11 +1,11 @@
 import type { RuntimeConfig } from '../config/env';
 import { CHARACTER_SEARCH_PARSER_VERSION, type CharacterSearchResult } from '../domain/character-search';
 import { PERSON_SEARCH_PARSER_VERSION, type PersonSearchResult } from '../domain/person-search';
-import { SEARCH_PARSER_VERSION, type SearchEntry } from '../domain/search';
+import { ANIME_SEARCH_PARSER_VERSION, MANGA_SEARCH_PARSER_VERSION, type AnimeSearchEntry, type MangaSearchEntry, type SearchEntry } from '../domain/search';
 import { USER_SEARCH_PARSER_VERSION, type UserSearchResult } from '../domain/user-search';
 import { parseCharacterSearch } from '../parsers/character-search.parser';
 import { parsePersonSearch } from '../parsers/person-search.parser';
-import { parseSearchResults } from '../parsers/search.parser';
+import { parseAnimeSearchResults, parseMangaSearchResults } from '../parsers/search.parser';
 import { parseUserSearch } from '../parsers/user-search.parser';
 import { CacheRepository } from '../repositories/cache.repository';
 import { CatalogListRepository } from '../repositories/catalog-list.repository';
@@ -16,7 +16,10 @@ import { ServiceError, type ServiceResponse, sourceError, withCache } from './ca
 
 const MAX_QUERY_LENGTH = 64;
 
-export interface TitleSearchFilters { type?: string; status?: string; rating?: string; score?: string; genres?: string; orderBy?: string }
+export interface TitleSearchFilters {
+  type?: string; status?: string; rating?: string; score?: string; minScore?: string;
+  genres?: string; genresExclude?: string; orderBy?: string; sort?: string; letter?: string;
+}
 
 // All values verified against real anime.php/manga.php responses (server-side filtering confirmed;
 // see docs/routes.md). order_by uses the sort-column codes from the results-table header links.
@@ -38,21 +41,48 @@ function buildTitleSearchParams(type: 'anime' | 'manga', filters: TitleSearchFil
     if (type !== 'anime') throw new ServiceError('INVALID_FILTER', 400, '"rating" only applies to anime search.');
     extra.push(['r', RATING_MAP[filters.rating.toLowerCase()] ?? fail('rating', Object.keys(RATING_MAP))]);
   }
-  if (filters.score) {
-    const score = Number.parseInt(filters.score, 10);
-    if (!Number.isInteger(score) || score < 1 || score > 10 || String(score) !== filters.score) throw new ServiceError('INVALID_FILTER', 400, '"score" must be an integer 1-10.');
+  // MAL's form has one score dropdown, and it is a minimum — so `score` and `min_score` are the
+  // same knob under two names. Accepting both is for people porting from Jikan; setting both to
+  // different values is a contradiction worth refusing rather than silently picking one.
+  const rawScore = filters.score ?? filters.minScore;
+  if (filters.score && filters.minScore && filters.score !== filters.minScore) {
+    throw new ServiceError('INVALID_FILTER', 400, '"score" and "min_score" are the same filter on MyAnimeList; pass only one.');
+  }
+  if (rawScore) {
+    const score = Number.parseInt(rawScore, 10);
+    if (!Number.isInteger(score) || score < 1 || score > 10 || String(score) !== rawScore) throw new ServiceError('INVALID_FILTER', 400, '"score" must be an integer 1-10.');
     extra.push(['score', String(score)]);
   }
-  if (filters.genres) {
-    for (const raw of filters.genres.split(',')) {
+  // `gx=1` flips the meaning of every `genre[]` on the request from "include" to "exclude", so the
+  // two cannot be combined — verified against the live search: `genre[]=12` returns 17 results and
+  // `genre[]=12&gx=1` returns 20 disjoint ones.
+  if (filters.genres && filters.genresExclude) {
+    throw new ServiceError('INVALID_FILTER', 400, 'MyAnimeList applies one genre mode per request; pass "genres" or "genres_exclude", not both.');
+  }
+  const genreList = filters.genres ?? filters.genresExclude;
+  if (genreList) {
+    const name = filters.genres ? 'genres' : 'genres_exclude';
+    for (const raw of genreList.split(',')) {
       const genreId = Number.parseInt(raw.trim(), 10);
-      if (!Number.isInteger(genreId) || genreId <= 0) throw new ServiceError('INVALID_FILTER', 400, '"genres" must be comma-separated positive genre ids.');
+      if (!Number.isInteger(genreId) || genreId <= 0) throw new ServiceError('INVALID_FILTER', 400, `"${name}" must be comma-separated positive genre ids.`);
       extra.push(['genre[]', String(genreId)]);
     }
+    if (filters.genresExclude) extra.push(['gx', '1']);
+  }
+  if (filters.letter) {
+    if (!/^[A-Za-z]$/.test(filters.letter)) throw new ServiceError('INVALID_FILTER', 400, '"letter" must be a single letter.');
+    extra.push(['letter', filters.letter.toUpperCase()]);
   }
   if (filters.orderBy) {
     extra.push(['o', ORDER_BY_MAP[filters.orderBy.toLowerCase()] ?? fail('order_by', Object.keys(ORDER_BY_MAP))]);
-    extra.push(['w', '1']);
+    // `w` is the direction: 1 descending, 2 ascending. Confirmed against the live search —
+    // `o=3&w=1` returns Gintama and Shingeki, `o=3&w=2` returns the bottom of the score table.
+    extra.push(['w', filters.sort?.toLowerCase() === 'asc' ? '2' : '1']);
+  } else if (filters.sort) {
+    throw new ServiceError('INVALID_FILTER', 400, '"sort" needs "order_by" to say which column to sort.');
+  }
+  if (filters.sort && !['asc', 'desc'].includes(filters.sort.toLowerCase())) {
+    throw new ServiceError('INVALID_FILTER', 400, '"sort" must be "asc" or "desc".');
   }
   return extra;
 }
@@ -72,30 +102,31 @@ export class SearchService {
     return query;
   }
 
-  private async search(type: 'anime' | 'manga', rawQuery: string | undefined, rawPage: string | undefined, filters: TitleSearchFilters, requestId: string): Promise<ServiceResponse<SearchEntry[]>> {
-    const page = Math.max(1, Number.parseInt(rawPage ?? '1', 10) || 1);
+  private async search(type: 'anime' | 'manga', rawQuery: string | undefined, page: number, filters: TitleSearchFilters, requestId: string): Promise<ServiceResponse<SearchEntry[]>> {
     const extra = buildTitleSearchParams(type, filters);
     // A pure filter search (no text query) is valid on MAL — q is only required when there are
     // no filters at all, otherwise the request would be an unbounded catalog dump.
     const query = extra.length > 0 && !(rawQuery ?? '').trim() ? '' : this.validateQuery(rawQuery);
     const filterKey = extra.map(([key, value]) => `${key}=${value}`).join('&');
     const cacheKey = `catalog:search:${type}:${query.toLowerCase()}:page:${page}${filterKey ? `:${filterKey}` : ''}`;
-    return withCache({ cache: this.cache, locks: this.locks }, cacheKey, this.config.catalogTtlSeconds, SEARCH_PARSER_VERSION, () => this.catalog.get<SearchEntry[]>(cacheKey), async () => {
+    // Separate versions because the two searches no longer share a shape: the anime row's middle
+    // column is episodes, the manga row's is volumes.
+    const version = type === 'anime' ? ANIME_SEARCH_PARSER_VERSION : MANGA_SEARCH_PARSER_VERSION;
+    return withCache({ cache: this.cache, locks: this.locks }, cacheKey, this.config.catalogTtlSeconds, version, () => this.catalog.get<SearchEntry[]>(cacheKey), async () => {
       const source = await this.source.getHtml(searchUrl(type, query, page, extra), ['filterByType']);
       if (source.kind !== 'success') throw sourceError(source);
-      const value = parseSearchResults(source.value);
+      const value: SearchEntry[] = type === 'anime' ? parseAnimeSearchResults(source.value) : parseMangaSearchResults(source.value);
       const fetchedAt = new Date().toISOString();
-      await this.catalog.put(cacheKey, value, fetchedAt, SEARCH_PARSER_VERSION);
+      await this.catalog.put(cacheKey, value, fetchedAt, version);
       return value;
     }, requestId);
   }
 
-  anime(query: string | undefined, page: string | undefined, filters: TitleSearchFilters, requestId: string): Promise<ServiceResponse<SearchEntry[]>> { return this.search('anime', query, page, filters, requestId); }
-  manga(query: string | undefined, page: string | undefined, filters: TitleSearchFilters, requestId: string): Promise<ServiceResponse<SearchEntry[]>> { return this.search('manga', query, page, filters, requestId); }
+  anime(query: string | undefined, page: number, filters: TitleSearchFilters, requestId: string): Promise<ServiceResponse<SearchEntry[]>> { return this.search('anime', query, page, filters, requestId); }
+  manga(query: string | undefined, page: number, filters: TitleSearchFilters, requestId: string): Promise<ServiceResponse<SearchEntry[]>> { return this.search('manga', query, page, filters, requestId); }
 
-  users(rawQuery: string | undefined, rawPage: string | undefined, requestId: string): Promise<ServiceResponse<UserSearchResult[]>> {
+  users(rawQuery: string | undefined, page: number, requestId: string): Promise<ServiceResponse<UserSearchResult[]>> {
     const query = this.validateQuery(rawQuery);
-    const page = Math.max(1, Number.parseInt(rawPage ?? '1', 10) || 1);
     const cacheKey = `catalog:search:users:${query.toLowerCase()}:page:${page}`;
     return withCache({ cache: this.cache, locks: this.locks }, cacheKey, this.config.catalogTtlSeconds, USER_SEARCH_PARSER_VERSION, () => this.catalog.get<UserSearchResult[]>(cacheKey), async () => {
       const source = await this.source.getHtml(userSearchUrl(query, page), []);
@@ -107,9 +138,8 @@ export class SearchService {
     }, requestId);
   }
 
-  characters(rawQuery: string | undefined, rawPage: string | undefined, requestId: string): Promise<ServiceResponse<CharacterSearchResult[]>> {
+  characters(rawQuery: string | undefined, page: number, requestId: string): Promise<ServiceResponse<CharacterSearchResult[]>> {
     const query = this.validateQuery(rawQuery);
-    const page = Math.max(1, Number.parseInt(rawPage ?? '1', 10) || 1);
     const cacheKey = `catalog:search:characters:${query.toLowerCase()}:page:${page}`;
     return withCache({ cache: this.cache, locks: this.locks }, cacheKey, this.config.catalogTtlSeconds, CHARACTER_SEARCH_PARSER_VERSION, () => this.catalog.get<CharacterSearchResult[]>(cacheKey), async () => {
       const source = await this.source.getHtml(searchUrl('character', query, page), ['Search Results']);
@@ -121,9 +151,8 @@ export class SearchService {
     }, requestId);
   }
 
-  people(rawQuery: string | undefined, rawPage: string | undefined, requestId: string): Promise<ServiceResponse<PersonSearchResult[]>> {
+  people(rawQuery: string | undefined, page: number, requestId: string): Promise<ServiceResponse<PersonSearchResult[]>> {
     const query = this.validateQuery(rawQuery);
-    const page = Math.max(1, Number.parseInt(rawPage ?? '1', 10) || 1);
     const cacheKey = `catalog:search:people:${query.toLowerCase()}:page:${page}`;
     return withCache({ cache: this.cache, locks: this.locks }, cacheKey, this.config.catalogTtlSeconds, PERSON_SEARCH_PARSER_VERSION, () => this.catalog.get<PersonSearchResult[]>(cacheKey), async () => {
       const source = await this.source.getHtml(searchUrl('people', query, page), ['Search Results']);

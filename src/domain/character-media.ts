@@ -5,4 +5,4 @@ export interface CharacterMediaEntry {
   role: string | null;
 }
 
-export const CHARACTER_MEDIA_PARSER_VERSION = 'character-media-html-v1';
+export const CHARACTER_MEDIA_PARSER_VERSION = 'character-media-html-v2';

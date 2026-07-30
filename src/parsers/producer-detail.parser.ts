@@ -1,9 +1,10 @@
 import { z } from 'zod';
 import type { ProducerDetail } from '../domain/producer';
-import { capture, numeric, ParserError } from './html';
+import { canonicalUrl, capture, COMPANY_LOGO_IMAGE, labelValue, numeric, ParserError, taggedImage } from './html';
 
 const producerDetailSchema = z.object({
   malId: z.number().int().positive(),
+  url: z.string().url().nullable(),
   name: z.string().min(1),
   imageUrl: z.string().url().nullable(),
   established: z.string().nullable(),
@@ -11,25 +12,16 @@ const producerDetailSchema = z.object({
   fetchedAt: z.string().datetime(),
 });
 
-function plainLabelValue(html: string, label: string): string | null {
-  const escaped = label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  return capture(html, new RegExp(`${escaped}:<\\/span>([\\s\\S]*?)<\\/div>`, 'i'));
-}
-
-function extractImage(html: string): string | null {
-  const tag = html.match(/<img[^>]*data-src="[^"]*company_logos[^"]*"[^>]*>/i)?.[0];
-  return tag?.match(/\sdata-src="([^"]+)"/i)?.[1] ?? null;
-}
-
 export function parseProducerDetail(html: string, malId: number, fetchedAt = new Date().toISOString()): ProducerDetail {
   const head = html.slice(0, 60_000);
   const name = capture(head, /<h1[^>]*class="title-name[^"]*"[^>]*>([\s\S]*?)<\/h1>/i);
   const detail: ProducerDetail = {
     malId,
+    url: canonicalUrl(head),
     name: name ?? '',
-    imageUrl: extractImage(head),
-    established: plainLabelValue(head, 'Established'),
-    favorites: numeric(plainLabelValue(head, 'Member Favorites')),
+    imageUrl: taggedImage(head, COMPANY_LOGO_IMAGE),
+    established: labelValue(head, 'Established'),
+    favorites: numeric(labelValue(head, 'Member Favorites')),
     fetchedAt,
   };
   const validated = producerDetailSchema.safeParse(detail);

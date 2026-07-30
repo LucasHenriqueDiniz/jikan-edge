@@ -1,6 +1,6 @@
-import { z } from 'zod';
+﻿import { z } from 'zod';
 import type { EpisodeDetail } from '../domain/episode-detail';
-import { capture, decodeHtml, ParserError } from './html';
+import { capture, decodeHtml, ParserError, richText } from './html';
 
 const schema = z.object({
   malId: z.number().int().positive(),
@@ -18,7 +18,7 @@ function extractSynopsis(html: string): string | null {
   if (start === -1) return null;
   const rest = html.slice(start + marker.length);
   const end = rest.search(/<(?:div|h2|table)[ >]/i);
-  const decoded = decodeHtml(rest.slice(0, end === -1 ? 8_000 : end));
+  const decoded = richText(rest.slice(0, end === -1 ? 8_000 : end));
   return decoded || null;
 }
 

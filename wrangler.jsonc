@@ -17,6 +17,7 @@
     "MAX_UPSTREAM_BYTES": "2097152"
     ,"WORKER_VERSION": "jikan-edge-2026-07-19"
   },
+  // Forking this? Run `npm run setup` — it creates your own D1 and rewrites the id below.
   "d1_databases": [
     {
       "binding": "DB",
@@ -24,9 +25,8 @@
       "database_id": "71f8a596-7855-47a5-906c-9a1cf46e12ee"
     }
   ],
-  "r2_buckets": [
-    { "binding": "SNAPSHOTS_BUCKET", "bucket_name": "jikan-edge-snapshots" }
-  ],
+  // namespace_id is an arbitrary integer scoped to your own Cloudflare account, so a fork can keep
+  // these values as they are: counters never cross accounts.
   "ratelimits": [
     { "name": "API_RATE_LIMIT", "namespace_id": "18973", "simple": { "limit": 60, "period": 60 } },
     { "name": "API_BURST_LIMIT", "namespace_id": "18974", "simple": { "limit": 30, "period": 10 } }

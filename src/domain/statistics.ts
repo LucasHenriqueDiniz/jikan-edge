@@ -19,4 +19,4 @@ export interface EntryStatistics {
   fetchedAt: string;
 }
 
-export const STATISTICS_PARSER_VERSION = 'statistics-html-v1';
+export const STATISTICS_PARSER_VERSION = 'statistics-html-v2';

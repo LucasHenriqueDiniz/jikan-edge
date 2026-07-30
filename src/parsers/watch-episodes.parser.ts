@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import type { WatchEpisodeEntry } from '../domain/watch';
-import { decodeHtml, ParserError } from './html';
+import { decodeHtml, imageFrom, ParserError } from './html';
 
 const entrySchema = z.object({
   animeId: z.number().int().positive(),
@@ -12,7 +12,7 @@ const entrySchema = z.object({
 function parseCard(chunk: string): WatchEpisodeEntry | null {
   const animeId = Number(chunk.match(/data-anime-id="(\d+)"/i)?.[1]);
   if (!animeId) return null;
-  const imageUrl = chunk.match(/data-src="([^"]+)"/i)?.[1] ?? null;
+  const imageUrl = imageFrom(chunk);
   const episodes = [...chunk.matchAll(/<a href="[^"]*\/episode\/\d+"[^>]*>([\s\S]*?)<\/a>/gi)].map((match) => decodeHtml(match[1]));
   const titleMatch = chunk.match(/<a href="https:\/\/myanimelist\.net\/anime\/\d+\/[^"]*" class="mr4">([^<]+)<\/a>/i);
   const candidate = { animeId, animeTitle: titleMatch ? decodeHtml(titleMatch[1]) : '', imageUrl, episodes };

@@ -5,4 +5,4 @@ export interface ProducerListEntry {
   url: string;
 }
 
-export const PRODUCER_LIST_PARSER_VERSION = 'producer-list-html-v1';
+export const PRODUCER_LIST_PARSER_VERSION = 'producer-list-html-v2';

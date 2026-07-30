@@ -1,6 +1,6 @@
-import { z } from 'zod';
+﻿import { z } from 'zod';
 import type { ReviewEntry } from '../domain/review';
-import { decodeHtml, numeric, ParserError } from './html';
+import { decodeHtml, numeric, originalImage, ParserError, richText } from './html';
 
 const entrySchema = z.object({
   malId: z.number().int().positive(),
@@ -18,7 +18,7 @@ function parseCard(chunk: string): ReviewEntry | null {
   if (!idMatch) return null;
   const malId = Number(idMatch[1]);
   const title = decodeHtml(chunk.match(/class="title ga-click"[^>]*>([^<]+)<\/a>/i)?.[1] ?? '');
-  const imageUrl = chunk.match(/data-ga-click-type="review-\w+-title-pic"[\s\S]{0,300}?data-src="([^"]+)"/i)?.[1] ?? null;
+  const imageUrl = originalImage(chunk.match(/data-ga-click-type="review-\w+-title-pic"[\s\S]{0,300}?data-src="([^"]+)"/i)?.[1] ?? null);
   const username = chunk.match(/data-ga-click-type="review-\w+-reviewer">([^<]+)<\/a>/i)?.[1] ?? null;
   const date = chunk.match(/class="update_at">([^<]+)<\/div>/i)?.[1] ?? null;
   const tag = decodeHtml(chunk.match(/class="tag [^"]*btn-label[^"]*"[^>]*>(?:<i[^>]*><\/i>)?([^<]+)<\/div>/i)?.[1] ?? '') || null;
@@ -26,7 +26,7 @@ function parseCard(chunk: string): ReviewEntry | null {
   const textMarker = 'class="text">';
   const textStart = chunk.indexOf(textMarker);
   const textEnd = chunk.indexOf('<div class="rating', textStart);
-  const reviewText = textStart === -1 ? null : decodeHtml(chunk.slice(textStart + textMarker.length, textEnd === -1 ? textStart + 6_000 : textEnd)) || null;
+  const reviewText = textStart === -1 ? null : richText(chunk.slice(textStart + textMarker.length, textEnd === -1 ? textStart + 6_000 : textEnd)) || null;
   const candidate = { malId, title, imageUrl, username, date, tag, score, reviewText };
   const parsed = entrySchema.safeParse(candidate);
   return parsed.success ? parsed.data : null;

@@ -6,4 +6,4 @@ export interface ProducerFull extends ProducerDetail {
   external: ExternalLink[];
 }
 
-export const PRODUCER_FULL_PARSER_VERSION = 'producer-full-html-v1';
+export const PRODUCER_FULL_PARSER_VERSION = 'producer-full-html-v2';

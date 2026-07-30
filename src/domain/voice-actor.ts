@@ -5,4 +5,4 @@ export interface VoiceActor {
   language: string | null;
 }
 
-export const VOICE_ACTOR_PARSER_VERSION = 'voice-actor-html-v1';
+export const VOICE_ACTOR_PARSER_VERSION = 'voice-actor-html-v2';

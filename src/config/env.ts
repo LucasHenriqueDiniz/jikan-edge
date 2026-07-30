@@ -1,6 +1,5 @@
 export interface Env {
   DB: D1Database;
-  SNAPSHOTS_BUCKET: R2Bucket;
   API_RATE_LIMIT: RateLimit;
   API_BURST_LIMIT: RateLimit;
   MAL_USER_AGENT?: string;

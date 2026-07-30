@@ -8,4 +8,4 @@ export interface TitleUserUpdate {
   date: string;
 }
 
-export const TITLE_USERUPDATES_PARSER_VERSION = 'title-userupdates-html-v1';
+export const TITLE_USERUPDATES_PARSER_VERSION = 'title-userupdates-html-v2';

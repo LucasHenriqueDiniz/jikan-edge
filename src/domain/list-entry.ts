@@ -2,7 +2,7 @@ export type MediaType = 'anime' | 'manga';
 
 /** Kept separate from the profile's `PARSER_VERSION` so a list-parser change does not force every cached
  *  profile and statistics row to refetch as collateral. */
-export const LIST_PARSER_VERSION = 'user-list-html-v3';
+export const LIST_PARSER_VERSION = 'user-list-html-v4';
 
 export interface UserMediaListEntry {
   username: string;

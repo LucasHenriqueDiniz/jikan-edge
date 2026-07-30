@@ -679,6 +679,7 @@ footer .stamp .kanji { color: var(--vermillion); }
       <a href="/docs">Documentation</a>
       <a href="https://github.com/LucasHenriqueDiniz/jikan-edge" target="_blank" rel="noopener">GitHub</a>
       <a href="https://github.com/LucasHenriqueDiniz/jikan-edge/blob/main/docs/routes.md" target="_blank" rel="noopener">Route docs</a>
+      <a href="https://github.com/LucasHenriqueDiniz/jikan-edge/blob/main/docs/self-hosting.md" target="_blank" rel="noopener">Self-host it</a>
       <a href="https://jikan.moe" target="_blank" rel="noopener">Jikan (the original)</a>
     </div>
   </div>
@@ -845,8 +846,6 @@ footer .stamp .kanji { color: var(--vermillion); }
       { path: '/v1/top/people', type: 'people' }
     ];
     var idx = 0, showSeq = 0, hovering = false;
-    // MAL CDN thumbnails come as /r/50x70/...; stripping the resize prefix yields the full poster.
-    function fullImage(url) { return url ? url.replace(/\/r\/\d+x\d+/, '') : null; }
     function badge(e) {
       if (e.score) return '<span class="hs-score">★ ' + e.score + '</span>';
       if (e.favorites) return '<span class="hs-score">♥ ' + Number(e.favorites).toLocaleString('en-US') + '</span>';
@@ -868,7 +867,7 @@ footer .stamp .kanji { color: var(--vermillion); }
           cardsEl.innerHTML = entries.map(function (e, i) {
             var detail = '/v1/' + source.type + '/' + e.malId;
             return '<a class="hs-card" style="animation-delay:' + (i * 90) + 'ms" href="' + base + detail + '" target="_blank" rel="noopener" title="GET ' + detail + '">' +
-              '<img src="' + esc(fullImage(e.imageUrl)) + '" alt="" loading="eager">' +
+              '<img src="' + esc(e.imageUrl) + '" alt="" loading="eager">' +
               '<span class="hs-grad"></span>' +
               '<span class="hs-rank">#' + (e.rank || i + 1) + '</span>' +
               badge(e) +

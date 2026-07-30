@@ -1,6 +1,6 @@
-import { z } from 'zod';
+﻿import { z } from 'zod';
 import type { TitleReview } from '../domain/title-review';
-import { decodeHtml, numeric, ParserError } from './html';
+import { decodeHtml, numeric, originalImage, ParserError, richText } from './html';
 
 const entrySchema = z.object({
   username: z.string().nullable(),
@@ -13,9 +13,9 @@ const entrySchema = z.object({
 
 // Same card markup as the global reviews list (reviews.parser.ts), except the per-title page
 // never links back to the anime/manga being reviewed (that's implicit from the URL), so there's
-// no malId/title to extract here — everything else (reviewer, date, tag, score, text) is shared.
+// no malId/title to extract here â€” everything else (reviewer, date, tag, score, text) is shared.
 function parseCard(chunk: string): TitleReview | null {
-  const imageUrl = chunk.match(/data-ga-click-type="review-\w+-reviewer-pic"[\s\S]{0,300}?data-src="([^"]+)"/i)?.[1] ?? null;
+  const imageUrl = originalImage(chunk.match(/data-ga-click-type="review-\w+-reviewer-pic"[\s\S]{0,300}?data-src="([^"]+)"/i)?.[1] ?? null);
   const username = decodeHtml(chunk.match(/data-ga-click-type="review-\w+-reviewer">([^<]+)<\/a>/i)?.[1] ?? '') || null;
   const date = chunk.match(/class="update_at">([^<]+)<\/div>/i)?.[1] ?? null;
   const tag = decodeHtml(chunk.match(/class="tag [^"]*btn-label[^"]*"[^>]*>(?:<i[^>]*><\/i>)?([^<]+)<\/div>/i)?.[1] ?? '') || null;
@@ -23,7 +23,7 @@ function parseCard(chunk: string): TitleReview | null {
   const textMarker = 'class="text">';
   const textStart = chunk.indexOf(textMarker);
   const textEnd = chunk.indexOf('<div class="rating', textStart);
-  const reviewText = textStart === -1 ? null : decodeHtml(chunk.slice(textStart + textMarker.length, textEnd === -1 ? textStart + 6_000 : textEnd)) || null;
+  const reviewText = textStart === -1 ? null : richText(chunk.slice(textStart + textMarker.length, textEnd === -1 ? textStart + 6_000 : textEnd)) || null;
   const candidate = { username, imageUrl, date, tag, score, reviewText };
   const parsed = entrySchema.safeParse(candidate);
   return parsed.success ? parsed.data : null;

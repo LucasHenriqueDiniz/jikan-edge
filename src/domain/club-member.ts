@@ -4,4 +4,4 @@ export interface ClubMember {
   avatarUrl: string | null;
 }
 
-export const CLUB_MEMBERS_PARSER_VERSION = 'club-members-html-v1';
+export const CLUB_MEMBERS_PARSER_VERSION = 'club-members-html-v2';

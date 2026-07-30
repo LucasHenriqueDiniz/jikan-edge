@@ -2,6 +2,8 @@
 
 | Área | Conteúdo | Estado |
 | --- | --- | --- |
+| [`self-hosting.md`](self-hosting.md) | como rodar uma instância própria numa conta Cloudflare qualquer: setup, troubleshooting, limites de plano e política de uso | ativa |
+| [`routes.md`](routes.md) | contrato de cada rota servida, com fonte no MAL, TTL e as limitações verificadas | ativa |
 | `research/` | pesquisas externas, com fontes e data | iniciada |
 | `architecture/` | princípios e decisões de arquitetura | iniciada |
 | `planning/` | escopo, riscos, experimentos e marcos | iniciada |

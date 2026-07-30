@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import type { UserFriend } from '../domain/user-social';
-import { decodeHtml } from './html';
+import { decodeHtml, imageFrom } from './html';
 
 const friendSchema = z.object({
   username: z.string().min(1),
@@ -17,7 +17,7 @@ export function parseUserFriends(html: string): UserFriend[] {
     const username = block.match(/<div class="title"><a href="https:\/\/myanimelist\.net\/profile\/([^"]+)">/i)?.[1];
     if (!username || seen.has(username)) continue;
     seen.add(username);
-    const imageUrl = block.match(/data-src="([^"]+)"/i)?.[1] ?? null;
+    const imageUrl = imageFrom(block);
     const greyBits = [...block.matchAll(/<div class="di-ib mt4 fn-grey2">\s*([\s\S]*?)\s*<\/div>/gi)].map((match) => decodeHtml(match[1]));
     const friendsSince = greyBits.find((bit) => bit.startsWith('Friends since'))?.replace(/^Friends since\s*/i, '') ?? null;
     const lastOnline = greyBits.find((bit) => !bit.startsWith('Friends since')) ?? null;

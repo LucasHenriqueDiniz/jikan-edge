@@ -17,9 +17,11 @@ export class ReviewService {
     this.cache = new CacheRepository(db); this.locks = new RefreshLockRepository(db); this.catalog = new CatalogListRepository(db); this.source = source ?? new MalClient(config);
   }
 
-  private async forType(type: 'anime' | 'manga', rawPage: string | undefined, requestId: string): Promise<ServiceResponse<ReviewEntry[]>> {
-    const page = Math.max(1, Number.parseInt(rawPage ?? '1', 10) || 1);
-    const cacheKey = page > 1 ? `catalog:reviews:${type}:page:${page}` : `catalog:reviews:${type}`;
+  private async forType(type: 'anime' | 'manga', page: number, requestId: string): Promise<ServiceResponse<ReviewEntry[]>> {
+    // Always suffixed, including page 1. The old special case gave the first page a key of its own
+    // shape, which every other paginated route in this codebase does not do — see migration 0011,
+    // which renames the four rows it left behind.
+    const cacheKey = `catalog:reviews:${type}:page:${page}`;
     return withCache({ cache: this.cache, locks: this.locks }, cacheKey, this.config.catalogTtlSeconds, REVIEW_PARSER_VERSION, () => this.catalog.get<ReviewEntry[]>(cacheKey), async () => {
       const source = await this.source.getHtml(reviewsUrl(type, page), ['review-element']);
       if (source.kind !== 'success') throw sourceError(source);
@@ -30,6 +32,6 @@ export class ReviewService {
     }, requestId);
   }
 
-  anime(rawPage: string | undefined, requestId: string): Promise<ServiceResponse<ReviewEntry[]>> { return this.forType('anime', rawPage, requestId); }
-  manga(rawPage: string | undefined, requestId: string): Promise<ServiceResponse<ReviewEntry[]>> { return this.forType('manga', rawPage, requestId); }
+  anime(page: number, requestId: string): Promise<ServiceResponse<ReviewEntry[]>> { return this.forType('anime', page, requestId); }
+  manga(page: number, requestId: string): Promise<ServiceResponse<ReviewEntry[]>> { return this.forType('manga', page, requestId); }
 }

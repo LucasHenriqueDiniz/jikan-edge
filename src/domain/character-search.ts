@@ -5,4 +5,4 @@ export interface CharacterSearchResult {
   imageUrl: string | null;
 }
 
-export const CHARACTER_SEARCH_PARSER_VERSION = 'character-search-html-v1';
+export const CHARACTER_SEARCH_PARSER_VERSION = 'character-search-html-v2';

@@ -19,6 +19,13 @@ export interface CacheDeps { cache: CacheRepository; locks: RefreshLockRepositor
 export async function withCache<T>(deps: CacheDeps, key: string, ttl: number, parserVersion: string, read: () => Promise<T | null>, refresh: () => Promise<T>, owner: string): Promise<ServiceResponse<T>> {
   const [cache, stored] = await Promise.all([deps.cache.get(key), read()]);
   if (cache && stored && cache.parserVersion === parserVersion && deps.cache.isFresh(cache)) return { data: stored, cached: true, stale: false, refreshFailed: false, fetchedAt: cache.fetchedAt };
+  // The stale fallbacks below deliberately do NOT re-check `parserVersion`. After a change to the
+  // *shape* of a payload that would mean serving the previous shape back, flagged only as
+  // `stale: true` — but refusing instead would give up the one property this API is built on:
+  // answering while MyAnimeList is unreachable. Most version bumps change values (a better image
+  // URL, paragraph breaks), where the old row is valid and merely worse. The shape case is handled
+  // where it belongs, by a migration that deletes the affected rows outright (see 0010), so they
+  // are never reachable as a fallback in the first place.
   const locked = await deps.locks.acquire(key, owner);
   if (!locked) {
     if (stored && cache) return { data: stored, cached: true, stale: true, refreshFailed: false, fetchedAt: cache.fetchedAt };

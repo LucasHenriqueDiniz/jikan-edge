@@ -6,4 +6,4 @@ export interface ClubListEntry {
   members: number | null;
 }
 
-export const CLUB_LIST_PARSER_VERSION = 'club-list-html-v1';
+export const CLUB_LIST_PARSER_VERSION = 'club-list-html-v2';

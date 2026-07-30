@@ -10,7 +10,7 @@ describe('top characters parser', () => {
     expect(entries).toEqual([
       {
         malId: 417, name: 'Lamperouge, Lelouch', nameKanji: 'ルルーシュ・ランペルージ',
-        imageUrl: 'https://cdn.myanimelist.net/r/50x78/images/characters/8/406163.jpg?s=60d19d262b921f183f192791dd4e4183',
+        imageUrl: 'https://cdn.myanimelist.net/images/characters/8/406163.jpg',
         animeography: [
           { malId: 1575, title: 'Code Geass: Hangyaku no Lelouch' },
           { malId: 1953, title: 'Code Geass: Hangyaku no Lelouch Picture Drama' },
@@ -20,7 +20,7 @@ describe('top characters parser', () => {
       },
       {
         malId: 40, name: 'Monkey D., Luffy', nameKanji: 'モンキー・D・ルフィ',
-        imageUrl: 'https://cdn.myanimelist.net/r/50x78/images/characters/9/310307.jpg?s=1422edf1e44c7b6262386330461eecfd',
+        imageUrl: 'https://cdn.myanimelist.net/images/characters/9/310307.jpg',
         animeography: [{ malId: 21, title: 'One Piece' }],
         mangaography: [{ malId: 13, title: 'One Piece' }],
         favorites: 165210,

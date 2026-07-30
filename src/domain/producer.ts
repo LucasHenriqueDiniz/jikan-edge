@@ -1,5 +1,6 @@
 export interface ProducerDetail {
   malId: number;
+  url: string | null;
   name: string;
   imageUrl: string | null;
   established: string | null;
@@ -7,4 +8,4 @@ export interface ProducerDetail {
   fetchedAt: string;
 }
 
-export const PRODUCER_PARSER_VERSION = 'producer-html-v1';
+export const PRODUCER_PARSER_VERSION = 'producer-html-v2';

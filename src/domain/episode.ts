@@ -8,4 +8,4 @@ export interface Episode {
   forumReplies: number | null;
 }
 
-export const EPISODES_PARSER_VERSION = 'episodes-html-v1';
+export const EPISODES_PARSER_VERSION = 'episodes-html-v2';

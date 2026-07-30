@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import type { AnimeListEntry } from '../domain/anime';
-import { decodeHtml, numeric, ParserError } from './html';
+import { decodeHtml, imageFrom, numeric, ParserError } from './html';
 
 const entrySchema = z.object({
   malId: z.number().int().positive(), title: z.string().min(1), imageUrl: z.string().url().nullable(), score: z.number().nullable(),
@@ -12,7 +12,7 @@ const ROW_PATTERN = /<tr class="ranking-list">([\s\S]*?)<\/tr>/gi;
 function rowImage(row: string): { title: string | null; imageUrl: string | null } {
   const tag = row.match(/<img[^>]*alt="Anime: ([^"]+)"[^>]*>/i);
   if (!tag) return { title: null, imageUrl: null };
-  const imageUrl = tag[0].match(/\sdata-src="([^"]+)"/i)?.[1] ?? tag[0].match(/\ssrc="([^"]+)"/i)?.[1] ?? null;
+  const imageUrl = imageFrom(tag[0]);
   return { title: decodeHtml(tag[1]), imageUrl };
 }
 

@@ -6,7 +6,7 @@ export interface ClubRelations {
   manga: { malId: number; title: string }[];
   characters: { malId: number; name: string }[];
 }
-export const CLUB_RELATIONS_PARSER_VERSION = 'club-relations-html-v1';
+export const CLUB_RELATIONS_PARSER_VERSION = 'club-relations-html-v2';
 
 const titleSchema = z.object({ malId: z.number().int().positive(), title: z.string().min(1) });
 const charSchema = z.object({ malId: z.number().int().positive(), name: z.string().min(1) });

@@ -8,4 +8,4 @@ export interface CharacterFull extends CharacterDetail {
   voices: VoiceActor[];
 }
 
-export const CHARACTER_FULL_PARSER_VERSION = 'character-full-html-v1';
+export const CHARACTER_FULL_PARSER_VERSION = 'character-full-html-v2';

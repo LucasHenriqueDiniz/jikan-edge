@@ -5,4 +5,4 @@ export interface PersonSearchResult {
   imageUrl: string | null;
 }
 
-export const PERSON_SEARCH_PARSER_VERSION = 'person-search-html-v1';
+export const PERSON_SEARCH_PARSER_VERSION = 'person-search-html-v2';

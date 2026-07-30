@@ -120,8 +120,7 @@ export class PersonService {
     }, requestId);
   }
 
-  topPeople(rawPage: string | undefined, requestId: string): Promise<ServiceResponse<TopPersonEntry[]>> {
-    const page = Math.max(1, Number.parseInt(rawPage ?? '1', 10) || 1);
+  topPeople(page: number, requestId: string): Promise<ServiceResponse<TopPersonEntry[]>> {
     const cacheKey = `catalog:top:people:page:${page}`;
     return withCache({ cache: this.cache, locks: this.locks }, cacheKey, this.config.catalogTtlSeconds, TOP_PEOPLE_PARSER_VERSION, () => this.catalog.get<TopPersonEntry[]>(cacheKey), async () => {
       const source = await this.source.getHtml(topPeopleUrl(page), ['ranking-list']);

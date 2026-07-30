@@ -5,7 +5,7 @@ import { parseSeasonalEntries } from './season-now.parser';
 export const SCHEDULE_DAYS = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday', 'other', 'unknown'] as const;
 export type ScheduleDay = (typeof SCHEDULE_DAYS)[number];
 export type ScheduleByDay = Record<ScheduleDay, AnimeListEntry[]>;
-export const SCHEDULE_PARSER_VERSION = 'schedule-html-v2';
+export const SCHEDULE_PARSER_VERSION = 'schedule-html-v3';
 
 export function parseScheduleByDay(html: string): ScheduleByDay {
   const result = Object.fromEntries(SCHEDULE_DAYS.map((day) => [day, []])) as unknown as ScheduleByDay;

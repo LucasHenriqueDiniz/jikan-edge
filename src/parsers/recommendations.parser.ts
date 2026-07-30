@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import type { RecommendationEntry } from '../domain/recommendation';
-import { decodeHtml, ParserError } from './html';
+import { decodeHtml, imageFrom, ParserError } from './html';
 
 const entrySchema = z.object({
   malId: z.number().int().positive(),
@@ -18,7 +18,7 @@ function extractSide(chunk: string, side: 1 | 2): { malId: number; title: string
   if (!idMatch || idMatch.index === undefined) return null;
   const malId = Number(idMatch[1]);
   const window = chunk.slice(idMatch.index, idMatch.index + 1_500);
-  const imageUrl = window.match(/data-src="([^"]+)"/i)?.[1] ?? null;
+  const imageUrl = imageFrom(window);
   const title = decodeHtml(window.match(/<strong>([^<]+)<\/strong>/i)?.[1] ?? '');
   return { malId, title, imageUrl };
 }

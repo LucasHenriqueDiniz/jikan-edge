@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import type { EpisodeVideoEntry, PromoVideoEntry, TitleVideos } from '../domain/videos';
-import { decodeHtml } from './html';
+import { decodeHtml, imageFrom } from './html';
 
 const episodeSchema = z.object({ episode: z.number().int().positive(), title: z.string().nullable(), url: z.string().url(), imageUrl: z.string().url().nullable() });
 const promoSchema = z.object({ title: z.string().min(1), videoUrl: z.string().url().nullable(), imageUrl: z.string().url().nullable() });
@@ -17,7 +17,7 @@ function parsePromoBlocks(section: string): PromoVideoEntry[] {
   const promos: PromoVideoEntry[] = [];
   for (const chunk of section.split('js-fancybox-video').slice(1)) {
     const videoUrl = chunk.slice(0, 400).match(/href="([^"]+)"/i)?.[1] ?? null;
-    const imageUrl = chunk.match(/data-src="([^"]+)"/i)?.[1] ?? null;
+    const imageUrl = imageFrom(chunk);
     const title = decodeHtml(chunk.match(/data-title="([^"]*)"/i)?.[1] ?? '');
     const parsed = promoSchema.safeParse({ title, videoUrl, imageUrl });
     if (parsed.success) promos.push(parsed.data);
@@ -35,7 +35,7 @@ export function parseEpisodeVideos(html: string): EpisodeVideoEntry[] {
     const episode = Number(urlMatch[2]);
     if (seen.has(episode)) continue;
     seen.add(episode);
-    const imageUrl = chunk.match(/data-src="([^"]+)"/i)?.[1] ?? null;
+    const imageUrl = imageFrom(chunk);
     const title = decodeHtml(chunk.match(/data-title="([^"]*)"/i)?.[1] ?? '') || null;
     const parsed = episodeSchema.safeParse({ episode, title, url: urlMatch[1], imageUrl });
     if (parsed.success) episodes.push(parsed.data);

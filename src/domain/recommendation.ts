@@ -9,4 +9,4 @@ export interface RecommendationEntry {
   username: string | null;
 }
 
-export const RECOMMENDATION_PARSER_VERSION = 'recommendation-html-v1';
+export const RECOMMENDATION_PARSER_VERSION = 'recommendation-html-v2';

@@ -1,6 +1,6 @@
-import { z } from 'zod';
+﻿import { z } from 'zod';
 import type { EntryStatistics } from '../domain/statistics';
-import { capture, numeric, ParserError } from './html';
+import { labelValue, numeric, ParserError } from './html';
 
 const statusSchema = z.object({
   inProgress: z.number().nullable(), completed: z.number().nullable(), onHold: z.number().nullable(),
@@ -8,15 +8,6 @@ const statusSchema = z.object({
 });
 const scoreSchema = z.object({ score: z.number().int().min(1).max(10), votes: z.number().int().min(0), percentage: z.number() });
 const statisticsSchema = z.object({ status: statusSchema, scores: z.array(scoreSchema), fetchedAt: z.string().datetime() });
-
-function plainLabelValue(html: string, ...labels: string[]): string | null {
-  for (const label of labels) {
-    const escaped = label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    const value = capture(html, new RegExp(`${escaped}:<\\/span>([\\s\\S]*?)<\\/div>`, 'i'));
-    if (value !== null) return value;
-  }
-  return null;
-}
 
 function extractScores(html: string): { score: number; votes: number; percentage: number }[] {
   const scores: { score: number; votes: number; percentage: number }[] = [];
@@ -30,12 +21,12 @@ export function parseStatistics(html: string, fetchedAt = new Date().toISOString
   const head = html.slice(0, 120_000);
   const statistics: EntryStatistics = {
     status: {
-      inProgress: numeric(plainLabelValue(head, 'Watching', 'Reading')),
-      completed: numeric(plainLabelValue(head, 'Completed')),
-      onHold: numeric(plainLabelValue(head, 'On-Hold')),
-      dropped: numeric(plainLabelValue(head, 'Dropped')),
-      planned: numeric(plainLabelValue(head, 'Plan to Watch', 'Plan to Read')),
-      total: numeric(plainLabelValue(head, 'Total')),
+      inProgress: numeric(labelValue(head, 'Watching', 'Reading')),
+      completed: numeric(labelValue(head, 'Completed')),
+      onHold: numeric(labelValue(head, 'On-Hold')),
+      dropped: numeric(labelValue(head, 'Dropped')),
+      planned: numeric(labelValue(head, 'Plan to Watch', 'Plan to Read')),
+      total: numeric(labelValue(head, 'Total')),
     },
     scores: extractScores(head),
     fetchedAt,

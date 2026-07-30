@@ -9,4 +9,4 @@ export interface ReviewEntry {
   reviewText: string | null;
 }
 
-export const REVIEW_PARSER_VERSION = 'review-html-v1';
+export const REVIEW_PARSER_VERSION = 'review-html-v2';

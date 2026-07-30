@@ -7,4 +7,4 @@ export interface TitleReview {
   reviewText: string | null;
 }
 
-export const TITLE_REVIEWS_PARSER_VERSION = 'title-reviews-html-v1';
+export const TITLE_REVIEWS_PARSER_VERSION = 'title-reviews-html-v2';

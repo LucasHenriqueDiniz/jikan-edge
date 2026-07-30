@@ -12,4 +12,4 @@ export interface GenreTaxonomyEntry {
 
 // Separate from ANIME_PARSER_VERSION/MANGA_PARSER_VERSION so switching the taxonomy source only
 // invalidates the two genre rows instead of forcing a refetch of the whole catalog.
-export const GENRE_PARSER_VERSION = 'genre-taxonomy-v1';
+export const GENRE_PARSER_VERSION = 'genre-taxonomy-v2';

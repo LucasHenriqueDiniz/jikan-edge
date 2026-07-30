@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import type { CharacterMediaEntry } from '../domain/character-media';
 import type { VoiceActor } from '../domain/voice-actor';
-import { decodeHtml } from './html';
+import { decodeHtml, imageFrom } from './html';
 
 const mediaSchema = z.object({ malId: z.number().int().positive(), title: z.string().min(1), imageUrl: z.string().url().nullable(), role: z.string().nullable() });
 const voiceActorSchema = z.object({ malId: z.number().int().positive(), name: z.string().min(1), imageUrl: z.string().url().nullable(), language: z.string().nullable() });
@@ -14,7 +14,7 @@ function extractMedia(block: string, type: 'anime' | 'manga'): CharacterMediaEnt
     const idMatch = row.match(linkPattern);
     if (!idMatch) continue;
     const title = decodeHtml(row.match(titlePattern)?.[1] ?? '');
-    const imageUrl = row.match(/data-src="([^"]+)"/i)?.[1] ?? null;
+    const imageUrl = imageFrom(row);
     const role = decodeHtml(row.match(/<small>([^<]+)<\/small>/i)?.[1] ?? '') || null;
     const parsed = mediaSchema.safeParse({ malId: Number(idMatch[1]), title, imageUrl, role });
     if (parsed.success) entries.push(parsed.data);
@@ -48,7 +48,7 @@ export function parseCharacterVoiceActors(html: string): VoiceActor[] {
     const idMatch = row.match(/people\/(\d+)\/([^"]*)"/i);
     if (!idMatch) continue;
     const name = decodeHtml(row.match(/people\/\d+\/[^"]*">([^<]+)<\/a>/i)?.[1] ?? '');
-    const imageUrl = row.match(/data-src="([^"]+)"/i)?.[1] ?? null;
+    const imageUrl = imageFrom(row);
     const language = decodeHtml(row.match(/<small>([^<]+)<\/small>/i)?.[1] ?? '') || null;
     const parsed = voiceActorSchema.safeParse({ malId: Number(idMatch[1]), name, imageUrl, language });
     if (parsed.success) voiceActors.push(parsed.data);

@@ -4,6 +4,7 @@
   "version": "0.1.0",
   "type": "module",
   "scripts": {
+    "setup": "node scripts/setup.mjs",
     "dev": "wrangler dev --remote",
     "dev:local": "wrangler dev --local",
     "deploy": "wrangler deploy",

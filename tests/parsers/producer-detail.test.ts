@@ -8,6 +8,7 @@ describe('producer detail parser', () => {
   it('normalizes a public producer detail page', () => {
     const detail = parseProducerDetail(html, 123, '2026-07-26T00:00:00.000Z');
     expect(detail.name).toBe('Victor Entertainment');
+    expect(detail.url).toBe('https://myanimelist.net/anime/producer/1/Studio_Pierrot');
     expect(detail.imageUrl).toContain('company_logos');
     expect(detail.established).toBe('Apr 25, 1972');
     expect(detail.favorites).toBe(21);

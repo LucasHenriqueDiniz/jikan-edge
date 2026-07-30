@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import type { MangaDetail } from '../domain/manga';
-import { capture, decodeHtml, numeric, ParserError } from './html';
+import { anchorRefs, backgroundSection, canonicalUrl, capture, COVER_IMAGE, dateRangeSchema, imageSetSchema, imageVariants, labelBlock, labelValue, malRefSchema, numeric, ParserError, parseDateRange, rankedValue, richCapture, taggedImage, titleSynonyms } from './html';
 import { extractExternalLinks, extractRelations } from './relations-links';
 
 const relationSchema = z.object({ relation: z.string().min(1), malId: z.number().int().positive(), type: z.enum(['anime', 'manga']), title: z.string().min(1) });
@@ -8,22 +8,28 @@ const externalLinkSchema = z.object({ name: z.string().min(1), url: z.string().u
 
 const mangaDetailSchema = z.object({
   malId: z.number().int().positive(),
+  url: z.string().url().nullable(),
   title: z.string().min(1),
   titleEnglish: z.string().nullable(),
   titleJapanese: z.string().nullable(),
+  titleSynonyms: z.array(z.string()),
   imageUrl: z.string().url().nullable(),
+  images: imageSetSchema,
   synopsis: z.string().nullable(),
+  background: z.string().nullable(),
   type: z.string().nullable(),
   volumes: z.number().nullable(),
   chapters: z.number().nullable(),
   status: z.string().nullable(),
-  published: z.string().nullable(),
-  authors: z.array(z.string()),
-  serialization: z.string().nullable(),
-  genres: z.array(z.string()),
-  themes: z.array(z.string()),
-  demographics: z.array(z.string()),
+  publishing: z.boolean(),
+  published: dateRangeSchema,
+  authors: z.array(malRefSchema),
+  serializations: z.array(malRefSchema),
+  genres: z.array(malRefSchema),
+  themes: z.array(malRefSchema),
+  demographics: z.array(malRefSchema),
   score: z.number().nullable(),
+  scoredBy: z.number().nullable(),
   rank: z.number().nullable(),
   popularity: z.number().nullable(),
   members: z.number().nullable(),
@@ -33,64 +39,39 @@ const mangaDetailSchema = z.object({
   fetchedAt: z.string().datetime(),
 });
 
-function plainLabelValue(html: string, ...labels: string[]): string | null {
-  for (const label of labels) {
-    const escaped = label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    const value = capture(html, new RegExp(`${escaped}:<\\/span>([\\s\\S]*?)<\\/div>`, 'i'));
-    if (value !== null) return value;
-  }
-  return null;
-}
-
-function rawLabelBlock(html: string, ...labels: string[]): string {
-  for (const label of labels) {
-    const escaped = label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    const match = html.match(new RegExp(`${escaped}:<\\/span>([\\s\\S]*?)<\\/div>`, 'i'));
-    if (match) return match[1];
-  }
-  return '';
-}
-
-function anchorTexts(block: string): string[] {
-  return [...block.matchAll(/<a[^>]*>([^<]+)<\/a>/gi)].map((match) => decodeHtml(match[1]));
-}
-
-function rankedValue(html: string, label: string): number | null {
-  const escaped = label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  return numeric(capture(html, new RegExp(`${escaped}:<\\/span>\\s*#([\\d,]+)`, 'i')));
-}
-
-function extractImage(html: string): string | null {
-  const tag = html.match(/<img[^>]*itemprop="image"[^>]*>/i)?.[0];
-  if (!tag) return null;
-  return tag.match(/\sdata-src="([^"]+)"/i)?.[1] ?? tag.match(/\ssrc="([^"]+)"/i)?.[1] ?? null;
-}
-
 export function parseMangaDetail(html: string, malId: number, fetchedAt = new Date().toISOString()): MangaDetail {
   const head = html.slice(0, 90_000);
   const title = capture(head, /<span class="h1-title">\s*<span itemprop="name">([^<]+)<\/span>/i);
+  const imageUrl = taggedImage(head, COVER_IMAGE);
+  const status = labelValue(head, 'Status');
   const detail: MangaDetail = {
     malId,
+    url: canonicalUrl(head),
     title: title ?? '',
-    titleEnglish: plainLabelValue(head, 'English'),
-    titleJapanese: plainLabelValue(head, 'Japanese'),
-    imageUrl: extractImage(head),
-    synopsis: capture(head, /<span itemprop="description">([\s\S]*?)<\/span>/i),
-    type: plainLabelValue(head, 'Type'),
-    volumes: numeric(plainLabelValue(head, 'Volumes')),
-    chapters: numeric(plainLabelValue(head, 'Chapters')),
-    status: plainLabelValue(head, 'Status'),
-    published: plainLabelValue(head, 'Published'),
-    authors: anchorTexts(rawLabelBlock(head, 'Authors', 'Author')),
-    serialization: plainLabelValue(head, 'Serialization'),
-    genres: anchorTexts(rawLabelBlock(head, 'Genres', 'Genre')),
-    themes: anchorTexts(rawLabelBlock(head, 'Themes', 'Theme')),
-    demographics: anchorTexts(rawLabelBlock(head, 'Demographics', 'Demographic')),
+    titleEnglish: labelValue(head, 'English'),
+    titleJapanese: labelValue(head, 'Japanese'),
+    titleSynonyms: titleSynonyms(head),
+    imageUrl,
+    images: imageVariants(imageUrl, 'manga'),
+    synopsis: richCapture(head, /<span itemprop="description">([\s\S]*?)<\/span>/i),
+    background: backgroundSection(html),
+    type: labelValue(head, 'Type'),
+    volumes: numeric(labelValue(head, 'Volumes')),
+    chapters: numeric(labelValue(head, 'Chapters')),
+    status,
+    publishing: status === 'Publishing',
+    published: parseDateRange(labelValue(head, 'Published')),
+    authors: anchorRefs(labelBlock(head, 'Authors', 'Author')),
+    serializations: anchorRefs(labelBlock(head, 'Serialization')),
+    genres: anchorRefs(labelBlock(head, 'Genres', 'Genre')),
+    themes: anchorRefs(labelBlock(head, 'Themes', 'Theme')),
+    demographics: anchorRefs(labelBlock(head, 'Demographics', 'Demographic')),
     score: numeric(capture(head, /<span itemprop="ratingValue"[^>]*>([\d.]+)<\/span>/i)),
+    scoredBy: numeric(capture(head, /<span itemprop="ratingCount"[^>]*>([\d,]+)<\/span>/i)),
     rank: rankedValue(head, 'Ranked'),
     popularity: rankedValue(head, 'Popularity'),
-    members: numeric(plainLabelValue(head, 'Members')),
-    favorites: numeric(plainLabelValue(head, 'Favorites')),
+    members: numeric(labelValue(head, 'Members')),
+    favorites: numeric(labelValue(head, 'Favorites')),
     relations: extractRelations(html),
     externalLinks: extractExternalLinks(html),
     fetchedAt,

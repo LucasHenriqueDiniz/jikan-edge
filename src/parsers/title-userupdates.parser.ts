@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import type { TitleUserUpdate } from '../domain/title-userupdates';
-import { decodeHtml, numeric } from './html';
+import { decodeHtml, numeric, originalImage } from './html';
 
 const schema = z.object({
   username: z.string().min(1),
@@ -26,7 +26,7 @@ export function parseTitleUserUpdates(html: string): TitleUserUpdate[] {
     const anchor = previous.match(/<a href="https:\/\/myanimelist\.net\/profile\/([^"]+)" style="background-image:url\(([^)]*)\)"\s*$/i);
     if (!anchor) continue;
     const username = decodeHtml(anchor[1]);
-    const imageUrl = anchor[2] && !anchor[2].includes('kaomoji') ? anchor[2] : null;
+    const imageUrl = anchor[2] && !anchor[2].includes('kaomoji') ? originalImage(anchor[2]) : null;
     const rowEnd = chunks[index].indexOf('</tr>');
     const row = chunks[index].slice(0, rowEnd === -1 ? 3_000 : rowEnd);
     const cells = [...row.matchAll(/<td class="borderClass(?:\s+ac)?"(?:\s+align="center")?>\s*([\s\S]*?)\s*<\/td>/gi)].map((cell) => decodeHtml(cell[1]));

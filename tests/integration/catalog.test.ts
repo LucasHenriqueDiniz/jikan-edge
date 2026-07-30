@@ -19,11 +19,11 @@ const bindings = env as unknown as { DB: D1Database; TEST_MIGRATIONS: import('cl
 const fetchedAt = '2026-07-19T00:00:00.000Z';
 
 function detail(malId: number): AnimeDetail {
-  return { malId, title: `Anime ${malId}`, titleEnglish: null, titleJapanese: null, imageUrl: null, synopsis: null, type: 'TV', episodes: 26, status: 'Finished Airing', aired: null, studios: [], genres: [], themes: [], duration: null, rating: null, score: 8.5, rank: 1, popularity: 1, members: 100, favorites: 10, source: null, relations: [], externalLinks: [], streaming: [], fetchedAt };
+  return { malId, url: null, title: `Anime ${malId}`, titleEnglish: null, titleJapanese: null, titleSynonyms: [], imageUrl: null, images: { small: null, medium: null, large: null }, trailer: { youtubeId: null, url: null, embedUrl: null }, synopsis: null, background: null, type: 'TV', episodes: 26, status: 'Finished Airing', airing: false, aired: { from: null, to: null, string: null }, season: null, year: null, broadcast: { day: null, time: null, timezone: null, string: null }, studios: [], producers: [], licensors: [], genres: [], themes: [], demographics: [], duration: null, rating: null, score: 8.5, scoredBy: null, rank: 1, popularity: 1, members: 100, favorites: 10, source: null, relations: [], externalLinks: [], streaming: [], fetchedAt };
 }
 
 function mangaDetail(malId: number): MangaDetail {
-  return { malId, title: `Manga ${malId}`, titleEnglish: null, titleJapanese: null, imageUrl: null, synopsis: null, type: 'Manga', volumes: 10, chapters: 80, status: 'Publishing', published: null, authors: [], serialization: null, genres: [], themes: [], demographics: [], score: 8.5, rank: 1, popularity: 1, members: 100, favorites: 10, relations: [], externalLinks: [], fetchedAt };
+  return { malId, url: null, title: `Manga ${malId}`, titleEnglish: null, titleJapanese: null, titleSynonyms: [], imageUrl: null, images: { small: null, medium: null, large: null }, synopsis: null, background: null, type: 'Manga', volumes: 10, chapters: 80, status: 'Publishing', publishing: true, published: { from: null, to: null, string: null }, authors: [], serializations: [], genres: [], themes: [], demographics: [], score: 8.5, scoredBy: null, rank: 1, popularity: 1, members: 100, favorites: 10, relations: [], externalLinks: [], fetchedAt };
 }
 
 function characterDetail(malId: number): CharacterDetail {

@@ -22,4 +22,4 @@ export interface VoiceActingRole {
   characterImageUrl: string | null;
 }
 
-export const PERSON_MEDIA_PARSER_VERSION = 'person-media-html-v1';
+export const PERSON_MEDIA_PARSER_VERSION = 'person-media-html-v2';

@@ -11,4 +11,4 @@ export interface UserClub {
   url: string;
 }
 
-export const USER_SOCIAL_PARSER_VERSION = 'user-social-html-v1';
+export const USER_SOCIAL_PARSER_VERSION = 'user-social-html-v2';

@@ -8,4 +8,4 @@ export interface EpisodeDetail {
   synopsis: string | null;
 }
 
-export const EPISODE_DETAIL_PARSER_VERSION = 'episode-detail-html-v1';
+export const EPISODE_DETAIL_PARSER_VERSION = 'episode-detail-html-v2';

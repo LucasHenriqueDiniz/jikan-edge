@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import type { NewsItem } from '../domain/news';
-import { decodeHtml, ParserError } from './html';
+import { decodeHtml, imageFrom, ParserError } from './html';
 
 const newsSchema = z.object({
   malId: z.number().int().positive(), title: z.string().min(1), url: z.string().url(),
@@ -13,7 +13,7 @@ export function parseNews(html: string): NewsItem[] {
     const idMatch = block.match(/href="\/news\/(\d+)"/i);
     if (!idMatch) continue;
     const malId = Number(idMatch[1]);
-    const imageUrl = block.match(/data-src="([^"]+)"/i)?.[1] ?? null;
+    const imageUrl = imageFrom(block);
     const title = decodeHtml(block.match(/<strong>([^<]+)<\/strong>/i)?.[1] ?? '');
     const excerpt = decodeHtml(block.match(/<p>([\s\S]*?)<a href="\/news\/\d+">read more<\/a><\/p>/i)?.[1] ?? '') || null;
     const dateBlock = block.match(/class="lightLink spaceit">([\s\S]*?)<\/p>/i)?.[1] ?? '';

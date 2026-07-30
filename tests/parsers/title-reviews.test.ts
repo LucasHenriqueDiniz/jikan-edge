@@ -10,7 +10,7 @@ describe('title reviews parser', () => {
     expect(reviews).toEqual([
       {
         username: 'TheLlama',
-        imageUrl: 'https://cdn.myanimelist.net/s/common/userimages/35fb5f95-6a86-498b-93a5-fcff7f402bc2_225w?s=0a831e2782dd9f3d15a987a6c3b6a9db',
+        imageUrl: 'https://cdn.myanimelist.net/s/common/userimages/35fb5f95-6a86-498b-93a5-fcff7f402bc2_225w',
         date: 'Aug 24, 2008',
         tag: 'Recommended',
         score: 10,

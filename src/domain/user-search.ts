@@ -5,4 +5,4 @@ export interface UserSearchResult {
   joinedAt: string | null;
 }
 
-export const USER_SEARCH_PARSER_VERSION = 'user-search-html-v1';
+export const USER_SEARCH_PARSER_VERSION = 'user-search-html-v2';

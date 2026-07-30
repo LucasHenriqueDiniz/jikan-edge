@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import type { TopCharacterEntry, TopCharacterWorkRef } from '../domain/top-character';
-import { decodeHtml, numeric, ParserError } from './html';
+import { decodeHtml, imageFrom, numeric, ParserError } from './html';
 
 const workRefSchema = z.object({ malId: z.number().int().positive(), title: z.string().min(1) });
 const entrySchema = z.object({
@@ -23,7 +23,7 @@ export function parseTopCharacters(html: string): TopCharacterEntry[] {
     if (!malId) continue;
     const name = decodeHtml(row.match(/class="fs14 fw-b">([^<]+)<\/a>/i)?.[1] ?? '');
     const nameKanji = decodeHtml(row.match(/class="fs12 fn-grey6 text-ellipsis">\(([^)]+)\)<\/div>/i)?.[1] ?? '') || null;
-    const imageUrl = row.match(/data-src="([^"]+)"/i)?.[1] ?? null;
+    const imageUrl = imageFrom(row);
     const animeographyCell = row.match(/class="animeography">([\s\S]*?)<\/td>/i)?.[1] ?? '';
     const mangaographyCell = row.match(/class="mangaography">([\s\S]*?)<\/td>/i)?.[1] ?? '';
     const favorites = numeric(row.match(/class="favorites">\s*([\d,]+)\s*<\/td>/i)?.[1] ?? null);

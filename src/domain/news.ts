@@ -8,4 +8,4 @@ export interface NewsItem {
   author: string | null;
 }
 
-export const NEWS_PARSER_VERSION = 'news-html-v1';
+export const NEWS_PARSER_VERSION = 'news-html-v2';

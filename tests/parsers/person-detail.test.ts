@@ -1,4 +1,4 @@
-import { readFileSync } from 'node:fs';
+﻿import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { parsePersonDetail } from '../../src/parsers/person-detail.parser';
 
@@ -13,7 +13,12 @@ describe('person detail parser', () => {
     expect(detail.alternateNames).toBe('Koichi Yamadera');
     expect(detail.birthday).toBe('Jun 17, 1961');
     expect(detail.website).toBe('https://across-ent.com');
+    expect(detail.url).toBe('https://myanimelist.net/people/11/Kouichi_Yamadera');
     expect(detail.imageUrl).toContain('voiceactors');
+    // A person is the mirror image of a character: `l` exists, `t` is a 404.
+    expect(detail.images.small).toBeNull();
+    expect(detail.images.medium).toBe(detail.imageUrl);
+    expect(detail.images.large).toBe(detail.imageUrl?.replace(/\.jpg$/, 'l.jpg'));
     expect(detail.favorites).toBe(1_615);
     expect(detail.about).toContain('He voiced Spike Spiegel');
   });

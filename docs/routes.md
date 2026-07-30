@@ -4,7 +4,7 @@ Base publicada: `https://jikan-edge.lucas-hdo.workers.dev`.
 
 | Método | Rota | Fonte quando há refresh | Cache D1 | TTL |
 | --- | --- | --- | --- | --- |
-| GET | `/health` | nenhuma | nenhuma | — |
+| GET | `/health` | nenhuma | `cache_entries` (só um probe, ver abaixo) | — |
 | GET | `/v1/users/:username` | `https://myanimelist.net/profile/:username` | `users`, `user_statistics`, `cache_entries` | 6 h |
 | GET | `/v1/users/:username/statistics` | a mesma rota de perfil | `users`, `user_statistics`, `cache_entries` | 6 h |
 | GET | `/v1/users/:username/favorites` | a mesma rota de perfil | `user_favorites`, `cache_entries` | 6 h |
@@ -103,11 +103,33 @@ Base publicada: `https://jikan-edge.lucas-hdo.workers.dev`.
 | GET | `/v1/magazines` | `https://myanimelist.net/manga/magazine` | `catalog_lists`, `cache_entries` | 6 h |
 | GET | `/v1/schedules` | `https://myanimelist.net/anime/season/schedule` | `catalog_lists`, `cache_entries` | 6 h |
 
-`page` começa em 1; `limit` é limitado a 1–300 (padrão 100, só se aplica às listas de usuário — `top/anime`/`top/manga` paginam por página nativa do MAL, sem `limit`). Usernames aceitam somente ASCII alfanumérico, `_` e `-`, com até 32 caracteres. IDs numéricos (anime/manga/character/producer/club) devem ser inteiros positivos (400 se não forem). `:season` aceita `winter`/`spring`/`summer`/`fall`. Todas as respostas incluem `meta`; erros incluem `error.code` e `requestId`.
+`page` começa em 1 e vai até 1000; `limit` é 1–300 (padrão 100) e **só existe nas listas de usuário**, que paginam sobre o D1 — nas demais rotas ele é 400 `UNSUPPORTED_PARAMETER`, porque a resposta é uma página do MAL e recortá-la daria um resultado diferente do que o mesmo `limit` significa no Jikan. Usernames aceitam somente ASCII alfanumérico, `_` e `-`, com até 32 caracteres. IDs numéricos (anime/manga/character/producer/club) devem ser inteiros positivos (400 se não forem). `:season` aceita `winter`/`spring`/`summer`/`fall`. Todas as respostas incluem `meta`; erros incluem `error.code` e `requestId`.
+
+**Validação de query params (2026-07-30) — mudança de contrato.** Antes, um parâmetro que a rota não implementava era aceito e ignorado: `?limit=5`, `?sfw`, `?sort=asc` e `?min_score=8` respondiam 200 sem efeito nenhum, que é a divergência que o consumidor não tem como detectar. Agora cada rota declara o que aceita em `src/http/query-contract.ts` e um middleware por padrão de rota recusa o resto, com dois códigos distintos: `UNKNOWN_PARAMETER` (nome que não existe em lugar nenhum) e `UNSUPPORTED_PARAMETER` (existe no Jikan v4, não é honrado aqui — a mensagem diz por quê e aponta o substituto). A distinção é o ponto: quem está portando precisa saber se errou o nome ou se a feature não existe.
+
+`page` e `limit` deixaram de ser corrigidos em silêncio: `?page=0`, `?page=abc`, `?page=-5`, `?page=1.5` e `?page=1e9` viram 400 `INVALID_PAGE` (o `parseInt` antigo lia todos como página 1, inclusive `1e9`), e `?limit=99999` vira 400 em vez de virar 300. O teto de 1000 páginas existe porque cada número distinto **dispara uma requisição real ao MAL e grava uma linha de cache** — medido em 1,5 s a 8,6 s para `?page=200`.
+
+A cobertura da tabela não depende de disciplina: `tests/routes/query-contract.test.ts` enumera `app.routes` e falha se alguma rota GET não tiver entrada. Um catch-all em `/v1/*` não serviria — o Hono compõe middleware em ordem de registro em vez de deixar o específico sobrescrever o genérico, então o genérico rejeitaria `?q=` antes de a rota que o aceita rodar.
+
+**`meta.pagination` em todas as rotas paginadas (2026-07-30)**: `{ page, limit, count, total, hasNextPage }`. Antes só as listas de usuário tinham, e as outras 17 devolviam array pelado — o consumidor tinha que pedir a página seguinte e ver se voltava vazia. `total` é número só nas listas de usuário, que são contadas no D1; nas demais é `null`, porque a página do MAL não imprime total em lugar nenhum e derivá-lo de `lastVisiblePage × perPage` seria número inventado. `hasNextPage` vem de "a página voltou com o tamanho nativo daquela família" — barato, e nunca custa a requisição extra que conferir custaria.
 
 **`genres/anime` e `genres/manga` voltaram a servir em 2026-07-30, trocando a fonte.** O bloqueio anterior (500) era da *barra lateral* da página de navegação por gênero (`/anime/genre/1/Action`), que o MAL entrega truncada em ~12 itens para requisições vindas da rede da Cloudflare. A taxonomia completa está no bloco "Content Filter" da página de busca (`anime.php?cat=genre`), que **não** sofre a redução — verificado rodando o Worker na borda real da Cloudflare (`wrangler dev --remote`, config `jikan-edge-remote` em `.claude/launch.json`): 78 entradas para anime e 79 para manga, `meta.stale: false`. O sintoma original continua registrado em [docs/results/2026-07-26-genre-taxonomy-cloudflare-network-block.md](results/2026-07-26-genre-taxonomy-cloudflare-network-block.md).
 
 A fonte nova é mais rica que a antiga, então o payload mudou de forma: cada entrada agora é `{ malId, name, url, count, type }`, onde `count` é o número de títulos daquele gênero e `type` é a categoria do MAL — `genres`, `explicit_genres`, `themes` ou `demographics` (as mesmas quatro do Jikan). `?filter=` aceita exatamente esses quatro valores e filtra a lista já cacheada (400 `INVALID_FILTER` para qualquer outro). A ordem é a do documento: categoria por categoria, alfabética dentro de cada uma. O parser recusa o documento se faltar uma categoria inteira ou se vierem menos de 40 entradas — a mesma regra de "não cachear taxonomia parcial como completa", agora ancorada em quatro sinais em vez de um.
+
+**Lote de paridade de conteúdo (2026-07-30) — mudanças de contrato.** Comparação pareada com o `api.jikan.moe/v4`: nenhuma rota quebrada (as 98 responderam 200), mas o dado saía empobrecido ou com rótulo errado. O que mudou:
+
+- `genres`/`themes`/`demographics`/`studios`/`authors`/`producers`/`licensors` deixaram de ser `string[]` e passaram a `[{ malId, name, url }]`. O id sempre esteve no href de que o parser tirava só o texto (`<a href="/anime/genre/1/Action">`). Isso fechava um ciclo quebrado dentro da própria API: `?genres=1` aceita id, mas nenhuma resposta devolvia um.
+- `serialization` (string) virou `serializations` (array) — um mangá roda em mais de uma revista.
+- `aired`/`published` viraram `{ from, to, string }`, com data só quando a página dá dia, mês e ano. Berserk é `"Aug 25, 1989 to ?"`, então `to` é `null` em vez de inventado. **Sem** o `prop.from.{day,month,year}` do Jikan, que é redundante com `from`.
+- **`/v1/manga?q=` devolve `volumes`, não `episodes`** — e isso não era campo morto: a coluna do meio da tabela de resultados de mangá é a contagem de **volumes**. Fullmetal Alchemist devolvia `episodes: 27`, e 27 são os volumes dele (os capítulos são 116). Número certo, rótulo errado. `SearchEntry` virou `AnimeSearchEntry`/`MangaSearchEntry` com versões de cache próprias.
+- Entraram `url` (canônica, com slug, via `og:url` — presente nas sete páginas de detalhe; clube e perfil só têm `og:url`, sem `<link rel=canonical>`), `scoredBy`, `season`, `year`, `airing`/`publishing`, `broadcast`, `background`, `titleSynonyms` e `trailer`.
+- `imageUrl` passou a ser a original em todas as rotas. 31 rotas serviam a miniatura que o MAL embute nas próprias tabelas — 2.134 bytes onde o mesmo caminho tem 56.653. A normalização vive num ponto só (`imageFrom`, em `html.ts`); `pictures.parser.ts` fica de fora de propósito, porque lá o `thumbnailUrl` é campo próprio.
+- Entrou `images: { small, medium, large }` **só nos quatro detalhes** de anime, manga, personagem e pessoa. As variantes do CDN **não são uniformes** — medido com duas amostras por tipo: anime e manga têm `t` e `l`; personagem só `t` (o `l` é 404); pessoa só `l` (o `t` é 404); logo de produtora e imagem de clube não têm nenhuma. Onde não existe, o campo é `null`, nunca uma URL derivada que quebra.
+- Sinopse, `about` e `moreinfo` preservam parágrafo. O `decodeHtml` trocava toda tag por espaço, então os `<br>` do MAL viravam espaço e a sinopse saía como parede de texto (Cowboy Bebop: 1.027 caracteres, zero quebras). Campos longos passaram a usar `richText`. No mesmo lote, a tabela de entidades nomeadas ganhou o que faltava (`&mdash;` vazava cru em `/v1/anime/5114` e `/v1/manga/2`) e a **ordem** foi corrigida: tags são removidas **antes** de decodificar, senão um `&lt;b&gt;` escrito pelo usuário virava tag de verdade e era engolido.
+- Filtros novos na busca, todos confirmados contra o MAL real: `sort=asc|desc` (`w=2`/`w=1`, exige `order_by`), `letter`, `genres_exclude` (`gx=1`) e `min_score` (alias de `score`). **`genres_exclude` não convive com `genres`**: o `gx=1` inverte o sentido de todo `genre[]` da requisição em vez de somar uma exclusão — `genre[]=12` dá 17 resultados e `genre[]=12&gx=1` dá 20 disjuntos — então passar os dois é contradição e é recusado.
+
+**Divergências deliberadas, não pendências**: `duration` mantém a pontuação do MAL (`"24 min. per ep."`, contra `"24 min per ep"` do Jikan) — é o que a página diz, e esta API reporta a fonte em vez de arrumá-la. E `?filter=` em `top/anime`/`top/manga` responde 400: funciona no MAL (`topanime.php?type=airing`, mesma marcação `ranking-list`, medido), mas listá-lo como aceito antes de ligar faria dele exatamente o parâmetro-que-não-faz-nada que este lote eliminou.
 
 Simplificações conhecidas: `top/anime`, `top/manga`, `top/people`, `seasons/*` retornam campos enxutos (`AnimeListEntry`/`MangaListEntry`/`TopPersonEntry`), não o detalhe completo — use `/v1/anime/:id`/`/v1/manga/:id`/`/v1/people/:id` para o detalhe. `character`/`producer`/`club` retornam metadados básicos (nome, imagem, favoritos, etc.), sem listas relacionadas de anime/manga/membros/papéis de dublagem.
 
@@ -124,6 +146,8 @@ O projeto está no plano Workers Paid (upgrade feito em 2026-07-26) — o teto d
 `anime`/`manga` (busca) aceitam `q` (1-64 caracteres) e, desde 2026-07-27, **filtros server-side verificados um a um contra o comportamento real do MAL**: `type` (anime: tv/ova/movie/special/ona/music; manga: manga/novel/lightnovel/oneshot/doujin/manhwa/manhua), `status` (airing|publishing/complete/upcoming), `rating` (só anime: g/pg/pg13/r17/r/rx), `score` (mínimo, inteiro 1-10), `genres` (ids separados por vírgula, vira `genre[]=` repetido) e `order_by` (score/episodes|volumes/type — códigos de coluna dos links de ordenação reais da tabela de resultados; sempre descendente). Busca **só por filtros, sem `q`, é válida** (ex. `?genres=1&score=9`); `q` só é obrigatório quando não há nenhum filtro (senão seria um dump do catálogo). Valor de filtro inválido → 400 `INVALID_FILTER` com a lista de valores aceitos. `page` mapeia para o parâmetro nativo `show` do MAL (`show = (page-1)*50`). **Nota de comportamento do MAL, não bug**: para uma query textual sem nenhum resultado real, o MAL não retorna lista vazia — ele cai para um fallback com títulos populares não relacionados à busca. O parser reflete fielmente o que o MAL retorna.
 
 Paginação adicionada em 2026-07-27: `reviews/anime|manga?page=` (parâmetro nativo `p=` do MAL, 50/página) e `recommendations/anime|manga?page=` (parâmetro nativo `show=`, 100/página). `magazines?q=` filtra localmente sobre o diretório completo já cacheado (mesmo padrão de `producers?q=`).
+
+**Correção de 2026-07-30 nessa prosa**: os 50/página valem para a lista **global** (`reviews.php`). A página de reviews **por título** (`/{tipo}/:id/x/reviews`) serve **20** — medido contra `anime/1/x/reviews`, que traz 20 blocos `review-element`. A distinção passou a importar quando `meta.pagination` entrou: calcular `hasNextPage` com 50 tornaria o campo errado em toda página de review de título. Os tamanhos de página de cada família agora são constantes exportadas em `src/source/mal-urls.ts`, ao lado dos construtores de URL que já os continham na aritmética — e as duas rotas que usam `?p=` (`clubs.php` e reviews por título) não continham número nenhum, por isso foram medidas: 50 e 20.
 
 **`/v1/schedules` mudou de contrato em 2026-07-27**: sem `filter`, retorna um objeto agrupado por dia (`{monday: [...], ..., sunday: [...], other: [...], unknown: [...]}` — os mesmos nove grupos da página real do MAL); com `?filter=monday` (ou qualquer dia/other/unknown), retorna só a lista daquele dia. O formato achatado anterior foi descontinuado — era um subconjunto sem a informação de dia, que é o ponto da rota.
 
@@ -199,6 +223,26 @@ Campos que o layout clássico nunca carregou agora vêm preenchidos quando a fon
 **Lote de paridade final (2026-07-26)**: `GET /v1/producers?q=` (diretório real de ~895 produtoras em `/anime/producer`, mesmo formato do diretório de revistas, com filtro `q` aplicado localmente sobre o cache), `GET /v1/seasons` (arquivo de temporadas de `/anime/season/archive`, agrupado por ano decrescente), `GET /v1/anime/:id/videos` (página `/x/video` com três seções distintas: Trailers/PVs, Music Videos e vídeos de episódio), `GET /v1/anime/:id/videos/episodes` (projeção da mesma página), `GET /v1/anime/:id/episodes/:episode` (página real de episódio individual: título, título alternativo, duração, data de exibição e sinopse), `GET /v1/anime/:id/themes` (projeção do campo `themeSongs` já extraído pelo `full` — sem fetch novo), e `GET /v1/clubs/:id/relations` (seções Anime/Manga/Character Relations da própria página do clube — mesmo fetch do detalhe, cache separado).
 
 Ainda fora (todas com evidência documentada): fórum por episódio individual, busca de clubes (ver nota acima), `/v1/top/reviews` (ver nota acima), `/v1/users/:username/history` (ver nota acima), `/v1/users/:username/external` (o perfil do MAL não expõe links externos estruturados — não há fonte real). `genres/anime|manga` saiu desta lista em 2026-07-30 (fonte trocada, ver nota acima).
+
+## Saúde e erros de configuração
+
+`/health` passou a incluir `data.checks.database` em 2026-07-30 (campo **adicional**, nada removido):
+`ok` | `not_migrated` | `not_configured` | `unavailable`. O probe é um `SELECT 1 FROM cache_entries LIMIT 1`.
+O status HTTP continua **200 mesmo degradado** — monitor de uptime observa essa rota, e um banco quebrado
+não é o Worker estar fora do ar; o diagnóstico vai no corpo.
+
+Junto vieram dois códigos de erro que só aparecem em instância mal configurada, ambos **503**:
+
+| Código | Quando | O que fazer |
+| --- | --- | --- |
+| `DATABASE_NOT_CONFIGURED` | nenhum D1 ligado ao Worker (checado antes da rota, não inferido de erro) | corrigir `d1_databases[0].database_id` no `wrangler.jsonc` |
+| `DATABASE_NOT_MIGRATED` | D1 ligado, sem schema (`no such table`) | `npm run db:migrate:remote` |
+
+Motivo (issue #1): as 96 rotas leem `cache_entries` antes de qualquer outra coisa, então uma instância
+sem migração respondia `500 INTERNAL_ERROR` em **todas** elas, sem nenhuma pista de que o problema era o
+deploy e não o código. Só o `no such table` vira `DATABASE_NOT_MIGRATED`; qualquer outra falha de D1
+continua sendo 500 — mandar alguém rodar migração que já rodou é pior que não dizer nada. Ver
+[`self-hosting.md`](self-hosting.md).
 
 ## Rate limiting
 

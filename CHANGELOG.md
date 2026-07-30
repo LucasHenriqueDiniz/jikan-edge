@@ -6,6 +6,119 @@ Changes that matter to anyone **consuming** the API. The technical detail behind
 
 This file starts on 2026-07-30 and does not reconstruct earlier history.
 
+## Unreleased
+
+**Not deployed yet** — the published version id goes here when it is.
+
+Prompted by [issue #1](https://github.com/LucasHenriqueDiniz/jikan-edge/issues/1): the first person to
+self-host this got `500 INTERNAL_ERROR` on all 96 routes, and nothing in the response or the README
+said why.
+
+### Added
+
+- **`GET /health` now reports `data.checks.database`** — `ok`, `not_migrated`, `not_configured` or
+  `unavailable`. Additive: `status` and `service` are unchanged, and the route still answers `200`
+  when the database is degraded, so uptime monitors keep reading it the same way.
+- **A setup command for self-hosters**: `npm run setup` creates the D1 database, writes its id into
+  `wrangler.jsonc` and applies the migrations. Full guide in
+  [`docs/self-hosting.md`](docs/self-hosting.md), including the Free-plan CPU caveat.
+
+### Fixed
+
+- **A deploy with no schema no longer fails as an unexplained server error.** Every route reads the
+  cache table first, so an un-migrated database produced `500 INTERNAL_ERROR` everywhere. Those two
+  cases now answer `503` with `DATABASE_NOT_MIGRATED` or `DATABASE_NOT_CONFIGURED` and the command
+  that fixes them. A genuine D1 outage still answers `500` — being told to re-run migrations you
+  already ran is worse than being told nothing.
+
+### Removed
+
+- **The unused `SNAPSHOTS_BUCKET` R2 binding.** It was never referenced in the code, but it forced
+  everyone cloning the project to create an R2 bucket. Nothing about the API changes; self-hosting
+  loses a required step. If you already created the bucket, you can delete it.
+
+---
+
+The rest of this release comes from a second sweep: every route compared side by side against the
+official `api.jikan.moe/v4` in the same window. No route was broken — all 98 answered `200`. What
+turned up was **content**: data leaving thinner than the source, unusable, or wrong in a way nothing
+flagged.
+
+### ⚠️ Breaking
+
+- **Genres, studios and authors are objects now, not strings.** `["Action", "Sci-Fi"]` became
+  `[{ "malId": 1, "name": "Action", "url": "…" }]`. Applies to `genres`, `themes`, `demographics`,
+  `studios`, `authors` and `producers`/`licensors` on anime and manga detail.
+
+  This closes a loop that was broken inside the API itself: `GET /v1/anime?genres=1` has always
+  taken numeric ids, but no response ever handed one back — you could filter by genre and never
+  learn a title's genre ids. They were in the page all along, in the link this API was reading the
+  name out of.
+
+- **`serialization` is now `serializations`, and it is an array.** A manga can run in more than one
+  magazine; a string could only ever hold the first.
+
+- **`aired` and `published` are objects.** `"Apr 3, 1998 to Apr 24, 1999"` became
+  `{ "from": "1998-04-03", "to": "1999-04-24", "string": "Apr 3, 1998 to Apr 24, 1999" }`. `string`
+  keeps MAL's own wording, so nothing is lost. A date only appears when the page gives day, month
+  and year — Berserk reads `"Aug 25, 1989 to ?"`, so its `to` is `null` rather than an invented one.
+
+- **`GET /v1/manga?q=` returns `volumes` instead of `episodes`.** The old field was not merely
+  misnamed: MAL's manga results table carries the **volume count** in the column this API was
+  reading as episodes. Searching Fullmetal Alchemist returned `episodes: 27`, and 27 is its volume
+  count (it has 116 chapters). Manga has no episodes; the number was real and the label was wrong.
+
+- **A query parameter this API does not honour is now `400`, not a silent `200`.** `?limit=5`,
+  `?sfw`, `?sort=asc` and `?min_score=8` used to answer `200` and do nothing, which is the one kind
+  of divergence a caller cannot detect. Two codes tell the cases apart: `UNKNOWN_PARAMETER` for a
+  name that does not exist, `UNSUPPORTED_PARAMETER` for one Jikan has and this API deliberately does
+  not — with the reason in the message. `?limit=` still works on the two user list routes, which
+  page over local storage rather than over a MyAnimeList page.
+
+- **An invalid `page` or `limit` is `400` instead of being quietly corrected.** `?page=0`, `?page=abc`
+  and `?page=-5` all used to become page 1 without a word; `?limit=99999` became 300. `page` is also
+  capped at 1000 now — every distinct page number costs a real upstream request.
+
+### Added
+
+- **`url` on every entity**, carrying MAL's canonical link with its slug. Previously 78 of 95 routes
+  gave no way to link back without rebuilding the URL by hand.
+- **`images` on anime, manga, character and person detail**: `{ small, medium, large }`. The
+  variants are **not** uniform on MAL's CDN — a character has no large, a person has no small, a
+  producer logo has neither — so each is `null` where the CDN genuinely has nothing, never a
+  derived URL that 404s.
+- **Fields that were always on the page and never emitted**: `scoredBy` (how many votes are behind
+  the score), `season`, `year`, `airing`/`publishing`, `broadcast`, `background`, `titleSynonyms`
+  and `trailer`.
+- **`meta.pagination` on every paginated route** — `{ page, limit, count, total, hasNextPage }`.
+  Before, only the user lists had it and everything else returned a bare array with no way to know
+  whether another page existed. `total` is a number only on the user lists, which are counted
+  locally; elsewhere it is `null`, because MAL prints no total and deriving one would be invention.
+- **Search filters `sort`, `letter`, `genres_exclude` and `min_score`**, each verified against the
+  live search rather than assumed. `genres_exclude` cannot be combined with `genres`: MAL's flag
+  inverts the meaning of every genre on the request rather than adding an exclusion, so passing both
+  is a contradiction and is refused.
+
+### Fixed
+
+- **List routes served a 50×70 thumbnail where a poster exists.** 31 routes published the resized
+  copy MAL embeds in its own tables — 2 KB where the same path holds 56 KB. `imageUrl` is now the
+  original everywhere.
+- **Long text arrived with every paragraph break flattened.** Synopses, `about` and `moreinfo` came
+  through as one wall of text because tag stripping turned MAL's `<br>` into spaces. Cowboy Bebop's
+  synopsis is 1,027 characters and had zero line breaks.
+- **Some punctuation reached responses undecoded** — `&mdash;` was visible in `/v1/anime/5114` and
+  `/v1/manga/2`. Related: entities were being decoded *before* tags were stripped, so a literal
+  `&lt;b&gt;` written by a user turned into a real tag and was eaten.
+
+### Known divergence, on purpose
+
+- **`duration` keeps MAL's punctuation**: `"24 min. per ep."`, where Jikan prints `"24 min per ep"`.
+  That is what the page says, and this API reports the source rather than tidying it.
+- **`?filter=` on `/v1/top/anime` and `/v1/top/manga` answers `400`.** It works upstream and is
+  planned, but listing it as accepted before it is wired would make it exactly the kind of
+  do-nothing parameter this release removed.
+
 ## 2026-07-30
 
 Published versions: `116479bb`, `7d5fea93`, `f2185eaf`, `48dbfd6a`, `400eff03`, `044942c8`.

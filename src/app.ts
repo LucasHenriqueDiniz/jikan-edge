@@ -1,8 +1,11 @@
 import { Hono, type Context } from 'hono';
 import { configFrom, type Env } from './config/env';
 import { errorResponse } from './http/errors';
+import { registerQueryGuards } from './http/query-guard';
+import { probeDatabase, SETUP_HINT } from './http/diagnostics';
 import { success } from './http/response';
-import { parsePagination } from './domain/pagination';
+import { paginationMeta, parseLimitParam } from './domain/pagination';
+import { CLUB_LIST_PAGE_SIZE, CLUB_MEMBERS_PAGE_SIZE, RECOMMENDATIONS_PAGE_SIZE, REVIEWS_PAGE_SIZE, SEARCH_PAGE_SIZE, TITLE_REVIEWS_PAGE_SIZE, TOP_PAGE_SIZE, USER_SEARCH_PAGE_SIZE } from './source/mal-urls';
 import { logMetric } from './observability/metrics';
 import { UserService } from './services/user.service';
 import { AnimeService } from './services/anime.service';
@@ -17,7 +20,7 @@ import { ReviewService } from './services/review.service';
 import { SearchService } from './services/search.service';
 import { RandomService, type RandomKind } from './services/random.service';
 
-type Variables = { requestId: string; startedAt: number };
+type Variables = { requestId: string; startedAt: number; page: number };
 const app = new Hono<{ Bindings: Env; Variables: Variables }>();
 
 app.use('*', async (c, next) => {
@@ -44,7 +47,21 @@ app.use('*', async (c, next) => {
   logMetric({ route: new URL(c.req.url).pathname, resourceType: 'http', cacheStatus: 'miss', stale: false, responseDurationMs: Math.round(performance.now() - c.get('startedAt')), refreshResult: String(c.res.status), responseSizeBytes: Number(c.res.headers.get('content-length') ?? 0) });
 });
 
-app.get('/health', (c) => c.json({ data: { status: 'ok', service: 'jikan-edge' }, meta: { requestId: c.get('requestId') } }));
+// `status` answers "is the Worker up"; `checks.database` answers "is this deploy actually usable".
+// Keeping the status code at 200 for a degraded database is deliberate: uptime monitors watch this
+// route, and a self-hoster needs the diagnosis in the body, not a second failure to interpret.
+app.get('/health', async (c) => c.json({ data: { status: 'ok', service: 'jikan-edge', checks: { database: await probeDatabase(c.env?.DB) } }, meta: { requestId: c.get('requestId') } }));
+
+// Every /v1 route reads D1 before anything else, so a missing binding would 500 all 96 of them with
+// no clue why. Checked up front rather than inferred from a downstream error message.
+app.use('/v1/*', async (c, next) => {
+  if (!c.env?.DB) return c.json({ error: { code: 'DATABASE_NOT_CONFIGURED', message: SETUP_HINT.not_configured, requestId: c.get('requestId') } }, 503);
+  await next();
+});
+
+// Per-route query validation, registered before the handlers so it runs first. Refuses any
+// parameter the route does not honour instead of accepting it and doing nothing.
+registerQueryGuards(app);
 
 function service(c: Context<{ Bindings: Env; Variables: Variables }>): UserService { return new UserService(c.env.DB, configFrom(c.env)); }
 function animeService(c: Context<{ Bindings: Env; Variables: Variables }>): AnimeService { return new AnimeService(c.env.DB, configFrom(c.env)); }
@@ -101,20 +118,22 @@ app.get('/v1/users/:username/recommendations', async (c) => {
 });
 for (const mediaType of ['anime', 'manga'] as const) app.get(`/v1/users/:username/${mediaType}list`, async (c) => {
   try {
-    const { page, limit } = parsePagination(c.req.query('page'), c.req.query('limit'));
+    const page = c.get('page');
+    const limit = parseLimitParam(c.req.query('limit'));
     const result = await service(c).mediaList(c.req.param('username'), mediaType, c.get('requestId'), page, limit);
     cacheHeader(c, result);
-    return c.json(success(result.data.entries, { cached: result.cached, stale: result.stale, refreshFailed: result.refreshFailed, fetchedAt: result.fetchedAt, pagination: { page, limit, total: result.data.total, hasNextPage: page * limit < result.data.total } }));
+    // The only routes with a real `total`: these page over D1, not over a MyAnimeList page.
+    return c.json(success(result.data.entries, { cached: result.cached, stale: result.stale, refreshFailed: result.refreshFailed, fetchedAt: result.fetchedAt, pagination: paginationMeta(page, limit, result.data.entries.length, result.data.total) }));
   } catch (error) { return errorResponse(c, error, c.get('requestId')); }
 });
 
 app.get('/v1/users', async (c) => {
-  try { const result = await searchService(c).users(c.req.query('q'), c.req.query('page'), c.get('requestId')); cacheHeader(c, result); return c.json(success(result.data, { cached: result.cached, stale: result.stale, refreshFailed: result.refreshFailed, fetchedAt: result.fetchedAt })); }
+  try { const result = await searchService(c).users(c.req.query('q'), c.get('page'), c.get('requestId')); cacheHeader(c, result); return c.json(success(result.data, { cached: result.cached, stale: result.stale, refreshFailed: result.refreshFailed, fetchedAt: result.fetchedAt, pagination: paginationMeta(c.get('page'), USER_SEARCH_PAGE_SIZE, result.data.length) })); }
   catch (error) { return errorResponse(c, error, c.get('requestId')); }
 });
 
 app.get('/v1/anime', async (c) => {
-  try { const filters = { type: c.req.query('type'), status: c.req.query('status'), rating: c.req.query('rating'), score: c.req.query('score'), genres: c.req.query('genres'), orderBy: c.req.query('order_by') }; const result = await searchService(c).anime(c.req.query('q'), c.req.query('page'), filters, c.get('requestId')); cacheHeader(c, result); return c.json(success(result.data, { cached: result.cached, stale: result.stale, refreshFailed: result.refreshFailed, fetchedAt: result.fetchedAt })); }
+  try { const filters = { type: c.req.query('type'), status: c.req.query('status'), rating: c.req.query('rating'), score: c.req.query('score'), minScore: c.req.query('min_score'), genres: c.req.query('genres'), genresExclude: c.req.query('genres_exclude'), orderBy: c.req.query('order_by'), sort: c.req.query('sort'), letter: c.req.query('letter') }; const result = await searchService(c).anime(c.req.query('q'), c.get('page'), filters, c.get('requestId')); cacheHeader(c, result); return c.json(success(result.data, { cached: result.cached, stale: result.stale, refreshFailed: result.refreshFailed, fetchedAt: result.fetchedAt, pagination: paginationMeta(c.get('page'), SEARCH_PAGE_SIZE, result.data.length) })); }
   catch (error) { return errorResponse(c, error, c.get('requestId')); }
 });
 app.get('/v1/anime/:id', async (c) => {
@@ -170,7 +189,7 @@ app.get('/v1/anime/:id/recommendations', async (c) => {
   catch (error) { return errorResponse(c, error, c.get('requestId')); }
 });
 app.get('/v1/anime/:id/reviews', async (c) => {
-  try { const result = await animeService(c).reviews(c.req.param('id'), c.req.query('page'), c.get('requestId')); cacheHeader(c, result); return c.json(success(result.data, { cached: result.cached, stale: result.stale, refreshFailed: result.refreshFailed, fetchedAt: result.fetchedAt })); }
+  try { const result = await animeService(c).reviews(c.req.param('id'), c.get('page'), c.get('requestId')); cacheHeader(c, result); return c.json(success(result.data, { cached: result.cached, stale: result.stale, refreshFailed: result.refreshFailed, fetchedAt: result.fetchedAt, pagination: paginationMeta(c.get('page'), TITLE_REVIEWS_PAGE_SIZE, result.data.length) })); }
   catch (error) { return errorResponse(c, error, c.get('requestId')); }
 });
 app.get('/v1/anime/:id/videos', async (c) => {
@@ -202,7 +221,7 @@ app.get('/v1/genres/anime', async (c) => {
   catch (error) { return errorResponse(c, error, c.get('requestId')); }
 });
 app.get('/v1/top/anime', async (c) => {
-  try { const result = await animeService(c).topAnime(c.req.query('page'), c.get('requestId')); cacheHeader(c, result); return c.json(success(result.data, { cached: result.cached, stale: result.stale, refreshFailed: result.refreshFailed, fetchedAt: result.fetchedAt })); }
+  try { const result = await animeService(c).topAnime(c.get('page'), c.get('requestId')); cacheHeader(c, result); return c.json(success(result.data, { cached: result.cached, stale: result.stale, refreshFailed: result.refreshFailed, fetchedAt: result.fetchedAt, pagination: paginationMeta(c.get('page'), TOP_PAGE_SIZE, result.data.length) })); }
   catch (error) { return errorResponse(c, error, c.get('requestId')); }
 });
 app.get('/v1/seasons', async (c) => {
@@ -223,7 +242,7 @@ app.get('/v1/seasons/:year/:season', async (c) => {
 });
 
 app.get('/v1/manga', async (c) => {
-  try { const filters = { type: c.req.query('type'), status: c.req.query('status'), score: c.req.query('score'), genres: c.req.query('genres'), orderBy: c.req.query('order_by') }; const result = await searchService(c).manga(c.req.query('q'), c.req.query('page'), filters, c.get('requestId')); cacheHeader(c, result); return c.json(success(result.data, { cached: result.cached, stale: result.stale, refreshFailed: result.refreshFailed, fetchedAt: result.fetchedAt })); }
+  try { const filters = { type: c.req.query('type'), status: c.req.query('status'), score: c.req.query('score'), minScore: c.req.query('min_score'), genres: c.req.query('genres'), genresExclude: c.req.query('genres_exclude'), orderBy: c.req.query('order_by'), sort: c.req.query('sort'), letter: c.req.query('letter') }; const result = await searchService(c).manga(c.req.query('q'), c.get('page'), filters, c.get('requestId')); cacheHeader(c, result); return c.json(success(result.data, { cached: result.cached, stale: result.stale, refreshFailed: result.refreshFailed, fetchedAt: result.fetchedAt, pagination: paginationMeta(c.get('page'), SEARCH_PAGE_SIZE, result.data.length) })); }
   catch (error) { return errorResponse(c, error, c.get('requestId')); }
 });
 app.get('/v1/manga/:id', async (c) => {
@@ -267,7 +286,7 @@ app.get('/v1/manga/:id/recommendations', async (c) => {
   catch (error) { return errorResponse(c, error, c.get('requestId')); }
 });
 app.get('/v1/manga/:id/reviews', async (c) => {
-  try { const result = await mangaService(c).reviews(c.req.param('id'), c.req.query('page'), c.get('requestId')); cacheHeader(c, result); return c.json(success(result.data, { cached: result.cached, stale: result.stale, refreshFailed: result.refreshFailed, fetchedAt: result.fetchedAt })); }
+  try { const result = await mangaService(c).reviews(c.req.param('id'), c.get('page'), c.get('requestId')); cacheHeader(c, result); return c.json(success(result.data, { cached: result.cached, stale: result.stale, refreshFailed: result.refreshFailed, fetchedAt: result.fetchedAt, pagination: paginationMeta(c.get('page'), TITLE_REVIEWS_PAGE_SIZE, result.data.length) })); }
   catch (error) { return errorResponse(c, error, c.get('requestId')); }
 });
 app.get('/v1/manga/:id/userupdates', async (c) => {
@@ -283,20 +302,20 @@ app.get('/v1/genres/manga', async (c) => {
   catch (error) { return errorResponse(c, error, c.get('requestId')); }
 });
 app.get('/v1/top/manga', async (c) => {
-  try { const result = await mangaService(c).topManga(c.req.query('page'), c.get('requestId')); cacheHeader(c, result); return c.json(success(result.data, { cached: result.cached, stale: result.stale, refreshFailed: result.refreshFailed, fetchedAt: result.fetchedAt })); }
+  try { const result = await mangaService(c).topManga(c.get('page'), c.get('requestId')); cacheHeader(c, result); return c.json(success(result.data, { cached: result.cached, stale: result.stale, refreshFailed: result.refreshFailed, fetchedAt: result.fetchedAt, pagination: paginationMeta(c.get('page'), TOP_PAGE_SIZE, result.data.length) })); }
   catch (error) { return errorResponse(c, error, c.get('requestId')); }
 });
 app.get('/v1/top/people', async (c) => {
-  try { const result = await personService(c).topPeople(c.req.query('page'), c.get('requestId')); cacheHeader(c, result); return c.json(success(result.data, { cached: result.cached, stale: result.stale, refreshFailed: result.refreshFailed, fetchedAt: result.fetchedAt })); }
+  try { const result = await personService(c).topPeople(c.get('page'), c.get('requestId')); cacheHeader(c, result); return c.json(success(result.data, { cached: result.cached, stale: result.stale, refreshFailed: result.refreshFailed, fetchedAt: result.fetchedAt, pagination: paginationMeta(c.get('page'), TOP_PAGE_SIZE, result.data.length) })); }
   catch (error) { return errorResponse(c, error, c.get('requestId')); }
 });
 app.get('/v1/top/characters', async (c) => {
-  try { const result = await characterService(c).topCharacters(c.req.query('page'), c.get('requestId')); cacheHeader(c, result); return c.json(success(result.data, { cached: result.cached, stale: result.stale, refreshFailed: result.refreshFailed, fetchedAt: result.fetchedAt })); }
+  try { const result = await characterService(c).topCharacters(c.get('page'), c.get('requestId')); cacheHeader(c, result); return c.json(success(result.data, { cached: result.cached, stale: result.stale, refreshFailed: result.refreshFailed, fetchedAt: result.fetchedAt, pagination: paginationMeta(c.get('page'), TOP_PAGE_SIZE, result.data.length) })); }
   catch (error) { return errorResponse(c, error, c.get('requestId')); }
 });
 
 app.get('/v1/characters', async (c) => {
-  try { const result = await searchService(c).characters(c.req.query('q'), c.req.query('page'), c.get('requestId')); cacheHeader(c, result); return c.json(success(result.data, { cached: result.cached, stale: result.stale, refreshFailed: result.refreshFailed, fetchedAt: result.fetchedAt })); }
+  try { const result = await searchService(c).characters(c.req.query('q'), c.get('page'), c.get('requestId')); cacheHeader(c, result); return c.json(success(result.data, { cached: result.cached, stale: result.stale, refreshFailed: result.refreshFailed, fetchedAt: result.fetchedAt, pagination: paginationMeta(c.get('page'), SEARCH_PAGE_SIZE, result.data.length) })); }
   catch (error) { return errorResponse(c, error, c.get('requestId')); }
 });
 app.get('/v1/characters/:id', async (c) => {
@@ -342,7 +361,7 @@ app.get('/v1/producers/:id/external', async (c) => {
 });
 
 app.get('/v1/clubs', async (c) => {
-  try { const result = await clubService(c).list(c.req.query('page'), c.get('requestId')); cacheHeader(c, result); return c.json(success(result.data, { cached: result.cached, stale: result.stale, refreshFailed: result.refreshFailed, fetchedAt: result.fetchedAt })); }
+  try { const result = await clubService(c).list(c.get('page'), c.get('requestId')); cacheHeader(c, result); return c.json(success(result.data, { cached: result.cached, stale: result.stale, refreshFailed: result.refreshFailed, fetchedAt: result.fetchedAt, pagination: paginationMeta(c.get('page'), CLUB_LIST_PAGE_SIZE, result.data.length) })); }
   catch (error) { return errorResponse(c, error, c.get('requestId')); }
 });
 app.get('/v1/clubs/:id', async (c) => {
@@ -358,12 +377,12 @@ app.get('/v1/clubs/:id/relations', async (c) => {
   catch (error) { return errorResponse(c, error, c.get('requestId')); }
 });
 app.get('/v1/clubs/:id/members', async (c) => {
-  try { const result = await clubService(c).members(c.req.param('id'), c.req.query('page'), c.get('requestId')); cacheHeader(c, result); return c.json(success(result.data, { cached: result.cached, stale: result.stale, refreshFailed: result.refreshFailed, fetchedAt: result.fetchedAt })); }
+  try { const result = await clubService(c).members(c.req.param('id'), c.get('page'), c.get('requestId')); cacheHeader(c, result); return c.json(success(result.data, { cached: result.cached, stale: result.stale, refreshFailed: result.refreshFailed, fetchedAt: result.fetchedAt, pagination: paginationMeta(c.get('page'), CLUB_MEMBERS_PAGE_SIZE, result.data.length) })); }
   catch (error) { return errorResponse(c, error, c.get('requestId')); }
 });
 
 app.get('/v1/people', async (c) => {
-  try { const result = await searchService(c).people(c.req.query('q'), c.req.query('page'), c.get('requestId')); cacheHeader(c, result); return c.json(success(result.data, { cached: result.cached, stale: result.stale, refreshFailed: result.refreshFailed, fetchedAt: result.fetchedAt })); }
+  try { const result = await searchService(c).people(c.req.query('q'), c.get('page'), c.get('requestId')); cacheHeader(c, result); return c.json(success(result.data, { cached: result.cached, stale: result.stale, refreshFailed: result.refreshFailed, fetchedAt: result.fetchedAt, pagination: paginationMeta(c.get('page'), SEARCH_PAGE_SIZE, result.data.length) })); }
   catch (error) { return errorResponse(c, error, c.get('requestId')); }
 });
 app.get('/v1/people/:id', async (c) => {
@@ -412,20 +431,20 @@ app.get('/v1/watch/promos/popular', async (c) => {
   catch (error) { return errorResponse(c, error, c.get('requestId')); }
 });
 app.get('/v1/recommendations/anime', async (c) => {
-  try { const result = await recommendationService(c).anime(c.req.query('page'), c.get('requestId')); cacheHeader(c, result); return c.json(success(result.data, { cached: result.cached, stale: result.stale, refreshFailed: result.refreshFailed, fetchedAt: result.fetchedAt })); }
+  try { const result = await recommendationService(c).anime(c.get('page'), c.get('requestId')); cacheHeader(c, result); return c.json(success(result.data, { cached: result.cached, stale: result.stale, refreshFailed: result.refreshFailed, fetchedAt: result.fetchedAt, pagination: paginationMeta(c.get('page'), RECOMMENDATIONS_PAGE_SIZE, result.data.length) })); }
   catch (error) { return errorResponse(c, error, c.get('requestId')); }
 });
 app.get('/v1/recommendations/manga', async (c) => {
-  try { const result = await recommendationService(c).manga(c.req.query('page'), c.get('requestId')); cacheHeader(c, result); return c.json(success(result.data, { cached: result.cached, stale: result.stale, refreshFailed: result.refreshFailed, fetchedAt: result.fetchedAt })); }
+  try { const result = await recommendationService(c).manga(c.get('page'), c.get('requestId')); cacheHeader(c, result); return c.json(success(result.data, { cached: result.cached, stale: result.stale, refreshFailed: result.refreshFailed, fetchedAt: result.fetchedAt, pagination: paginationMeta(c.get('page'), RECOMMENDATIONS_PAGE_SIZE, result.data.length) })); }
   catch (error) { return errorResponse(c, error, c.get('requestId')); }
 });
 
 app.get('/v1/reviews/anime', async (c) => {
-  try { const result = await reviewService(c).anime(c.req.query('page'), c.get('requestId')); cacheHeader(c, result); return c.json(success(result.data, { cached: result.cached, stale: result.stale, refreshFailed: result.refreshFailed, fetchedAt: result.fetchedAt })); }
+  try { const result = await reviewService(c).anime(c.get('page'), c.get('requestId')); cacheHeader(c, result); return c.json(success(result.data, { cached: result.cached, stale: result.stale, refreshFailed: result.refreshFailed, fetchedAt: result.fetchedAt, pagination: paginationMeta(c.get('page'), REVIEWS_PAGE_SIZE, result.data.length) })); }
   catch (error) { return errorResponse(c, error, c.get('requestId')); }
 });
 app.get('/v1/reviews/manga', async (c) => {
-  try { const result = await reviewService(c).manga(c.req.query('page'), c.get('requestId')); cacheHeader(c, result); return c.json(success(result.data, { cached: result.cached, stale: result.stale, refreshFailed: result.refreshFailed, fetchedAt: result.fetchedAt })); }
+  try { const result = await reviewService(c).manga(c.get('page'), c.get('requestId')); cacheHeader(c, result); return c.json(success(result.data, { cached: result.cached, stale: result.stale, refreshFailed: result.refreshFailed, fetchedAt: result.fetchedAt, pagination: paginationMeta(c.get('page'), REVIEWS_PAGE_SIZE, result.data.length) })); }
   catch (error) { return errorResponse(c, error, c.get('requestId')); }
 });
 app.get('/v1/magazines', async (c) => {

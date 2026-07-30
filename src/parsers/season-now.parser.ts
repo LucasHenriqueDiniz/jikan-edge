@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import type { AnimeListEntry } from '../domain/anime';
-import { decodeHtml, numeric, ParserError } from './html';
+import { decodeHtml, imageFrom, numeric, ParserError } from './html';
 
 const entrySchema = z.object({
   malId: z.number().int().positive(), title: z.string().min(1), imageUrl: z.string().url().nullable(), score: z.number().nullable(),
@@ -25,7 +25,7 @@ function parseCard(chunk: string): AnimeListEntry | null {
   const candidate = {
     malId: Number(link[1]),
     title: decodeHtml(link[2]),
-    imageUrl: chunk.match(/data-src="([^"]+)"/i)?.[1] ?? null,
+    imageUrl: imageFrom(chunk),
     score: numeric(chunk.match(/class="js-score">([\d.]+)<\/span>/i)?.[1] ?? null),
     type: null,
     episodes: numeric(chunk.match(/<span>(\d+)\s*eps?<\/span>/i)?.[1] ?? null),

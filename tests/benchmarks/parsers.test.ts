@@ -1,4 +1,4 @@
-import { readFileSync } from 'node:fs';
+﻿import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { parseUserProfile } from '../../src/parsers/user-profile.parser';
 import { parseAnimeDetail } from '../../src/parsers/anime-detail.parser';
@@ -11,7 +11,7 @@ import { parseProducerDetail } from '../../src/parsers/producer-detail.parser';
 import { parseClubDetail } from '../../src/parsers/club-detail.parser';
 import { parsePersonDetail } from '../../src/parsers/person-detail.parser';
 import { parseReviews } from '../../src/parsers/reviews.parser';
-import { parseSearchResults } from '../../src/parsers/search.parser';
+import { parseAnimeSearchResults } from '../../src/parsers/search.parser';
 import { parseCharacters, parseStaff } from '../../src/parsers/characters-staff.parser';
 import { parseStatistics } from '../../src/parsers/statistics.parser';
 import { parsePictures } from '../../src/parsers/pictures.parser';
@@ -126,7 +126,7 @@ describe('parser benchmark smoke test', () => {
 
   it('reports a bounded search fixture parsing duration', () => {
     const html = readFileSync('tests/fixtures/search/anime-valid.html', 'utf8'); const samples: number[] = [];
-    for (let index = 0; index < 100; index += 1) { const started = performance.now(); parseSearchResults(html); samples.push(performance.now() - started); }
+    for (let index = 0; index < 100; index += 1) { const started = performance.now(); parseAnimeSearchResults(html); samples.push(performance.now() - started); }
     samples.sort((a, b) => a - b); const p95 = samples[Math.floor(samples.length * 0.95)];
     console.log(JSON.stringify({ benchmark: 'search-fixture', min: samples[0], p50: samples[50], p95, max: samples.at(-1), failures: 0 }));
     expect(p95).toBeLessThan(8);

@@ -31,7 +31,8 @@ Every response is wrapped in `{ "data": ..., "meta": { cached, stale, refreshFai
 
 ## Route surface
 
-96 GET routes under `/v1`, mirroring the Jikan v4 functional surface:
+97 GET routes under `/v1` (98 counting `/health`), covering **96 of the 100 endpoints** in Jikan
+v4's published OpenAPI spec, plus one Jikan does not have (`/v1/people/{id}/news`):
 
 | Group | Routes |
 | --- | --- |
@@ -65,7 +66,27 @@ Fresh data is served straight from D1 without touching MyAnimeList. Cache misses
 
 ## Honest differences from Jikan
 
-This project aims for **functional parity, not schema-identical cloning**. Field names are camelCase and response shapes are documented per route.
+This project aims for **functional parity, not schema-identical cloning**.
+
+### Not a drop-in replacement
+
+Pointing a Jikan client at this base URL will not work. That is a deliberate choice — camelCase and
+a flat envelope suit the JS/TS consumers this API has — but it is a choice, and it deserves to be
+stated rather than discovered:
+
+| | jikan-edge | Jikan v4 |
+| --- | --- | --- |
+| Envelope | `{ data, meta }` | `{ data, pagination }` |
+| Field names | camelCase — `malId`, `titleEnglish` | snake_case — `mal_id`, `title_english` |
+| Errors | `{ error: { code, message, requestId } }` | `{ status, type, message, error }` |
+| Images | `imageUrl` + `images.{small,medium,large}` | `images.{jpg,webp}.{image,small_image,large_image}_url` |
+| Dates | `{ from, to, string }` | `{ from, to, prop: { from: {…}, to: {…} }, string }` |
+| Pagination | `meta.pagination` | top-level `pagination` |
+| Items per page | 50 on top lists, a whole season in one response | 25, with a hard `limit=25` ceiling |
+| Cache state | `meta.cached` / `stale` / `fetchedAt` + `X-Cache-Status` | not exposed |
+
+Two things this API has that Jikan does not: **user anime and manga lists**, which Jikan deprecated
+in May 2022 and gates behind a config flag, and `GET /v1/people/{id}/news`.
 
 ### Routes we can't serve (and why)
 
@@ -86,6 +107,24 @@ Each of these was investigated against the real MyAnimeList pages, with the evid
 - `GET /anime/{id}/streaming` may return `[]` in production even when data exists: streaming availability is geo-dependent and MAL resolves Cloudflare's network to a different region.
 - `GET /random/*` draws only from locally cached entries rather than the full MAL database (no mass ID scanning, by policy). Empty local catalog → `404 NO_LOCAL_ENTRIES`.
 - Text-query searches with zero real matches mirror MAL's own fallback behavior (popular unrelated titles) instead of returning an empty list.
+
+## Self-hosting
+
+Your own instance on your own Cloudflare account. No API keys and no upstream credentials — the only
+resource it needs is a D1 database, which the setup script creates and migrates for you.
+
+```bash
+git clone https://github.com/LucasHenriqueDiniz/jikan-edge.git && cd jikan-edge
+npm install
+npx wrangler login
+npm run setup            # creates D1, writes its id into wrangler.jsonc, applies the migrations
+npx wrangler deploy
+
+curl https://<your-worker>.<your-subdomain>.workers.dev/health   # checks.database must read "ok"
+```
+
+The full guide — manual setup, troubleshooting, Free vs Paid plan limits, and what to change before
+sending real traffic to MyAnimeList — is in [`docs/self-hosting.md`](docs/self-hosting.md).
 
 ## Development
 

@@ -7,4 +7,4 @@ export interface TopPersonEntry {
   favorites: number | null;
 }
 
-export const TOP_PEOPLE_PARSER_VERSION = 'top-people-html-v1';
+export const TOP_PEOPLE_PARSER_VERSION = 'top-people-html-v2';

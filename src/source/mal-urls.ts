@@ -1,5 +1,18 @@
 const BASE = 'https://myanimelist.net';
 
+// How many rows MyAnimeList puts on one page, per family. Most of these were already encoded in
+// the arithmetic below (`show=(page-1)*50`); the two that use `?p=` carried no number at all and
+// were measured against the live pages: clubs.php serves 50, and a title's review page serves 20
+// (the 50 in docs/routes.md is the *global* reviews feed, a different page).
+export const SEARCH_PAGE_SIZE = 50;
+export const USER_SEARCH_PAGE_SIZE = 24;
+export const TOP_PAGE_SIZE = 50;
+export const CLUB_LIST_PAGE_SIZE = 50;
+export const CLUB_MEMBERS_PAGE_SIZE = 36;
+export const RECOMMENDATIONS_PAGE_SIZE = 100;
+export const REVIEWS_PAGE_SIZE = 50;
+export const TITLE_REVIEWS_PAGE_SIZE = 20;
+
 export function profileUrl(username: string): string {
   return `${BASE}/profile/${encodeURIComponent(username)}`;
 }

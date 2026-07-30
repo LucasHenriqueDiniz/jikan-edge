@@ -13,4 +13,4 @@ export interface WatchPromoEntry {
   videoUrl: string | null;
 }
 
-export const WATCH_PARSER_VERSION = 'watch-html-v1';
+export const WATCH_PARSER_VERSION = 'watch-html-v2';

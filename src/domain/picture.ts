@@ -3,4 +3,4 @@ export interface Picture {
   thumbnailUrl: string | null;
 }
 
-export const PICTURES_PARSER_VERSION = 'pictures-html-v1';
+export const PICTURES_PARSER_VERSION = 'pictures-html-v2';

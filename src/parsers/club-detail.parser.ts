@@ -1,9 +1,10 @@
-import { z } from 'zod';
+﻿import { z } from 'zod';
 import type { ClubDetail } from '../domain/club';
-import { capture, decodeHtml, numeric, ParserError } from './html';
+import { canonicalUrl, capture, decodeHtml, labelValue, numeric, ParserError } from './html';
 
 const clubDetailSchema = z.object({
   malId: z.number().int().positive(),
+  url: z.string().url().nullable(),
   title: z.string().min(1),
   members: z.number().nullable(),
   pictures: z.number().nullable(),
@@ -12,11 +13,6 @@ const clubDetailSchema = z.object({
   staff: z.array(z.string()),
   fetchedAt: z.string().datetime(),
 });
-
-function plainLabelValue(html: string, label: string): string | null {
-  const escaped = label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  return capture(html, new RegExp(`${escaped}:<\\/span>([\\s\\S]*?)<\\/div>`, 'i'));
-}
 
 function extractStaff(html: string): string[] {
   const start = html.indexOf('Club Staff');
@@ -31,11 +27,13 @@ export function parseClubDetail(html: string, malId: number, fetchedAt = new Dat
   const stats = statsStart === -1 ? '' : html.slice(statsStart, statsStart + 2_000);
   const detail: ClubDetail = {
     malId,
+    // A club page carries no <link rel="canonical"> — only og:url, in the `clubs.php?cid=` form.
+    url: canonicalUrl(html.slice(0, 60_000)),
     title: capture(html.slice(0, 60_000), /<h1 class="h1">([^<]+)<\/h1>/i) ?? '',
-    members: numeric(plainLabelValue(stats, 'Members')),
-    pictures: numeric(plainLabelValue(stats, 'Pictures')),
-    category: plainLabelValue(stats, 'Category'),
-    created: plainLabelValue(stats, 'Created'),
+    members: numeric(labelValue(stats, 'Members')),
+    pictures: numeric(labelValue(stats, 'Pictures')),
+    category: labelValue(stats, 'Category'),
+    created: labelValue(stats, 'Created'),
     staff: extractStaff(html),
     fetchedAt,
   };

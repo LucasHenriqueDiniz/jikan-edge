@@ -21,4 +21,4 @@ export interface StaffMember {
   role: string | null;
 }
 
-export const CHARACTERS_STAFF_PARSER_VERSION = 'characters-staff-html-v1';
+export const CHARACTERS_STAFF_PARSER_VERSION = 'characters-staff-html-v2';

@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import type { TopPersonEntry } from '../domain/top-person';
-import { decodeHtml, numeric, ParserError } from './html';
+import { decodeHtml, imageFrom, numeric, ParserError } from './html';
 
 const entrySchema = z.object({
   malId: z.number().int().positive(), name: z.string().min(1), nameKanji: z.string().nullable(), imageUrl: z.string().url().nullable(),
@@ -17,7 +17,7 @@ export function parseTopPeople(html: string): TopPersonEntry[] {
     if (!malId) continue;
     const name = decodeHtml(row.match(/class="fs14 fw-b">([^<]+)<\/a>/i)?.[1] ?? '');
     const nameKanji = decodeHtml(row.match(/class="fs12 fn-grey6 text-ellipsis">\(([^)]+)\)<\/div>/i)?.[1] ?? '') || null;
-    const imageUrl = row.match(/data-src="([^"]+)"/i)?.[1] ?? null;
+    const imageUrl = imageFrom(row);
     const birthday = decodeHtml(row.match(/class="birthday">([^<]+)<\/td>/i)?.[1] ?? '') || null;
     const favorites = numeric(row.match(/class="favorites">\s*([\d,]+)\s*<\/td>/i)?.[1] ?? null);
     const parsed = entrySchema.safeParse({ malId, name, nameKanji, imageUrl, birthday, favorites });

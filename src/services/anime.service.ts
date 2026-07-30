@@ -1,5 +1,5 @@
 import type { RuntimeConfig } from '../config/env';
-import { ANIME_PARSER_VERSION, type AnimeDetail, type AnimeListEntry, type ExternalLink, type RelationEntry, type StreamingEntry } from '../domain/anime';
+import { ANIME_PARSER_VERSION, SEASON_PARSER_VERSION, TOP_ANIME_PARSER_VERSION, type AnimeDetail, type AnimeListEntry, type ExternalLink, type RelationEntry, type StreamingEntry } from '../domain/anime';
 import { GENRE_PARSER_VERSION, type GenreTaxonomyEntry } from '../domain/genre';
 import { ANIME_FULL_PARSER_VERSION, type AnimeFull } from '../domain/anime-full';
 import type { AnimeThemeSongs } from '../domain/anime-theme';
@@ -169,9 +169,8 @@ export class AnimeService {
     return this.perAnimeResource(rawId, 'recommendations', titleRecommendationsUrl('anime', malId), ['picSurround'], TITLE_RECOMMENDATIONS_PARSER_VERSION, (html) => parseTitleRecommendations(html, 'anime'), requestId);
   }
 
-  reviews(rawId: string, rawPage: string | undefined, requestId: string): Promise<ServiceResponse<TitleReview[]>> {
+  reviews(rawId: string, page: number, requestId: string): Promise<ServiceResponse<TitleReview[]>> {
     const malId = this.validateMalId(rawId);
-    const page = Math.max(1, Number.parseInt(rawPage ?? '1', 10) || 1);
     const cacheKey = `catalog:anime:${malId}:reviews:page:${page}`;
     return withCache({ cache: this.cache, locks: this.locks }, cacheKey, this.config.animeTtlSeconds, TITLE_REVIEWS_PARSER_VERSION, () => this.catalog.get<TitleReview[]>(cacheKey), async () => {
       const source = await this.source.getHtml(titleReviewsUrl('anime', malId, page), ['review-element']);
@@ -228,27 +227,26 @@ export class AnimeService {
     return filter ? { ...result, data: result.data.filter((entry) => entry.type === filter) } : result;
   }
 
-  async topAnime(rawPage: string | undefined, requestId: string): Promise<ServiceResponse<AnimeListEntry[]>> {
-    const page = Math.max(1, Number.parseInt(rawPage ?? '1', 10) || 1);
+  async topAnime(page: number, requestId: string): Promise<ServiceResponse<AnimeListEntry[]>> {
     const cacheKey = `catalog:top:anime:page:${page}`;
-    return withCache({ cache: this.cache, locks: this.locks }, cacheKey, this.config.catalogTtlSeconds, ANIME_PARSER_VERSION, () => this.catalog.get<AnimeListEntry[]>(cacheKey), async () => {
+    return withCache({ cache: this.cache, locks: this.locks }, cacheKey, this.config.catalogTtlSeconds, TOP_ANIME_PARSER_VERSION, () => this.catalog.get<AnimeListEntry[]>(cacheKey), async () => {
       const source = await this.source.getHtml(topAnimeUrl(page), ['ranking-list']);
       if (source.kind !== 'success') throw sourceError(source);
       const value = parseTopAnime(source.value);
       const fetchedAt = new Date().toISOString();
-      await this.catalog.put(cacheKey, value, fetchedAt, ANIME_PARSER_VERSION);
+      await this.catalog.put(cacheKey, value, fetchedAt, TOP_ANIME_PARSER_VERSION);
       return value;
     }, requestId);
   }
 
   async seasonNow(requestId: string): Promise<ServiceResponse<AnimeListEntry[]>> {
     const cacheKey = 'catalog:season:now';
-    return withCache({ cache: this.cache, locks: this.locks }, cacheKey, this.config.catalogTtlSeconds, ANIME_PARSER_VERSION, () => this.catalog.get<AnimeListEntry[]>(cacheKey), async () => {
+    return withCache({ cache: this.cache, locks: this.locks }, cacheKey, this.config.catalogTtlSeconds, SEASON_PARSER_VERSION, () => this.catalog.get<AnimeListEntry[]>(cacheKey), async () => {
       const source = await this.source.getHtml(seasonNowUrl(), ['seasonal-anime']);
       if (source.kind !== 'success') throw sourceError(source);
       const value = parseSeasonNow(source.value);
       const fetchedAt = new Date().toISOString();
-      await this.catalog.put(cacheKey, value, fetchedAt, ANIME_PARSER_VERSION);
+      await this.catalog.put(cacheKey, value, fetchedAt, SEASON_PARSER_VERSION);
       return value;
     }, requestId);
   }
@@ -259,24 +257,24 @@ export class AnimeService {
     if (!Number.isInteger(year) || year < 1917 || year > 2100 || String(year) !== rawYear) throw new ServiceError('INVALID_SEASON_YEAR', 400, 'Season year is invalid.');
     if (!VALID_SEASONS.has(season)) throw new ServiceError('INVALID_SEASON', 400, 'Season must be one of winter, spring, summer, fall.');
     const cacheKey = `catalog:season:${year}:${season}`;
-    return withCache({ cache: this.cache, locks: this.locks }, cacheKey, this.config.catalogTtlSeconds, ANIME_PARSER_VERSION, () => this.catalog.get<AnimeListEntry[]>(cacheKey), async () => {
+    return withCache({ cache: this.cache, locks: this.locks }, cacheKey, this.config.catalogTtlSeconds, SEASON_PARSER_VERSION, () => this.catalog.get<AnimeListEntry[]>(cacheKey), async () => {
       const source = await this.source.getHtml(seasonByYearUrl(year, season), ['seasonal-anime']);
       if (source.kind !== 'success') throw sourceError(source);
       const value = parseSeasonNow(source.value);
       const fetchedAt = new Date().toISOString();
-      await this.catalog.put(cacheKey, value, fetchedAt, ANIME_PARSER_VERSION);
+      await this.catalog.put(cacheKey, value, fetchedAt, SEASON_PARSER_VERSION);
       return value;
     }, requestId);
   }
 
   async seasonUpcoming(requestId: string): Promise<ServiceResponse<AnimeListEntry[]>> {
     const cacheKey = 'catalog:season:upcoming';
-    return withCache({ cache: this.cache, locks: this.locks }, cacheKey, this.config.catalogTtlSeconds, ANIME_PARSER_VERSION, () => this.catalog.get<AnimeListEntry[]>(cacheKey), async () => {
+    return withCache({ cache: this.cache, locks: this.locks }, cacheKey, this.config.catalogTtlSeconds, SEASON_PARSER_VERSION, () => this.catalog.get<AnimeListEntry[]>(cacheKey), async () => {
       const source = await this.source.getHtml(seasonUpcomingUrl(), ['seasonal-anime']);
       if (source.kind !== 'success') throw sourceError(source);
       const value = parseSeasonNow(source.value);
       const fetchedAt = new Date().toISOString();
-      await this.catalog.put(cacheKey, value, fetchedAt, ANIME_PARSER_VERSION);
+      await this.catalog.put(cacheKey, value, fetchedAt, SEASON_PARSER_VERSION);
       return value;
     }, requestId);
   }

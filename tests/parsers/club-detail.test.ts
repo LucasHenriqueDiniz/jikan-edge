@@ -8,6 +8,9 @@ describe('club detail parser', () => {
   it('normalizes a public club detail page', () => {
     const detail = parseClubDetail(html, 1, '2026-07-26T00:00:00.000Z');
     expect(detail.title).toBe('Cowboy Bebop');
+    // A club page has no <link rel="canonical">, so og:url is the only source — and it keeps the
+    // `clubs.php?cid=` form rather than a slug.
+    expect(detail.url).toBe('https://myanimelist.net/clubs.php?cid=15826');
     expect(detail.members).toBe(1400);
     expect(detail.pictures).toBe(25);
     expect(detail.category).toBe('Anime');

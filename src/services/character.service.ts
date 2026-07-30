@@ -106,8 +106,7 @@ export class CharacterService {
     }, requestId);
   }
 
-  topCharacters(rawPage: string | undefined, requestId: string): Promise<ServiceResponse<TopCharacterEntry[]>> {
-    const page = Math.max(1, Number.parseInt(rawPage ?? '1', 10) || 1);
+  topCharacters(page: number, requestId: string): Promise<ServiceResponse<TopCharacterEntry[]>> {
     const cacheKey = `catalog:top:characters:page:${page}`;
     return withCache({ cache: this.cache, locks: this.locks }, cacheKey, this.config.catalogTtlSeconds, TOP_CHARACTERS_PARSER_VERSION, () => this.catalog.get<TopCharacterEntry[]>(cacheKey), async () => {
       const source = await this.source.getHtml(topCharactersUrl(page), ['ranking-list']);

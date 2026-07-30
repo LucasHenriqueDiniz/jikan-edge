@@ -17,4 +17,4 @@ export interface TitleVideos {
   episodes: EpisodeVideoEntry[];
 }
 
-export const VIDEOS_PARSER_VERSION = 'videos-html-v1';
+export const VIDEOS_PARSER_VERSION = 'videos-html-v2';

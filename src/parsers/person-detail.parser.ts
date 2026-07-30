@@ -1,9 +1,10 @@
 import { z } from 'zod';
 import type { PersonDetail } from '../domain/person';
-import { capture, numeric, ParserError } from './html';
+import { canonicalUrl, capture, imageSetSchema, imageVariants, numeric, ParserError, richCapture, taggedImage, VOICE_ACTOR_IMAGE } from './html';
 
 const personDetailSchema = z.object({
   malId: z.number().int().positive(),
+  url: z.string().url().nullable(),
   name: z.string().min(1),
   givenName: z.string().nullable(),
   familyName: z.string().nullable(),
@@ -11,22 +12,18 @@ const personDetailSchema = z.object({
   birthday: z.string().nullable(),
   website: z.string().nullable(),
   imageUrl: z.string().url().nullable(),
+  images: imageSetSchema,
   about: z.string().nullable(),
   favorites: z.number().nullable(),
   fetchedAt: z.string().datetime(),
 });
 
-// Some fields (notably "Family name") are not individually wrapped in their own <div>, so a plain
-// "up to the next </div>" capture can overrun into the following field. Stop at whichever comes
-// first: the next tag open or close.
-function labelValue(html: string, label: string): string | null {
+// Deliberately NOT the shared `labelValue` from html.ts: some fields here (notably "Family name")
+// are not individually wrapped in their own <div>, so the shared "up to the next </div>" capture
+// overruns into the following field. Stop at whichever comes first — the next tag open or close.
+function tightLabelValue(html: string, label: string): string | null {
   const escaped = label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   return capture(html, new RegExp(`${escaped}:<\\/span>([\\s\\S]*?)(?:<div|<\\/div>)`, 'i'));
-}
-
-function extractImage(html: string): string | null {
-  const tag = html.match(/<img[^>]*data-src="[^"]*\/voiceactors\/[^"]*"[^>]*>/i)?.[0];
-  return tag?.match(/\sdata-src="([^"]+)"/i)?.[1] ?? null;
 }
 
 function extractWebsite(html: string): string | null {
@@ -38,17 +35,20 @@ function extractWebsite(html: string): string | null {
 export function parsePersonDetail(html: string, malId: number, fetchedAt = new Date().toISOString()): PersonDetail {
   const head = html.slice(0, 60_000);
   const name = capture(head, /<h1[^>]*class="title-name[^"]*"[^>]*>\s*<strong>([^<]+)<\/strong>/i);
+  const imageUrl = taggedImage(head, VOICE_ACTOR_IMAGE);
   const detail: PersonDetail = {
     malId,
+    url: canonicalUrl(head),
     name: name ?? '',
-    givenName: labelValue(head, 'Given name'),
-    familyName: labelValue(head, 'Family name'),
-    alternateNames: labelValue(head, 'Alternate names'),
-    birthday: labelValue(head, 'Birthday'),
+    givenName: tightLabelValue(head, 'Given name'),
+    familyName: tightLabelValue(head, 'Family name'),
+    alternateNames: tightLabelValue(head, 'Alternate names'),
+    birthday: tightLabelValue(head, 'Birthday'),
     website: extractWebsite(head),
-    imageUrl: extractImage(head),
-    about: capture(head, /js-people-informantion-more">([\s\S]*?)<\/div>/i),
-    favorites: numeric(labelValue(head, 'Member Favorites')),
+    imageUrl,
+    images: imageVariants(imageUrl, 'person'),
+    about: richCapture(head, /js-people-informantion-more">([\s\S]*?)<\/div>/i),
+    favorites: numeric(tightLabelValue(head, 'Member Favorites')),
     fetchedAt,
   };
   const validated = personDetailSchema.safeParse(detail);

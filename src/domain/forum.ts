@@ -7,4 +7,4 @@ export interface ForumThread {
   lastPostBy: string | null;
 }
 
-export const FORUM_PARSER_VERSION = 'forum-html-v1';
+export const FORUM_PARSER_VERSION = 'forum-html-v2';

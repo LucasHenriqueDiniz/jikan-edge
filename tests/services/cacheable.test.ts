@@ -39,7 +39,10 @@ describe('withCache', () => {
     expect(refresh).toHaveBeenCalledOnce();
   });
 
-  // A mismatched row still beats a 503, and the response already flags it.
+  // A mismatched row still beats a 503, and the response already flags it. This is a deliberate
+  // trade and not an oversight: refusing here would surrender the property this API exists for —
+  // answering while MyAnimeList is unreachable. A version bump that changes the *shape* of a
+  // payload is handled by deleting those rows in a migration, so they never reach this path.
   it('falls back to the version-mismatched snapshot when the refetch fails', async () => {
     const refresh = vi.fn(async () => { throw new Error('upstream down'); });
     const result = await withCache(deps(entry('v2')), 'user:x:profile', 60, 'v3', async () => 'stored', refresh, 'req');

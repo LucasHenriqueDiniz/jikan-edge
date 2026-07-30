@@ -5,4 +5,4 @@ export interface TitleRecommendation {
   votes: number;
 }
 
-export const TITLE_RECOMMENDATIONS_PARSER_VERSION = 'title-recommendations-html-v1';
+export const TITLE_RECOMMENDATIONS_PARSER_VERSION = 'title-recommendations-html-v2';

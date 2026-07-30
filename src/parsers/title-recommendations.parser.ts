@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import type { TitleRecommendation } from '../domain/title-recommendation';
-import { decodeHtml, ParserError } from './html';
+import { decodeHtml, imageFrom, ParserError } from './html';
 
 const entrySchema = z.object({
   malId: z.number().int().positive(), title: z.string().min(1), imageUrl: z.string().url().nullable(), votes: z.number().int().positive(),
@@ -15,7 +15,7 @@ function parseCard(chunk: string): TitleRecommendation | null {
   if (!idMatch) return null;
   const malId = Number(idMatch[1]);
   const title = decodeHtml(chunk.match(/<strong>([^<]+)<\/strong>/i)?.[1] ?? '');
-  const imageUrl = chunk.match(/data-src="([^"]+)"/i)?.[1] ?? null;
+  const imageUrl = imageFrom(chunk);
   const moreVotes = chunk.match(/Read recommendations by <strong>(\d+)<\/strong> more users/i)?.[1];
   const votes = moreVotes ? Number(moreVotes) + 1 : 1;
   const parsed = entrySchema.safeParse({ malId, title, imageUrl, votes });

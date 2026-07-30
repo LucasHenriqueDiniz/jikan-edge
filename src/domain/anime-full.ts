@@ -5,4 +5,4 @@ export interface AnimeFull extends AnimeDetail {
   themeSongs: AnimeThemeSongs;
 }
 
-export const ANIME_FULL_PARSER_VERSION = 'anime-full-html-v1';
+export const ANIME_FULL_PARSER_VERSION = 'anime-full-html-v2';

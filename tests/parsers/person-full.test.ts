@@ -13,8 +13,8 @@ describe('person full parser', () => {
     expect(full.manga).toEqual([]);
     expect(full.voices).toEqual([
       {
-        animeId: 1, animeTitle: 'Cowboy Bebop', animeImageUrl: 'https://cdn.myanimelist.net/r/84x124/images/anime/4/19644.jpg?s=42d7666179a2851c99fada2e0ceb5da1',
-        characterId: 1, characterName: 'Spiegel, Spike', characterRole: 'Main', characterImageUrl: 'https://cdn.myanimelist.net/r/84x124/images/characters/11/516853.jpg',
+        animeId: 1, animeTitle: 'Cowboy Bebop', animeImageUrl: 'https://cdn.myanimelist.net/images/anime/4/19644.jpg',
+        characterId: 1, characterName: 'Spiegel, Spike', characterRole: 'Main', characterImageUrl: 'https://cdn.myanimelist.net/images/characters/11/516853.jpg',
       },
     ]);
   });

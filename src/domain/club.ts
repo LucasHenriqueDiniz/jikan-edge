@@ -1,5 +1,6 @@
 export interface ClubDetail {
   malId: number;
+  url: string | null;
   title: string;
   members: number | null;
   pictures: number | null;
@@ -9,4 +10,4 @@ export interface ClubDetail {
   fetchedAt: string;
 }
 
-export const CLUB_PARSER_VERSION = 'club-html-v1';
+export const CLUB_PARSER_VERSION = 'club-html-v2';

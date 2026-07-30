@@ -8,7 +8,7 @@ describe('user search parser', () => {
     const results = parseUserSearch(html, 'amaya');
     expect(results).toEqual([
       { username: 'AmayaCiara', url: 'https://myanimelist.net/profile/AmayaCiara', avatarUrl: 'https://cdn.myanimelist.net/images/kaomoji_mal_white.png', joinedAt: 'Jan 27, 2013 11:30 AM' },
-      { username: 'AmayaProject', url: 'https://myanimelist.net/profile/AmayaProject', avatarUrl: 'https://cdn.myanimelist.net/s/common/userimages/51db26ac-2d72-4ada-a9a2-ff0580d6bb48_225w?s=ca7ea75ebb2ee51df6a44c7570d87652', joinedAt: 'Dec 26, 2017 8:04 PM' },
+      { username: 'AmayaProject', url: 'https://myanimelist.net/profile/AmayaProject', avatarUrl: 'https://cdn.myanimelist.net/s/common/userimages/51db26ac-2d72-4ada-a9a2-ff0580d6bb48_225w', joinedAt: 'Dec 26, 2017 8:04 PM' },
     ]);
   });
 

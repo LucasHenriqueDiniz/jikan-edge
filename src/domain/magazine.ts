@@ -5,4 +5,4 @@ export interface Magazine {
   url: string;
 }
 
-export const MAGAZINE_PARSER_VERSION = 'magazine-html-v1';
+export const MAGAZINE_PARSER_VERSION = 'magazine-html-v2';

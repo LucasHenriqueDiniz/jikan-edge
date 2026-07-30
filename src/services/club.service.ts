@@ -42,8 +42,7 @@ export class ClubService {
     }, requestId);
   }
 
-  list(rawPage: string | undefined, requestId: string): Promise<ServiceResponse<ClubListEntry[]>> {
-    const page = Math.max(1, Number.parseInt(rawPage ?? '1', 10) || 1);
+  list(page: number, requestId: string): Promise<ServiceResponse<ClubListEntry[]>> {
     const cacheKey = `catalog:clubs:page:${page}`;
     return withCache({ cache: this.cache, locks: this.locks }, cacheKey, this.config.catalogTtlSeconds, CLUB_LIST_PARSER_VERSION, () => this.catalog.get<ClubListEntry[]>(cacheKey), async () => {
       const source = await this.source.getHtml(clubListUrl(page), ['class="club-list"']);
@@ -72,9 +71,8 @@ export class ClubService {
     }, requestId);
   }
 
-  members(rawId: string, rawPage: string | undefined, requestId: string): Promise<ServiceResponse<ClubMember[]>> {
+  members(rawId: string, page: number, requestId: string): Promise<ServiceResponse<ClubMember[]>> {
     const malId = this.validateMalId(rawId);
-    const page = Math.max(1, Number.parseInt(rawPage ?? '1', 10) || 1);
     const cacheKey = `catalog:club:${malId}:members:page:${page}`;
     return withCache({ cache: this.cache, locks: this.locks }, cacheKey, this.config.animeTtlSeconds, CLUB_MEMBERS_PARSER_VERSION, () => this.catalog.get<ClubMember[]>(cacheKey), async () => {
       const source = await this.source.getHtml(clubMembersUrl(malId, page), ['<td align="center"  class="borderClass">']);

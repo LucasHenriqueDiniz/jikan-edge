@@ -1,5 +1,5 @@
 import type { RuntimeConfig } from '../config/env';
-import { MANGA_PARSER_VERSION, type MangaDetail, type MangaListEntry } from '../domain/manga';
+import { MANGA_PARSER_VERSION, TOP_MANGA_PARSER_VERSION, type MangaDetail, type MangaListEntry } from '../domain/manga';
 import type { ExternalLink, RelationEntry } from '../domain/anime';
 import { GENRE_PARSER_VERSION, type GenreTaxonomyEntry } from '../domain/genre';
 import { MAGAZINE_PARSER_VERSION, type Magazine } from '../domain/magazine';
@@ -121,15 +121,14 @@ export class MangaService {
     return filter ? { ...result, data: result.data.filter((entry) => entry.type === filter) } : result;
   }
 
-  async topManga(rawPage: string | undefined, requestId: string): Promise<ServiceResponse<MangaListEntry[]>> {
-    const page = Math.max(1, Number.parseInt(rawPage ?? '1', 10) || 1);
+  async topManga(page: number, requestId: string): Promise<ServiceResponse<MangaListEntry[]>> {
     const cacheKey = `catalog:top:manga:page:${page}`;
-    return withCache({ cache: this.cache, locks: this.locks }, cacheKey, this.config.catalogTtlSeconds, MANGA_PARSER_VERSION, () => this.catalog.get<MangaListEntry[]>(cacheKey), async () => {
+    return withCache({ cache: this.cache, locks: this.locks }, cacheKey, this.config.catalogTtlSeconds, TOP_MANGA_PARSER_VERSION, () => this.catalog.get<MangaListEntry[]>(cacheKey), async () => {
       const source = await this.source.getHtml(topMangaUrl(page), ['ranking-list']);
       if (source.kind !== 'success') throw sourceError(source);
       const value = parseTopManga(source.value);
       const fetchedAt = new Date().toISOString();
-      await this.catalog.put(cacheKey, value, fetchedAt, MANGA_PARSER_VERSION);
+      await this.catalog.put(cacheKey, value, fetchedAt, TOP_MANGA_PARSER_VERSION);
       return value;
     }, requestId);
   }
@@ -198,9 +197,8 @@ export class MangaService {
     return this.perMangaResource(rawId, 'recommendations', titleRecommendationsUrl('manga', malId), ['picSurround'], TITLE_RECOMMENDATIONS_PARSER_VERSION, (html) => parseTitleRecommendations(html, 'manga'), requestId);
   }
 
-  reviews(rawId: string, rawPage: string | undefined, requestId: string): Promise<ServiceResponse<TitleReview[]>> {
+  reviews(rawId: string, page: number, requestId: string): Promise<ServiceResponse<TitleReview[]>> {
     const malId = this.validateMalId(rawId);
-    const page = Math.max(1, Number.parseInt(rawPage ?? '1', 10) || 1);
     const cacheKey = `catalog:manga:${malId}:reviews:page:${page}`;
     return withCache({ cache: this.cache, locks: this.locks }, cacheKey, this.config.animeTtlSeconds, TITLE_REVIEWS_PARSER_VERSION, () => this.catalog.get<TitleReview[]>(cacheKey), async () => {
       const source = await this.source.getHtml(titleReviewsUrl('manga', malId, page), ['review-element']);
