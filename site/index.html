@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>jikan-edge — Jikan-parity anime API on Cloudflare Workers</title>
-<meta name="description" content="An unofficial, open-source MyAnimeList REST API with Jikan functional parity — 96 routes served entirely from Cloudflare's edge. No auth, open CORS, MIT.">
+<meta name="description" content="An unofficial, open-source MyAnimeList REST API with Jikan functional parity — 97 routes served entirely from Cloudflare's edge. No auth, open CORS, MIT.">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%230b0e14'/%3E%3Ctext x='32' y='44' font-size='34' text-anchor='middle' fill='%23ff4b33' font-family='serif'%3E時%3C/text%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -459,14 +459,14 @@ footer .stamp .kanji { color: var(--vermillion); }
   <div class="wrap">
     <div class="sec-head reveal">
       <div class="jp">ルート</div>
-      <h2>96 routes, one worker</h2>
+      <h2>97 routes, one worker</h2>
       <p>The full Jikan v4 functional surface, minus the parts MyAnimeList doesn't actually expose
       (documented below, not swept under the rug). Responses are camelCase and wrapped in
       <code>{ data, meta }</code>.</p>
     </div>
     <div class="routes">
       <div class="route-card reveal">
-        <h3>Anime <span class="count">20 routes</span></h3>
+        <h3>Anime <span class="count">23 routes</span></h3>
         <div class="chips"><span>search + filters</span><span>detail</span><span>full</span><span>characters</span><span>staff</span><span>episodes</span><span>videos</span><span>pictures</span><span>statistics</span><span>news</span><span>forum</span><span>relations</span><span>themes</span><span>external</span><span>streaming</span><span>recommendations</span><span>reviews</span><span>moreinfo</span><span>userupdates</span><span>genres</span></div>
         <div class="peek">
           <div class="peek-req">GET /v1/anime/1</div>
@@ -483,7 +483,7 @@ footer .stamp .kanji { color: var(--vermillion); }
         </div>
       </div>
       <div class="route-card reveal">
-        <h3>Manga <span class="count">14 routes</span></h3>
+        <h3>Manga <span class="count">16 routes</span></h3>
         <div class="chips"><span>search + filters</span><span>detail</span><span>full</span><span>characters</span><span>pictures</span><span>statistics</span><span>news</span><span>forum</span><span>relations</span><span>external</span><span>recommendations</span><span>reviews</span><span>moreinfo</span><span>userupdates</span><span>genres</span></div>
         <div class="peek">
           <div class="peek-req">GET /v1/manga/2</div>
@@ -500,7 +500,7 @@ footer .stamp .kanji { color: var(--vermillion); }
         </div>
       </div>
       <div class="route-card reveal">
-        <h3>Characters &amp; People <span class="count">16 routes</span></h3>
+        <h3>Characters &amp; People <span class="count">17 routes</span></h3>
         <div class="chips"><span>detail</span><span>full</span><span>anime</span><span>manga</span><span>voices</span><span>pictures</span><span>news</span><span>search</span><span>top</span></div>
         <div class="peek">
           <div class="peek-req">GET /v1/characters/1</div>
@@ -531,7 +531,7 @@ footer .stamp .kanji { color: var(--vermillion); }
         </div>
       </div>
       <div class="route-card reveal">
-        <h3>Seasons &amp; Schedules <span class="count">6 routes</span></h3>
+        <h3>Seasons &amp; Schedules <span class="count">5 routes</span></h3>
         <div class="chips"><span>now</span><span>year/season</span><span>upcoming</span><span>archive</span><span>weekly schedule</span><span>?filter=monday…sunday</span></div>
         <div class="peek">
           <div class="peek-req">GET /v1/seasons/now</div>
@@ -547,7 +547,7 @@ footer .stamp .kanji { color: var(--vermillion); }
         </div>
       </div>
       <div class="route-card reveal">
-        <h3>Clubs, Producers &amp; Magazines <span class="count">11 routes</span></h3>
+        <h3>Clubs, Producers &amp; Magazines <span class="count">10 routes</span></h3>
         <div class="chips"><span>club detail</span><span>members</span><span>staff</span><span>relations</span><span>producer directory</span><span>detail</span><span>full</span><span>external</span><span>magazines ?q=</span></div>
         <div class="peek">
           <div class="peek-req">GET /v1/producers/4</div>
@@ -649,17 +649,20 @@ footer .stamp .kanji { color: var(--vermillion); }
       <div class="mig-diff" aria-hidden="true">
         <div class="mig-line mig-old">
           <span class="mig-tag">before</span>
-          <code><s>https://api.jikan.moe/v4</s>/anime/1 → <s>mal_id</s>, <s>images.jpg.image_url</s></code>
+          <code><s>https://api.jikan.moe/v4</s>/anime/1 → <s>mal_id</s>, <s>images.jpg.image_url</s>, <s>aired.prop</s></code>
         </div>
         <div class="mig-line mig-new">
           <span class="mig-tag">after</span>
-          <code>https://jikan-edge.lucas-hdo.workers.dev/v1/anime/1 → malId, imageUrl</code>
+          <code>https://jikan-edge.lucas-hdo.workers.dev/v1/anime/1 → malId, imageUrl, images, aired.from</code>
         </div>
       </div>
       <button class="mig-btn" id="prompt-copy"><span class="mig-ico">⧉</span><span class="mig-txt">Copy the agent prompt</span></button>
-      <p class="mig-note">Covers the <code>{ data, meta }</code> envelope, camelCase fields, pagination,
-      <code>429</code> handling and the <a href="/docs#not-served">routes we don't serve</a> — and asks the
-      agent to verify every endpoint against the live API.</p>
+      <p class="mig-note">Not a drop-in swap, and it isn't trying to be: the envelope is
+      <code>{ data, meta }</code>, fields are camelCase, genres and studios carry their
+      <code>malId</code>, and dates come split into <code>{ from, to, string }</code>. The prompt covers
+      all of it, plus pagination, <code>429</code> handling and the
+      <a href="/docs#not-served">routes we don't serve</a> — and asks the agent to verify every
+      endpoint against the live API.</p>
     </div>
   </div>
 </section>
