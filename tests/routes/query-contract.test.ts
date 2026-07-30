@@ -56,6 +56,23 @@ describe('query guard', () => {
     }
   });
 
+  // MAL ignores an unrecognised ranking tab and serves the unfiltered list with a 200, so passing
+  // the value straight through would answer 200 with the wrong data. And the two media genuinely
+  // differ: topmanga.php has no publishing or upcoming tab.
+  it('accepts the top filters each medium actually honours, and refuses the rest', async () => {
+    expect((await call('/v1/top/anime?filter=airing')).status).not.toBe(400);
+    expect((await call('/v1/top/manga?filter=bypopularity')).status).not.toBe(400);
+
+    const bogus = await body(await call('/v1/top/anime?filter=bogus'));
+    expect(bogus.error?.code).toBe('INVALID_FILTER');
+    expect(bogus.error?.message).toContain('airing');
+
+    // Valid for anime, silently ignored by MAL for manga — so it is refused rather than honoured.
+    const wrongMedium = await body(await call('/v1/top/manga?filter=upcoming'));
+    expect(wrongMedium.error?.code).toBe('INVALID_FILTER');
+    expect(wrongMedium.error?.message).toBe('"filter" must be one of: bypopularity, favorite.');
+  });
+
   it('guards routes that take nothing at all', async () => {
     const { error } = await body(await call('/v1/anime/1/themes?filter=bogus'));
     expect(error?.code).toBe('UNKNOWN_PARAMETER');

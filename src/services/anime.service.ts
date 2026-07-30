@@ -39,7 +39,8 @@ import { CacheRepository } from '../repositories/cache.repository';
 import { CatalogListRepository } from '../repositories/catalog-list.repository';
 import { RefreshLockRepository } from '../repositories/refresh-lock.repository';
 import { MalClient } from '../source/mal-client';
-import { animeDetailUrl, charactersUrl, episodeDetailUrl, episodesUrl, forumUrl, genreTaxonomyUrl, moreInfoUrl, newsUrl, picturesUrl, scheduleUrl, seasonArchiveUrl, seasonByYearUrl, seasonNowUrl, seasonUpcomingUrl, statisticsUrl, titleRecommendationsUrl, titleReviewsUrl, topAnimeUrl, videosUrl } from '../source/mal-urls';
+import { animeDetailUrl, charactersUrl, episodeDetailUrl, episodesUrl, forumUrl, genreTaxonomyUrl, moreInfoUrl, newsUrl, picturesUrl, scheduleUrl, seasonArchiveUrl, seasonByYearUrl, seasonNowUrl, seasonUpcomingUrl, statisticsUrl, titleRecommendationsUrl, titleReviewsUrl, TOP_ANIME_FILTERS, topAnimeUrl, videosUrl } from '../source/mal-urls';
+import { parseTopFilter } from './top-filter';
 import { ServiceError, type ServiceResponse, sourceError, withCache } from './cacheable';
 import { parseGenreFilter } from './genre-filter';
 
@@ -227,10 +228,11 @@ export class AnimeService {
     return filter ? { ...result, data: result.data.filter((entry) => entry.type === filter) } : result;
   }
 
-  async topAnime(page: number, requestId: string): Promise<ServiceResponse<AnimeListEntry[]>> {
-    const cacheKey = `catalog:top:anime:page:${page}`;
+  async topAnime(page: number, rawFilter: string | undefined, requestId: string): Promise<ServiceResponse<AnimeListEntry[]>> {
+    const filter = parseTopFilter(rawFilter, TOP_ANIME_FILTERS);
+    const cacheKey = `catalog:top:anime:page:${page}${filter ? `:${filter}` : ''}`;
     return withCache({ cache: this.cache, locks: this.locks }, cacheKey, this.config.catalogTtlSeconds, TOP_ANIME_PARSER_VERSION, () => this.catalog.get<AnimeListEntry[]>(cacheKey), async () => {
-      const source = await this.source.getHtml(topAnimeUrl(page), ['ranking-list']);
+      const source = await this.source.getHtml(topAnimeUrl(page, filter), ['ranking-list']);
       if (source.kind !== 'success') throw sourceError(source);
       const value = parseTopAnime(source.value);
       const fetchedAt = new Date().toISOString();

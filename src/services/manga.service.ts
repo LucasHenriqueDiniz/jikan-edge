@@ -1,5 +1,7 @@
 import type { RuntimeConfig } from '../config/env';
 import { MANGA_PARSER_VERSION, TOP_MANGA_PARSER_VERSION, type MangaDetail, type MangaListEntry } from '../domain/manga';
+import { TOP_MANGA_FILTERS } from '../source/mal-urls';
+import { parseTopFilter } from './top-filter';
 import type { ExternalLink, RelationEntry } from '../domain/anime';
 import { GENRE_PARSER_VERSION, type GenreTaxonomyEntry } from '../domain/genre';
 import { MAGAZINE_PARSER_VERSION, type Magazine } from '../domain/magazine';
@@ -121,10 +123,11 @@ export class MangaService {
     return filter ? { ...result, data: result.data.filter((entry) => entry.type === filter) } : result;
   }
 
-  async topManga(page: number, requestId: string): Promise<ServiceResponse<MangaListEntry[]>> {
-    const cacheKey = `catalog:top:manga:page:${page}`;
+  async topManga(page: number, rawFilter: string | undefined, requestId: string): Promise<ServiceResponse<MangaListEntry[]>> {
+    const filter = parseTopFilter(rawFilter, TOP_MANGA_FILTERS);
+    const cacheKey = `catalog:top:manga:page:${page}${filter ? `:${filter}` : ''}`;
     return withCache({ cache: this.cache, locks: this.locks }, cacheKey, this.config.catalogTtlSeconds, TOP_MANGA_PARSER_VERSION, () => this.catalog.get<MangaListEntry[]>(cacheKey), async () => {
-      const source = await this.source.getHtml(topMangaUrl(page), ['ranking-list']);
+      const source = await this.source.getHtml(topMangaUrl(page, filter), ['ranking-list']);
       if (source.kind !== 'success') throw sourceError(source);
       const value = parseTopManga(source.value);
       const fetchedAt = new Date().toISOString();

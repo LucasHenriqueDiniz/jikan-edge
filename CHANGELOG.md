@@ -115,9 +115,13 @@ flagged.
 
 - **`duration` keeps MAL's punctuation**: `"24 min. per ep."`, where Jikan prints `"24 min per ep"`.
   That is what the page says, and this API reports the source rather than tidying it.
-- **`?filter=` on `/v1/top/anime` and `/v1/top/manga` answers `400`.** It works upstream and is
-  planned, but listing it as accepted before it is wired would make it exactly the kind of
-  do-nothing parameter this release removed.
+- **`?filter=` on `/v1/top/anime` and `/v1/top/manga` takes different values per medium.** Anime
+  accepts Jikan's four (`airing`, `upcoming`, `bypopularity`, `favorite`); manga accepts only
+  `bypopularity` and `favorite`. That is not an omission: comparing the id sets, `publishing` and
+  `upcoming` return the unfiltered manga list unchanged, because MAL's top-manga page has no such
+  tab. Jikan lists all four; two of them do nothing there. Anything else is `400 INVALID_FILTER` —
+  MAL ignores an unrecognised tab silently and serves the unfiltered list with a `200`, so passing
+  the value through would answer with the wrong data and no way to tell.
 
 ## 2026-07-30
 

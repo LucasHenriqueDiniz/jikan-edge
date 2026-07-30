@@ -26,20 +26,22 @@ function mangaDetail(malId: number): MangaDetail {
   return { malId, url: null, title: `Manga ${malId}`, titleEnglish: null, titleJapanese: null, titleSynonyms: [], imageUrl: null, images: { small: null, medium: null, large: null }, synopsis: null, background: null, type: 'Manga', volumes: 10, chapters: 80, status: 'Publishing', publishing: true, published: { from: null, to: null, string: null }, authors: [], serializations: [], genres: [], themes: [], demographics: [], score: 8.5, scoredBy: null, rank: 1, popularity: 1, members: 100, favorites: 10, relations: [], externalLinks: [], fetchedAt };
 }
 
+const noImages = { small: null, medium: null, large: null };
+
 function characterDetail(malId: number): CharacterDetail {
-  return { malId, name: `Character ${malId}`, nameKanji: null, imageUrl: null, about: null, favorites: 10, fetchedAt };
+  return { malId, url: null, name: `Character ${malId}`, nameKanji: null, imageUrl: null, images: noImages, about: null, favorites: 10, fetchedAt };
 }
 
 function producerDetail(malId: number): ProducerDetail {
-  return { malId, name: `Producer ${malId}`, imageUrl: null, established: null, favorites: 5, fetchedAt };
+  return { malId, url: null, name: `Producer ${malId}`, imageUrl: null, established: null, favorites: 5, fetchedAt };
 }
 
 function clubDetail(malId: number): ClubDetail {
-  return { malId, title: `Club ${malId}`, members: 100, pictures: 5, category: 'Anime', created: null, staff: [], fetchedAt };
+  return { malId, url: null, title: `Club ${malId}`, members: 100, pictures: 5, category: 'Anime', created: null, staff: [], fetchedAt };
 }
 
 function personDetail(malId: number): PersonDetail {
-  return { malId, name: `Person ${malId}`, givenName: null, familyName: null, alternateNames: null, birthday: null, website: null, imageUrl: null, about: null, favorites: 5, fetchedAt };
+  return { malId, url: null, name: `Person ${malId}`, givenName: null, familyName: null, alternateNames: null, birthday: null, website: null, imageUrl: null, images: noImages, about: null, favorites: 5, fetchedAt };
 }
 
 beforeAll(async () => applyD1Migrations(bindings.DB, bindings.TEST_MIGRATIONS));

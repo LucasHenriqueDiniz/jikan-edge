@@ -92,12 +92,11 @@ export const QUERY_CONTRACT: Record<string, readonly string[]> = {
   '/v1/magazines': ['q'],
 
   // Top / genres / seasons / schedules
-  // `filter=airing|upcoming|bypopularity|favorite` was measured to work upstream
-  // (`topanime.php?type=airing`, same ranking-list markup) but is not wired through yet. Left out
-  // of the table on purpose: listing it here would let it pass the guard and do nothing, which is
-  // the exact defect this guard exists to remove.
-  '/v1/top/anime': ['page'],
-  '/v1/top/manga': ['page'],
+  // The accepted values differ by media, and the service enforces that: anime takes all four of
+  // Jikan's, manga only `bypopularity` and `favorite`, because topmanga.php has no publishing or
+  // upcoming tab and silently serves the unfiltered list for those.
+  '/v1/top/anime': ['page', 'filter'],
+  '/v1/top/manga': ['page', 'filter'],
   '/v1/top/characters': ['page'],
   '/v1/top/people': ['page'],
   '/v1/genres/anime': ['filter'],

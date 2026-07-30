@@ -9,6 +9,5 @@
     "types": ["@cloudflare/workers-types", "vitest/globals", "node"],
     "noEmit": true
   },
-  "include": ["src/**/*.ts", "tests/**/*.ts"],
-  "exclude": ["tests/integration/**"]
+  "include": ["src/**/*.ts", "tests/**/*.ts"]
 }

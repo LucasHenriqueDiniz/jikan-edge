@@ -221,7 +221,7 @@ app.get('/v1/genres/anime', async (c) => {
   catch (error) { return errorResponse(c, error, c.get('requestId')); }
 });
 app.get('/v1/top/anime', async (c) => {
-  try { const result = await animeService(c).topAnime(c.get('page'), c.get('requestId')); cacheHeader(c, result); return c.json(success(result.data, { cached: result.cached, stale: result.stale, refreshFailed: result.refreshFailed, fetchedAt: result.fetchedAt, pagination: paginationMeta(c.get('page'), TOP_PAGE_SIZE, result.data.length) })); }
+  try { const result = await animeService(c).topAnime(c.get('page'), c.req.query('filter'), c.get('requestId')); cacheHeader(c, result); return c.json(success(result.data, { cached: result.cached, stale: result.stale, refreshFailed: result.refreshFailed, fetchedAt: result.fetchedAt, pagination: paginationMeta(c.get('page'), TOP_PAGE_SIZE, result.data.length) })); }
   catch (error) { return errorResponse(c, error, c.get('requestId')); }
 });
 app.get('/v1/seasons', async (c) => {
@@ -302,7 +302,7 @@ app.get('/v1/genres/manga', async (c) => {
   catch (error) { return errorResponse(c, error, c.get('requestId')); }
 });
 app.get('/v1/top/manga', async (c) => {
-  try { const result = await mangaService(c).topManga(c.get('page'), c.get('requestId')); cacheHeader(c, result); return c.json(success(result.data, { cached: result.cached, stale: result.stale, refreshFailed: result.refreshFailed, fetchedAt: result.fetchedAt, pagination: paginationMeta(c.get('page'), TOP_PAGE_SIZE, result.data.length) })); }
+  try { const result = await mangaService(c).topManga(c.get('page'), c.req.query('filter'), c.get('requestId')); cacheHeader(c, result); return c.json(success(result.data, { cached: result.cached, stale: result.stale, refreshFailed: result.refreshFailed, fetchedAt: result.fetchedAt, pagination: paginationMeta(c.get('page'), TOP_PAGE_SIZE, result.data.length) })); }
   catch (error) { return errorResponse(c, error, c.get('requestId')); }
 });
 app.get('/v1/top/people', async (c) => {

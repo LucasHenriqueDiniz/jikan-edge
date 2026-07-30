@@ -37,9 +37,24 @@ export function animeDetailUrl(malId: number): string {
   return `${BASE}/anime/${malId}`;
 }
 
-export function topAnimeUrl(page: number): string {
-  const limit = (page - 1) * 50;
-  return limit > 0 ? `${BASE}/topanime.php?limit=${limit}` : `${BASE}/topanime.php`;
+// MAL's ranking tabs are `type=`, and it **ignores an unrecognised value silently** — `?type=bogus`
+// serves the unfiltered list with a 200. So the value has to be checked here rather than handed
+// through, or `?filter=bogus` would answer 200 with the wrong list.
+//
+// The two media do not accept the same set, verified by comparing the id sets: anime honours all
+// four, while topmanga.php only honours `bypopularity` and `favorite` — `publishing` and `upcoming`
+// come back identical to the unfiltered page, because that page has no such tab. Jikan lists all
+// four for manga; two of them do nothing there.
+export const TOP_ANIME_FILTERS = ['airing', 'upcoming', 'bypopularity', 'favorite'] as const;
+export const TOP_MANGA_FILTERS = ['bypopularity', 'favorite'] as const;
+
+export function topAnimeUrl(page: number, filter: string | null = null): string {
+  const limit = (page - 1) * TOP_PAGE_SIZE;
+  const params = new URLSearchParams();
+  if (filter) params.set('type', filter);
+  if (limit > 0) params.set('limit', String(limit));
+  const query = params.toString();
+  return query ? `${BASE}/topanime.php?${query}` : `${BASE}/topanime.php`;
 }
 
 export function seasonNowUrl(): string {
@@ -65,9 +80,13 @@ export function mangaDetailUrl(malId: number): string {
   return `${BASE}/manga/${malId}`;
 }
 
-export function topMangaUrl(page: number): string {
-  const limit = (page - 1) * 50;
-  return limit > 0 ? `${BASE}/topmanga.php?limit=${limit}` : `${BASE}/topmanga.php`;
+export function topMangaUrl(page: number, filter: string | null = null): string {
+  const limit = (page - 1) * TOP_PAGE_SIZE;
+  const params = new URLSearchParams();
+  if (filter) params.set('type', filter);
+  if (limit > 0) params.set('limit', String(limit));
+  const query = params.toString();
+  return query ? `${BASE}/topmanga.php?${query}` : `${BASE}/topmanga.php`;
 }
 
 export function characterDetailUrl(malId: number): string {
