@@ -70,6 +70,26 @@ section { margin-top: 56px; scroll-margin-top: 24px; }
 section > h2 { font-size: 26px; font-weight: 700; letter-spacing: -.02em; padding-bottom: 10px; border-bottom: 1px solid var(--line); }
 section > h2 .count { font-family: var(--mono); font-size: 12px; color: var(--vermillion); font-weight: 400; margin-left: 10px; }
 section > p.note { color: var(--paper-dim); font-size: 14.5px; margin-top: 12px; max-width: 78ch; }
+/* Passos numerados: a sequência de setup é uma ordem, e prosa corrida escondia isso. */
+.steps { list-style: none; counter-reset: step; margin: 20px 0 0; max-width: 78ch; }
+.steps > li { counter-increment: step; position: relative; padding-left: 38px; margin-top: 18px; }
+.steps > li::before {
+  content: counter(step); position: absolute; left: 0; top: 1px;
+  width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center;
+  font-family: var(--mono); font-size: 12px; color: var(--ink); background: var(--vermillion);
+}
+.steps > li > b { display: block; font-size: 15px; font-weight: 600; }
+.steps > li > span { display: block; color: var(--paper-dim); font-size: 14px; margin-top: 3px; }
+.steps pre.block { margin-top: 10px; }
+/* Rótulo do bloco: separa o comando da resposta dele, que antes dividiam o mesmo <pre>. */
+.blk-label { font-family: var(--mono); font-size: 10.5px; letter-spacing: .14em; text-transform: uppercase;
+  color: var(--paper-faint); margin: 14px 0 -4px; }
+/* Ressalva que muda a decisão de plano; merece peso, não uma frase no meio do parágrafo. */
+.callout { display: flex; gap: 12px; margin-top: 24px; padding: 14px 16px; max-width: 78ch;
+  border: 1px solid var(--line); border-left: 3px solid var(--gold); border-radius: 10px; background: var(--ink-2); }
+.callout .ico { color: var(--gold); font-size: 15px; line-height: 1.5; }
+.callout p { color: var(--paper-dim); font-size: 14px; margin: 0; }
+.callout b { color: var(--paper); }
 
 /* conventions blocks */
 .conv { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 14px; margin-top: 20px; }
@@ -233,32 +253,57 @@ footer a { color: var(--paper-dim); }
 
       <section id="self-hosting">
         <h2>Self-hosting <span class="count">MIT, no auth</span></h2>
-        <p class="note">Run your own copy on your own Cloudflare account. <code>npm run setup</code> creates the D1
-        database, writes its id into <code>wrangler.jsonc</code> and applies the migrations. It is idempotent, so it
-        reuses a database you already made.</p>
-        <pre class="block">git clone https://github.com/LucasHenriqueDiniz/jikan-edge
-cd jikan-edge
-npm install
-npm run setup
-npx wrangler deploy</pre>
-        <p class="note">Then check the deploy answered for itself. <code>data.checks.database</code> reads
-        <code>ok</code> when everything is wired, and <code>not_migrated</code>, <code>not_configured</code> or
-        <code>unavailable</code> when it is not, so one call tells you which of the three is wrong instead of leaving
-        you to read a 500.</p>
-        <pre class="block">curl https://YOUR-WORKER.workers.dev/health
+        <p class="note">Run your own copy on your own Cloudflare account. Four commands, no API key, nothing to
+        register beyond the Cloudflare account itself.</p>
 
-{
+        <ol class="steps">
+          <li>
+            <b>Get the code</b>
+            <span>Node 18 or newer, and a Cloudflare account you can deploy Workers from.</span>
+            <pre class="block">git clone https://github.com/LucasHenriqueDiniz/jikan-edge
+cd jikan-edge
+npm install</pre>
+          </li>
+          <li>
+            <b>Create the database</b>
+            <span>Creates the D1 database, writes its id into <code>wrangler.jsonc</code> and applies the migrations.
+            Idempotent, so it reuses one you already made.</span>
+            <pre class="block">npm run setup</pre>
+          </li>
+          <li>
+            <b>Deploy</b>
+            <span>Publishing stays a separate, deliberate step; <code>setup</code> never does it for you.</span>
+            <pre class="block">npx wrangler deploy</pre>
+          </li>
+          <li>
+            <b>Confirm it came up</b>
+            <span><code>data.checks.database</code> answers <code>ok</code>, <code>not_migrated</code>,
+            <code>not_configured</code> or <code>unavailable</code>, so one call names which of the three is wrong
+            instead of leaving you to interpret a 500.</span>
+            <p class="blk-label">Request</p>
+            <pre class="block">curl https://YOUR-WORKER.workers.dev/health</pre>
+            <p class="blk-label">What a healthy deploy returns</p>
+            <pre class="block">{
   <span class="k">"data"</span>: {
     <span class="k">"status"</span>: <span class="s">"ok"</span>,
     <span class="k">"service"</span>: <span class="s">"jikan-edge"</span>,
     <span class="k">"checks"</span>: { <span class="k">"database"</span>: <span class="s">"ok"</span> }
   }
 }</pre>
-        <p class="note">One thing worth knowing before you pick a plan: Workers Free caps CPU at <b>10 ms</b> per
-        request, and this API measures p95 <b>27 ms</b> on a cache miss. The heavier routes return
-        <code>Error 1102</code> there. Cached responses and the light routes are fine.</p>
-        <p class="note">Full guide, including the manual path and a troubleshooting table:
-        <a href="https://github.com/LucasHenriqueDiniz/jikan-edge/blob/main/docs/self-hosting.md" target="_blank" rel="noopener">docs/self-hosting.md</a>.</p>
+          </li>
+        </ol>
+
+        <div class="callout">
+          <span class="ico" aria-hidden="true">▲</span>
+          <p><b>Check the plan before you commit to it.</b> Workers Free caps CPU at <b>10 ms</b> per request, and this
+          API measures p95 <b>27 ms</b> on a cache miss, so the heavier routes return <code>Error 1102</code> there.
+          Cached responses and the light routes run fine.</p>
+        </div>
+
+        <p class="note">The
+        <a href="https://github.com/LucasHenriqueDiniz/jikan-edge/blob/main/docs/self-hosting.md" target="_blank" rel="noopener">full self-hosting guide</a>
+        covers the manual path, a troubleshooting table, and what running this responsibly asks of you: user agent,
+        rate limits, cache TTLs and the source policy.</p>
       </section>
 
       <!-- route groups injected here -->
