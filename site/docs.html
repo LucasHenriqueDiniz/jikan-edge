@@ -140,6 +140,7 @@ footer a { color: var(--paper-dim); }
       <a href="#conventions">Conventions</a>
       <a href="#rate-limits">Rate limits</a>
       <a href="#caching">Caching</a>
+      <a href="#self-hosting">Self-hosting</a>
       <h4>Routes</h4>
       <!-- group links injected by JS -->
       <span id="sidebar-groups"></span>
@@ -224,6 +225,21 @@ footer a { color: var(--paper-dim); }
         and persists the normalized result (a 30 s per-resource lease prevents thundering herds). If a refresh fails and a
         stale copy exists, you still get <code>200</code> with <code>meta.stale: true</code>. Valid cached data is never
         replaced by a suspicious upstream document.</p>
+      </section>
+
+      <section id="self-hosting">
+        <h2>Self-hosting <span class="count">MIT, no auth</span></h2>
+        <p class="note">Run your own copy on your own Cloudflare account. <code>npm run setup</code> creates the D1
+        database, writes its id into <code>wrangler.jsonc</code> and applies the migrations; then
+        <code>npx wrangler deploy</code>. Check <code>GET /health</code> afterwards, where
+        <code>data.checks.database</code> should read <code>ok</code> — it also answers
+        <code>not_migrated</code>, <code>not_configured</code> or <code>unavailable</code>, so one call tells you which
+        of the three is wrong.</p>
+        <p class="note">One thing worth knowing before you pick a plan: Workers Free caps CPU at <b>10 ms</b> per
+        request, and this API measures p95 <b>27 ms</b> on a cache miss. The heavier routes return
+        <code>Error 1102</code> there. Cached responses and the light routes are fine.</p>
+        <p class="note">Full guide, including the manual path and a troubleshooting table:
+        <a href="https://github.com/LucasHenriqueDiniz/jikan-edge/blob/main/docs/self-hosting.md" target="_blank" rel="noopener">docs/self-hosting.md</a>.</p>
       </section>
 
       <!-- route groups injected here -->
