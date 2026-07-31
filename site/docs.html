@@ -50,6 +50,10 @@ header nav a:hover { color: var(--paper); background: var(--panel); }
 .sidebar h4:first-child { margin-top: 0; }
 .sidebar a { display: block; text-decoration: none; color: var(--paper-dim); font-size: 13.5px; padding: 4px 10px; border-left: 2px solid var(--line); }
 .sidebar a:hover { color: var(--vermillion); border-left-color: var(--vermillion); }
+/* Marca a seção que está sendo lida. O peso e a barra à esquerda carregam o estado juntos, para
+   não depender só de cor. */
+.sidebar a.active { color: var(--paper); border-left-color: var(--vermillion); background: var(--vermillion-soft); font-weight: 600; }
+.sidebar a:focus-visible { outline: 2px solid var(--vermillion); outline-offset: -2px; }
 
 main h1 { font-size: clamp(30px, 4vw, 42px); font-weight: 750; letter-spacing: -.02em; line-height: 1.1; }
 main .lede { color: var(--paper-dim); margin-top: 12px; max-width: 70ch; }
@@ -230,11 +234,26 @@ footer a { color: var(--paper-dim); }
       <section id="self-hosting">
         <h2>Self-hosting <span class="count">MIT, no auth</span></h2>
         <p class="note">Run your own copy on your own Cloudflare account. <code>npm run setup</code> creates the D1
-        database, writes its id into <code>wrangler.jsonc</code> and applies the migrations; then
-        <code>npx wrangler deploy</code>. Check <code>GET /health</code> afterwards, where
-        <code>data.checks.database</code> should read <code>ok</code> — it also answers
-        <code>not_migrated</code>, <code>not_configured</code> or <code>unavailable</code>, so one call tells you which
-        of the three is wrong.</p>
+        database, writes its id into <code>wrangler.jsonc</code> and applies the migrations. It is idempotent, so it
+        reuses a database you already made.</p>
+        <pre class="block">git clone https://github.com/LucasHenriqueDiniz/jikan-edge
+cd jikan-edge
+npm install
+npm run setup
+npx wrangler deploy</pre>
+        <p class="note">Then check the deploy answered for itself. <code>data.checks.database</code> reads
+        <code>ok</code> when everything is wired, and <code>not_migrated</code>, <code>not_configured</code> or
+        <code>unavailable</code> when it is not, so one call tells you which of the three is wrong instead of leaving
+        you to read a 500.</p>
+        <pre class="block">curl https://YOUR-WORKER.workers.dev/health
+
+{
+  <span class="k">"data"</span>: {
+    <span class="k">"status"</span>: <span class="s">"ok"</span>,
+    <span class="k">"service"</span>: <span class="s">"jikan-edge"</span>,
+    <span class="k">"checks"</span>: { <span class="k">"database"</span>: <span class="s">"ok"</span> }
+  }
+}</pre>
         <p class="note">One thing worth knowing before you pick a plan: Workers Free caps CPU at <b>10 ms</b> per
         request, and this API measures p95 <b>27 ms</b> on a cache miss. The heavier routes return
         <code>Error 1102</code> there. Cached responses and the light routes are fine.</p>
@@ -492,6 +511,56 @@ footer a { color: var(--paper-dim); }
       })
       .then(function () { delete btn.dataset.busy; });
   });
+})();
+
+// Marca no índice a seção que está sendo lida. Os links de grupo de rota são injetados por JS
+// antes daqui, então a lista é montada agora e não no carregamento do documento.
+(function () {
+  var links = [].slice.call(document.querySelectorAll('.sidebar a[href^="#"]'));
+  if (!links.length || !('IntersectionObserver' in window)) return;
+
+  var byId = {};
+  var targets = [];
+  links.forEach(function (link) {
+    var el = document.getElementById(decodeURIComponent(link.getAttribute('href').slice(1)));
+    if (!el) return;
+    byId[el.id] = link;
+    targets.push(el);
+  });
+  if (!targets.length) return;
+
+  // Posição em vez de IntersectionObserver: a seção atual é a última cujo topo já passou da linha
+  // de leitura. É uma regra que dá para conferir com getBoundingClientRect, enquanto o observer
+  // depende de callbacks que nem todo ambiente entrega.
+  var READING_LINE = 120;
+  var current = null;
+
+  function paint() {
+    var found = targets[0];
+    for (var i = 0; i < targets.length; i++) {
+      if (targets[i].getBoundingClientRect().top <= READING_LINE) found = targets[i];
+    }
+    // Perto do fim da página a última seção pode nunca alcançar a linha; então quem estiver no
+    // fundo do scroll ganha a marcação.
+    if (window.innerHeight + window.scrollY >= document.body.scrollHeight - 4) found = targets[targets.length - 1];
+    if (found === current) return;
+    current = found;
+    links.forEach(function (link) { link.classList.remove('active'); link.removeAttribute('aria-current'); });
+    if (byId[found.id]) {
+      byId[found.id].classList.add('active');
+      byId[found.id].setAttribute('aria-current', 'true');
+    }
+  }
+
+  var queued = false;
+  function onScroll() {
+    if (queued) return;
+    queued = true;
+    requestAnimationFrame(function () { queued = false; paint(); });
+  }
+  window.addEventListener('scroll', onScroll, { passive: true });
+  window.addEventListener('resize', onScroll, { passive: true });
+  paint();
 })();
 </script>
 </body>

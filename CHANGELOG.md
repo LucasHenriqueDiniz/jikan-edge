@@ -8,7 +8,7 @@ This file starts on 2026-07-30 and does not reconstruct earlier history.
 
 ## 2026-07-30 (second release of the day)
 
-Published versions: `42f848f4`, `c098b3b5`, `1320a613`, `89bfcadc`, `cdcce2cd`.
+Published versions: `42f848f4`, `c098b3b5`, `1320a613`, `89bfcadc`, `cdcce2cd`, `499408ac`.
 
 Two things landed together: the self-hosting fix below, and a content sweep that compared every
 route against the official Jikan v4.
