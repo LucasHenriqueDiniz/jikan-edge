@@ -165,6 +165,7 @@ footer a { color: var(--paper-dim); }
       <a href="#rate-limits">Rate limits</a>
       <a href="#caching">Caching</a>
       <a href="#self-hosting">Self-hosting</a>
+      <a href="#llms">For LLMs &amp; agents</a>
       <h4>Routes</h4>
       <!-- group links injected by JS -->
       <span id="sidebar-groups"></span>
@@ -327,6 +328,21 @@ npm install</pre>
           </table>
         </div>
       </section>
+
+      <section id="llms">
+        <h2>For LLMs &amp; agents</h2>
+        <p class="note">Building against this API with an AI coding agent (Claude, Cursor, an MCP-connected tool,
+        anything that reads context before writing code)? <code>/llms.txt</code> is a plain-text summary made for
+        that: base URL, response envelope, error codes, rate limits and the known-limitations list above, all in one
+        page small enough to sit entirely in a prompt — no need to feed it this whole HTML document.</p>
+        <div class="basebar" onclick="location.href='/llms.txt'" style="cursor:pointer" title="Open /llms.txt">
+          <span class="dot"></span><span>/llms.txt</span><span class="copy">open</span>
+        </div>
+        <p class="note" style="margin-top:14px">Follows the <a href="https://llmstxt.org" target="_blank" rel="noopener">llms.txt</a>
+        convention some agents check for automatically. It links back to this page and to
+        <a href="https://github.com/LucasHenriqueDiniz/jikan-edge/blob/main/docs/routes.md" target="_blank" rel="noopener">docs/routes.md</a>
+        for anything that needs the full route-by-route detail.</p>
+      </section>
     </main>
   </div>
 </div>
@@ -334,7 +350,10 @@ npm install</pre>
 <footer>
   <div class="wrap">
     <span>時間 jikan-edge · MIT License · Not affiliated with MyAnimeList or Jikan.</span>
-    <span><a href="https://github.com/LucasHenriqueDiniz/jikan-edge" target="_blank" rel="noopener">GitHub</a> ·
+    <span><a href="/changelog">Changelog</a> ·
+    <a href="/privacy">Privacy</a> ·
+    <a href="/llms.txt">llms.txt</a> ·
+    <a href="https://github.com/LucasHenriqueDiniz/jikan-edge" target="_blank" rel="noopener">GitHub</a> ·
     <a href="https://github.com/LucasHenriqueDiniz/jikan-edge/blob/main/docs/routes.md" target="_blank" rel="noopener">docs/routes.md</a></span>
   </div>
 </footer>

@@ -1,0 +1,44 @@
+# jikan-edge
+
+> Self-hosted, Jikan-compatible REST API over public MyAnimeList data, running on Cloudflare Workers + D1. No authentication, fully open CORS, MIT licensed. Not affiliated with MyAnimeList or Jikan.
+
+jikan-edge mirrors the functional surface of [Jikan v4](https://jikan.moe) — 96 GET routes under `/v1` — by scraping and caching public MyAnimeList pages at the edge, instead of proxying a shared upstream. Field names are camelCase; this is functional parity with Jikan, not a schema-identical clone. If you already integrate against Jikan, most requests are a drop-in base-URL swap; check the breaking differences below before assuming byte-for-byte compatibility.
+
+## Base URL
+
+https://jikan-edge.lucas-hdo.workers.dev
+
+## Conventions
+
+- Every success response is `{ data, meta }`. `meta` includes `cached`, `stale`, `refreshFailed`, `fetchedAt`, and `pagination` (`{ page, limit, count, total, hasNextPage }`) on paginated routes. `total` is a number only on the two user-list routes (counted locally); everywhere else it is `null`, because MyAnimeList prints no total and inventing one would be a guess.
+- Every error response is `{ error: { code, message, requestId } }`. Common codes: `NOT_FOUND`, `INVALID_FILTER`, `UNKNOWN_PARAMETER` (a query param that does not exist), `UNSUPPORTED_PARAMETER` (a param Jikan has but this API deliberately does not honour, with the reason in the message), `RATE_LIMITED`, `UPSTREAM_SUSPICIOUS`, `NO_LOCAL_ENTRIES`.
+- No authentication. CORS is fully open (`Access-Control-Allow-Origin: *`).
+- Rate limits, per IP, global across every route (not per route): 30 requests / 10 s burst, 60 requests / minute sustained. Exceeding either answers `429 RATE_LIMITED` with a `Retry-After` header. Treat the numbers as an operational target, not an exact contract — enforcement is per Cloudflare colo and eventually consistent.
+- `page` starts at 1 and is capped at 1000 (each distinct page costs a real upstream fetch on a cache miss). `limit` (the two user-list routes only) is 1–300, default 100.
+- Genres, themes, demographics, studios, authors, producers and licensors are `{ malId, name, url }[]`, not `string[]` — the id was always in the page, just unexposed before.
+- `aired`/`published` are `{ from, to, string }`; `from`/`to` are `null` when MAL's own page does not give a full day/month/year.
+
+## Docs
+
+- Full route reference, live try-it-out: https://jikan-edge.lucas-hdo.workers.dev/docs
+- Route reference source, with the evidence behind each route's behaviour: https://github.com/LucasHenriqueDiniz/jikan-edge/blob/main/docs/routes.md
+- Self-hosting guide (run your own copy on your own Cloudflare account): https://github.com/LucasHenriqueDiniz/jikan-edge/blob/main/docs/self-hosting.md
+- Changelog: https://jikan-edge.lucas-hdo.workers.dev/changelog
+- Privacy: https://jikan-edge.lucas-hdo.workers.dev/privacy
+
+## Known limitations
+
+A handful of Jikan routes are not served, each for a specific, investigated reason — not a gap waiting to be filled:
+
+- Club search (`GET /v1/clubs?q=`) — the query parameter is silently ignored by MyAnimeList's own server; only the unfiltered index is available.
+- `GET /v1/top/reviews` — MyAnimeList has no ranking mechanism to back it (no sort by helpfulness, date granularity is day-only).
+- `GET /v1/users/{username}/history` — the history page is empty without a logged-in session; `userupdates` covers the public equivalent.
+- `GET /v1/users/{username}/external` — MyAnimeList's profile page exposes no structured external links.
+- `GET /v1/users/userbyid/{id}` — depends on an internal Jikan mechanism with no public MAL page behind it.
+- Per-episode forum threads — no reliable dedicated public page per episode.
+
+Also worth knowing: `GET /v1/anime/{id}/episodes` reads only the first page MyAnimeList serves (long series aren't paginated further yet); `GET /v1/random/*` draws only from entities this specific instance has already cached locally, not MyAnimeList's full catalog; a text search with no match reflects MyAnimeList's own fallback behaviour (popular titles), not an empty result.
+
+## Optional
+
+- GitHub repository: https://github.com/LucasHenriqueDiniz/jikan-edge

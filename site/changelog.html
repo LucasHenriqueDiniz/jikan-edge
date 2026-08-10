@@ -1,0 +1,207 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Changelog — jikan-edge</title>
+<meta name="description" content="What changed in jikan-edge, for people consuming the API — highlights here, full dated history in CHANGELOG.md.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%230b0e14'/%3E%3Ctext x='32' y='44' font-size='34' text-anchor='middle' fill='%23ff4b33' font-family='serif'%3E時%3C/text%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,300..800&family=IBM+Plex+Mono:ital,wght@0,400;0,500;1,400&display=swap" rel="stylesheet">
+<style>
+:root {
+  --ink: #0b0e14;
+  --ink-2: #10141d;
+  --panel: #131826;
+  --line: #232a3a;
+  --paper: #e9e5d9;
+  --paper-dim: #9aa0ae;
+  --paper-faint: #5d6474;
+  --vermillion: #ff4b33;
+  --gold: #d8b46a;
+  --teal: #6fd3c7;
+  --mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  --display: "Bricolage Grotesque", system-ui, sans-serif;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body { background: var(--ink); color: var(--paper); font-family: var(--display); font-weight: 350; line-height: 1.6; }
+::selection { background: var(--vermillion); color: var(--ink); }
+a { color: inherit; }
+code { font-family: var(--mono); font-size: .85em; background: var(--panel); border: 1px solid var(--line); border-radius: 4px; padding: 1px 5px; color: var(--gold); }
+.topline { height: 3px; background: linear-gradient(90deg, var(--vermillion) 0%, var(--vermillion) 30%, var(--gold) 60%, transparent 100%); }
+.wrap { max-width: 780px; margin: 0 auto; padding: 0 24px; }
+header { padding: 18px 0; border-bottom: 1px solid var(--line); }
+header .wrap { max-width: 1200px; display: flex; align-items: center; gap: 20px; flex-wrap: wrap; }
+.brand { display: flex; align-items: baseline; gap: 10px; text-decoration: none; }
+.brand .kanji { color: var(--vermillion); font-size: 20px; line-height: 1; }
+.brand .name { font-weight: 700; font-size: 17px; letter-spacing: -.02em; }
+.brand .name em { font-style: normal; color: var(--vermillion); }
+.brand .docs-tag { font-family: var(--mono); font-size: 11px; color: var(--paper-faint); letter-spacing: .15em; text-transform: uppercase; }
+header nav { margin-left: auto; display: flex; gap: 4px; }
+header nav a { text-decoration: none; color: var(--paper-dim); font-size: 14px; padding: 6px 12px; border-radius: 999px; }
+header nav a:hover { color: var(--paper); background: var(--panel); }
+
+main { padding: 48px 0 80px; }
+main h1 { font-size: clamp(28px, 4vw, 38px); font-weight: 750; letter-spacing: -.02em; line-height: 1.1; }
+main .lede { color: var(--paper-dim); margin-top: 12px; max-width: 62ch; }
+
+.gh-cta {
+  margin-top: 22px; display: inline-flex; align-items: center; gap: 10px;
+  font-family: var(--mono); font-size: 13px; color: var(--paper);
+  background: var(--ink-2); border: 1px solid var(--line); border-radius: 8px;
+  padding: 10px 16px; text-decoration: none; transition: border-color .15s;
+}
+.gh-cta:hover { border-color: var(--vermillion); }
+.gh-cta .arrow { color: var(--vermillion); }
+
+.entry { margin-top: 40px; }
+.entry .date { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+.entry .date h2 { font-size: 19px; font-weight: 700; letter-spacing: -.01em; }
+.entry .date .versions { font-family: var(--mono); font-size: 11px; color: var(--paper-faint); }
+.entry .summary { color: var(--paper-dim); font-size: 14.5px; margin-top: 8px; max-width: 66ch; }
+.entry .groups { display: flex; flex-direction: column; gap: 14px; margin-top: 16px; }
+.group-label { font-family: var(--mono); font-size: 10.5px; letter-spacing: .14em; text-transform: uppercase; }
+.group-label.breaking { color: var(--vermillion); }
+.group-label.added { color: var(--teal); }
+.group-label.fixed { color: var(--gold); }
+.entry ul { margin: 6px 0 0 18px; }
+.entry li { color: var(--paper-dim); font-size: 14px; margin-top: 6px; max-width: 66ch; }
+.entry li b { color: var(--paper); font-weight: 600; }
+hr.rule { border: none; border-top: 1px solid var(--line); margin-top: 40px; }
+
+footer { border-top: 1px solid var(--line); padding: 28px 0 48px; color: var(--paper-faint); font-size: 13px; margin-top: 40px; }
+footer .wrap { max-width: 1200px; display: flex; gap: 24px; flex-wrap: wrap; justify-content: space-between; }
+footer a { color: var(--paper-dim); }
+</style>
+</head>
+<body>
+<div class="topline"></div>
+
+<header>
+  <div class="wrap">
+    <a class="brand" href="/">
+      <span class="kanji">時間</span>
+      <span class="name">jikan<em>-edge</em></span>
+      <span class="docs-tag">/ changelog</span>
+    </a>
+    <nav>
+      <a href="/">Home</a>
+      <a href="/docs">Documentation</a>
+      <a href="https://github.com/LucasHenriqueDiniz/jikan-edge" target="_blank" rel="noopener">GitHub ↗</a>
+    </nav>
+  </div>
+</header>
+
+<div class="wrap">
+  <main>
+    <h1>Changelog</h1>
+    <p class="lede">Highlights only, curated for people consuming the API. jikan-edge ships by continuous deploy
+    with no versioned releases, so the source of truth is dated and names the published Cloudflare Workers
+    version id for each release — that full, unabridged history lives in <code>CHANGELOG.md</code>.</p>
+    <a class="gh-cta" href="https://github.com/LucasHenriqueDiniz/jikan-edge/blob/main/CHANGELOG.md" target="_blank" rel="noopener">
+      Full changelog on GitHub <span class="arrow">↗</span>
+    </a>
+
+    <div class="entry">
+      <div class="date">
+        <h2>2026-07-30 — content parity sweep</h2>
+        <span class="versions">7 releases that day</span>
+      </div>
+      <p class="summary">Every route compared side by side against the official Jikan v4. Nothing was broken —
+      all 98 answered 200 — but a lot of data was leaving thinner than the source, unusable, or silently wrong.</p>
+      <div class="groups">
+        <div>
+          <span class="group-label breaking">Breaking</span>
+          <ul>
+            <li><b>Genres, studios and authors became objects</b>, not strings —
+            <code>[{ malId, name, url }]</code> instead of <code>["Action"]</code>, so <code>?genres=1</code>
+            finally has an id to filter by that a response also hands back.</li>
+            <li><b><code>aired</code>/<code>published</code> became objects</b> — <code>{ from, to, string }</code>,
+            with <code>from</code>/<code>to</code> null when MAL's page doesn't give a full date.</li>
+            <li><b><code>GET /v1/manga?q=</code> returns <code>volumes</code>, not <code>episodes</code></b> — the
+            old field name was wrong, not just the label: manga has no episodes.</li>
+            <li><b>An unhonoured query parameter is <code>400</code> now, not a silent <code>200</code>.</b></li>
+          </ul>
+        </div>
+        <div>
+          <span class="group-label added">Added</span>
+          <ul>
+            <li><b><code>url</code> on every entity</b>, and <code>images: { small, medium, large }</code> on
+            anime/manga/character/person detail — <code>null</code> only where the CDN genuinely has no variant.</li>
+            <li><b><code>meta.pagination</code></b> on every paginated route.</li>
+            <li>Search filters <code>sort</code>, <code>letter</code>, <code>min_score</code>, <code>start_date</code>,
+            <code>end_date</code>, <code>magazines</code>; <code>order_by</code> went from 3 accepted values to 9.</li>
+          </ul>
+        </div>
+        <div>
+          <span class="group-label fixed">Fixed</span>
+          <ul>
+            <li>31 routes served a 50×70 thumbnail where a full poster existed — <code>imageUrl</code> is the
+            original everywhere now.</li>
+            <li>Long text (synopses, <code>about</code>, <code>moreinfo</code>) had every paragraph break flattened
+            into a wall of text.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <hr class="rule">
+
+    <div class="entry">
+      <div class="date">
+        <h2>2026-07-30 — user lists &amp; genres</h2>
+        <span class="versions">6 releases that day</span>
+      </div>
+      <p class="summary">A day on one theme: data that existed at the source and the API either withheld or got
+      wrong without saying so — found by sweeping all 98 routes in production, not by a bug report.</p>
+      <div class="groups">
+        <div>
+          <span class="group-label breaking">Breaking</span>
+          <ul>
+            <li><b><code>sourceVersion</code> removed from every response.</b> It was an internal cache-invalidation
+            token, never the API version — the API version is and remains <code>v1</code>, in the URL path.</li>
+          </ul>
+        </div>
+        <div>
+          <span class="group-label fixed">Fixed</span>
+          <ul>
+            <li><b>User lists answered 502 for any account using MAL's modern list layout</b> — now reads both
+            layouts, and stopped silently truncating the classic one too (one account was serving 273 of 360
+            entries with no error).</li>
+            <li><b>An anime titled "86" could take down an entire 2,354-entry list.</b> MAL leaves numeric-looking
+            titles unquoted in its embedded JSON; one bad row was rejecting the whole page.</li>
+            <li><b>Profile statistics could silently serve a manga number as the anime one</b> — a fixed-size
+            extraction window let one section bleed into the next.</li>
+          </ul>
+        </div>
+        <div>
+          <span class="group-label added">Added</span>
+          <ul>
+            <li><b><code>GET /v1/genres/anime</code> and <code>/manga</code> work</b> — 78 and 79 entries, each
+            carrying <code>count</code> and <code>type</code>, with a <code>?filter=</code> to narrow by category.</li>
+            <li>New <code>501 LIST_TOO_LARGE</code> instead of silently truncating a list past what one refresh
+            reads.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <hr class="rule">
+    <p style="color:var(--paper-faint); font-size: 13px; margin-top: 24px;">Nothing recorded before 2026-07-30 —
+    see <a href="https://github.com/LucasHenriqueDiniz/jikan-edge/blob/main/CHANGELOG.md" target="_blank" rel="noopener">CHANGELOG.md</a>
+    for exactly what that means and for every release since.</p>
+  </main>
+</div>
+
+<footer>
+  <div class="wrap">
+    <span>時間 jikan-edge · MIT License · Not affiliated with MyAnimeList or Jikan.</span>
+    <span><a href="/docs">Documentation</a> ·
+    <a href="/privacy">Privacy</a> ·
+    <a href="https://github.com/LucasHenriqueDiniz/jikan-edge" target="_blank" rel="noopener">GitHub</a></span>
+  </div>
+</footer>
+</body>
+</html>

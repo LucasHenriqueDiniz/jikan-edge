@@ -1,0 +1,173 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Privacy — jikan-edge</title>
+<meta name="description" content="What jikan-edge collects, what it caches, and what it doesn't — in plain language.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%230b0e14'/%3E%3Ctext x='32' y='44' font-size='34' text-anchor='middle' fill='%23ff4b33' font-family='serif'%3E時%3C/text%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,300..800&family=IBM+Plex+Mono:ital,wght@0,400;0,500;1,400&display=swap" rel="stylesheet">
+<style>
+:root {
+  --ink: #0b0e14;
+  --ink-2: #10141d;
+  --panel: #131826;
+  --line: #232a3a;
+  --paper: #e9e5d9;
+  --paper-dim: #9aa0ae;
+  --paper-faint: #5d6474;
+  --vermillion: #ff4b33;
+  --gold: #d8b46a;
+  --teal: #6fd3c7;
+  --mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  --display: "Bricolage Grotesque", system-ui, sans-serif;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body { background: var(--ink); color: var(--paper); font-family: var(--display); font-weight: 350; line-height: 1.6; }
+::selection { background: var(--vermillion); color: var(--ink); }
+a { color: inherit; }
+code { font-family: var(--mono); font-size: .85em; background: var(--panel); border: 1px solid var(--line); border-radius: 4px; padding: 1px 5px; color: var(--gold); }
+.topline { height: 3px; background: linear-gradient(90deg, var(--vermillion) 0%, var(--vermillion) 30%, var(--gold) 60%, transparent 100%); }
+.wrap { max-width: 760px; margin: 0 auto; padding: 0 24px; }
+header { padding: 18px 0; border-bottom: 1px solid var(--line); }
+header .wrap { max-width: 1200px; display: flex; align-items: center; gap: 20px; flex-wrap: wrap; }
+.brand { display: flex; align-items: baseline; gap: 10px; text-decoration: none; }
+.brand .kanji { color: var(--vermillion); font-size: 20px; line-height: 1; }
+.brand .name { font-weight: 700; font-size: 17px; letter-spacing: -.02em; }
+.brand .name em { font-style: normal; color: var(--vermillion); }
+.brand .docs-tag { font-family: var(--mono); font-size: 11px; color: var(--paper-faint); letter-spacing: .15em; text-transform: uppercase; }
+header nav { margin-left: auto; display: flex; gap: 4px; }
+header nav a { text-decoration: none; color: var(--paper-dim); font-size: 14px; padding: 6px 12px; border-radius: 999px; }
+header nav a:hover { color: var(--paper); background: var(--panel); }
+
+main { padding: 48px 0 80px; }
+main h1 { font-size: clamp(28px, 4vw, 38px); font-weight: 750; letter-spacing: -.02em; line-height: 1.1; }
+main .lede { color: var(--paper-dim); margin-top: 12px; max-width: 62ch; }
+main .stamp { font-family: var(--mono); font-size: 12px; color: var(--paper-faint); margin-top: 14px; }
+
+section { margin-top: 44px; scroll-margin-top: 24px; }
+section > h2 { font-size: 21px; font-weight: 700; letter-spacing: -.02em; padding-bottom: 8px; border-bottom: 1px solid var(--line); }
+section > p, section > ul { color: var(--paper-dim); font-size: 15px; margin-top: 14px; max-width: 68ch; }
+section > ul { margin-left: 20px; }
+section li { margin-top: 6px; }
+section p + p { margin-top: 12px; }
+b, strong { color: var(--paper); font-weight: 600; }
+
+.callout { display: flex; gap: 12px; margin-top: 24px; padding: 14px 16px; max-width: 68ch;
+  border: 1px solid var(--line); border-left: 3px solid var(--gold); border-radius: 10px; background: var(--ink-2); }
+.callout .ico { color: var(--gold); font-size: 15px; line-height: 1.5; }
+.callout p { color: var(--paper-dim); font-size: 14px; margin: 0; max-width: none; }
+.callout b { color: var(--paper); }
+
+footer { border-top: 1px solid var(--line); padding: 28px 0 48px; color: var(--paper-faint); font-size: 13px; }
+footer .wrap { max-width: 1200px; display: flex; gap: 24px; flex-wrap: wrap; justify-content: space-between; }
+footer a { color: var(--paper-dim); }
+</style>
+</head>
+<body>
+<div class="topline"></div>
+
+<header>
+  <div class="wrap">
+    <a class="brand" href="/">
+      <span class="kanji">時間</span>
+      <span class="name">jikan<em>-edge</em></span>
+      <span class="docs-tag">/ privacy</span>
+    </a>
+    <nav>
+      <a href="/">Home</a>
+      <a href="/docs">Documentation</a>
+      <a href="https://github.com/LucasHenriqueDiniz/jikan-edge" target="_blank" rel="noopener">GitHub ↗</a>
+    </nav>
+  </div>
+</header>
+
+<div class="wrap">
+  <main>
+    <h1>Privacy</h1>
+    <p class="lede">jikan-edge is a stateless-by-design API: no accounts, no cookies, no client-side storage.
+    This page explains, plainly, what actually happens to a request.</p>
+    <p class="stamp">Last updated 2026-08-10 · applies to the maintainer's public instance at
+    jikan-edge.lucas-hdo.workers.dev — see the note on self-hosted copies below.</p>
+
+    <section id="collect">
+      <h2>What this API does not do</h2>
+      <ul>
+        <li>No user accounts, no login, no API keys.</li>
+        <li>No cookies. No <code>localStorage</code>/<code>sessionStorage</code>. Nothing set in your browser.</li>
+        <li>No analytics or tracking scripts on this site or in API responses.</li>
+        <li>No IP address is ever written to this application's own database.</li>
+      </ul>
+    </section>
+
+    <section id="rate-limiting">
+      <h2>Rate limiting</h2>
+      <p>Every request's IP (via Cloudflare's <code>CF-Connecting-IP</code> header) is checked against two counters —
+      a short burst window and a per-minute sustained one — to decide whether to answer <code>429</code>. That check
+      happens in Cloudflare's Rate Limiting service, in memory, per the configured window. This application never
+      persists the IP anywhere; it is used for that one comparison and then discarded.</p>
+    </section>
+
+    <section id="logs">
+      <h2>Request logs</h2>
+      <p>Cloudflare Workers Observability is enabled for this deployment, which means Cloudflare's own
+      infrastructure logs requests (method, path, status, timing) for operating and debugging the Worker. Those logs
+      are Cloudflare's, governed by
+      <a href="https://www.cloudflare.com/privacypolicy/" target="_blank" rel="noopener">Cloudflare's privacy policy</a>,
+      not something this application controls or exports elsewhere. The metrics this application itself emits
+      (<code>console.log</code>, visible only in that same Cloudflare log stream) record route, cache status and
+      timing — never an IP address, never a request header.</p>
+    </section>
+
+    <section id="cached-data">
+      <h2>Cached MyAnimeList data</h2>
+      <p>The core of this API is a cache: public MyAnimeList pages (anime, manga, character, person, club, producer
+      and user-profile pages) are fetched, parsed and stored in this deployment's own database so repeat requests
+      don't re-fetch MyAnimeList. That includes public MAL usernames and whatever a user has made visible on their
+      own MAL profile — the same data anyone can already see by visiting that profile directly. Nothing private or
+      login-gated is fetched; a profile MyAnimeList itself hides (private profile, login required) is not
+      accessible here either.</p>
+      <p>If you'd like data about your MyAnimeList account removed from a specific instance's cache, contact that
+      instance's operator — for the maintainer's public instance, open a
+      <a href="https://github.com/LucasHenriqueDiniz/jikan-edge/issues" target="_blank" rel="noopener">GitHub issue</a>.</p>
+    </section>
+
+    <section id="third-parties">
+      <h2>Third parties</h2>
+      <p><b>Cloudflare</b> is the infrastructure this runs on (Workers, D1, Rate Limiting) — see their own
+      <a href="https://www.cloudflare.com/privacypolicy/" target="_blank" rel="noopener">privacy policy</a> for what
+      they collect operating that infrastructure. <b>MyAnimeList</b> is the public source this API reads from; this
+      project only fetches pages MyAnimeList already serves to anyone, at a rate designed to stay light on their
+      servers.</p>
+    </section>
+
+    <div class="callout">
+      <span class="ico" aria-hidden="true">▲</span>
+      <p><b>This is MIT-licensed, self-hostable software.</b> This page describes the maintainer's own public
+      deployment. Anyone running their own copy on their own Cloudflare account controls their own instance's data,
+      logs and retention — this policy doesn't speak for them.</p>
+    </div>
+
+    <section id="changes">
+      <h2>Changes to this page</h2>
+      <p>This page is a plain-language description of how the code actually behaves, kept in the same repository as
+      that code. If the handling described here ever changes, this page changes in the same commit — see the
+      <a href="/changelog">changelog</a> or the
+      <a href="https://github.com/LucasHenriqueDiniz/jikan-edge/commits/main/site/privacy.html" target="_blank" rel="noopener">file history on GitHub</a>.</p>
+    </section>
+  </main>
+</div>
+
+<footer>
+  <div class="wrap">
+    <span>時間 jikan-edge · MIT License · Not affiliated with MyAnimeList or Jikan.</span>
+    <span><a href="/docs">Documentation</a> ·
+    <a href="/changelog">Changelog</a> ·
+    <a href="https://github.com/LucasHenriqueDiniz/jikan-edge" target="_blank" rel="noopener">GitHub</a></span>
+  </div>
+</footer>
+</body>
+</html>
