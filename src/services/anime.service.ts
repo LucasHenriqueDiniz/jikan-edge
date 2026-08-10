@@ -72,6 +72,7 @@ export class AnimeService {
       const fetchedAt = new Date().toISOString();
       const detail = parseAnimeDetail(source.value, malId, fetchedAt);
       await this.anime.put(detail, fetchedAt, ANIME_PARSER_VERSION);
+      await this.primeFullCache(malId, source.value, fetchedAt);
       return detail;
     }, requestId);
   }
@@ -85,8 +86,43 @@ export class AnimeService {
       const fetchedAt = new Date().toISOString();
       const full = parseAnimeFull(source.value, malId, fetchedAt);
       await this.catalog.put(cacheKey, full, fetchedAt, ANIME_FULL_PARSER_VERSION);
+      await this.primeDetailCache(malId, full, fetchedAt);
       return full;
     }, requestId);
+  }
+
+  // detail() and full() read the exact same MAL page. Left alone, a client that calls both close
+  // together (or two different clients doing so at once) pays for two real upstream fetches of the
+  // same HTML, doubling load on MAL for no reason. Whichever one actually refreshes now also writes
+  // the other's cache row from the HTML it already has in hand — reads stay independent and cheap,
+  // only the write on a genuine refresh gets shared. Best-effort: a priming failure must not fail
+  // the request that triggered it, since the primary write above already succeeded.
+  private async primeFullCache(malId: number, html: string, fetchedAt: string): Promise<void> {
+    try {
+      const full = parseAnimeFull(html, malId, fetchedAt);
+      const cacheKey = `catalog:anime:${malId}:full`;
+      await this.catalog.put(cacheKey, full, fetchedAt, ANIME_FULL_PARSER_VERSION);
+      await this.primeCacheEntry(cacheKey, ANIME_FULL_PARSER_VERSION, fetchedAt);
+    } catch (error) {
+      console.warn(JSON.stringify({ type: 'cache_priming_failed', resource: 'anime_full', malId, error: String(error) }));
+    }
+  }
+
+  private async primeDetailCache(malId: number, full: AnimeFull, fetchedAt: string): Promise<void> {
+    try {
+      // AnimeFull is AnimeDetail plus themeSongs — strip it before writing to the plain detail
+      // table, or /v1/anime/:id would start leaking a field that only /full ever promised.
+      const { themeSongs: _themeSongs, ...detail } = full;
+      await this.anime.put(detail, fetchedAt, ANIME_PARSER_VERSION);
+      await this.primeCacheEntry(`anime:${malId}:detail`, ANIME_PARSER_VERSION, fetchedAt);
+    } catch (error) {
+      console.warn(JSON.stringify({ type: 'cache_priming_failed', resource: 'anime_detail', malId, error: String(error) }));
+    }
+  }
+
+  private async primeCacheEntry(resourceKey: string, parserVersion: string, fetchedAt: string): Promise<void> {
+    const expiresAt = new Date(Date.parse(fetchedAt) + this.config.animeTtlSeconds * 1000).toISOString();
+    await this.cache.put({ resourceKey, fetchedAt, expiresAt, sourceStatus: 'success', parserVersion });
   }
 
   async relations(rawId: string, requestId: string): Promise<ServiceResponse<RelationEntry[]>> {
