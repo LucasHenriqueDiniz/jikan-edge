@@ -5,11 +5,12 @@ import { withCache, type CacheDeps } from '../../src/services/cacheable';
 
 const FRESH = '2999-01-01T00:00:00.000Z';
 
-function deps(stored: CacheEntry | null): CacheDeps & { put: ReturnType<typeof vi.fn> } {
+function deps(stored: CacheEntry | null): CacheDeps & { put: ReturnType<typeof vi.fn>; acquire: ReturnType<typeof vi.fn> } {
   const put = vi.fn(async () => {});
+  const acquire = vi.fn(async () => true);
   const cache = { get: async () => stored, put, isFresh: (value: CacheEntry) => Date.parse(value.expiresAt) > Date.now() } as unknown as CacheRepository;
-  const locks = { acquire: async () => true, release: async () => {} } as unknown as RefreshLockRepository;
-  return { cache, locks, put };
+  const locks = { acquire, release: async () => {} } as unknown as RefreshLockRepository;
+  return { cache, locks, put, acquire };
 }
 
 function entry(parserVersion: string, expiresAt = FRESH): CacheEntry {
@@ -63,5 +64,20 @@ describe('withCache', () => {
     dependencies.put.mockImplementationOnce(async () => { throw new Error('D1 blip'); });
     const result = await withCache(dependencies, 'user:x:profile', 60, 'v3', async () => 'stored', async () => 'new', 'req');
     expect(result).toMatchObject({ data: 'new', cached: false, stale: false, refreshFailed: false });
+  });
+
+  // A caller whose refresh() can run long (a multi-page list scrape) needs a lease that outlives
+  // the default 30s, or a second concurrent request reads the lock as abandoned mid-refresh and
+  // starts a redundant scrape in parallel.
+  it('passes a caller-supplied lease through to the lock instead of the repository default', async () => {
+    const dependencies = deps(entry('v2'));
+    await withCache(dependencies, 'user:x:profile', 60, 'v3', async () => 'stored', async () => 'new', 'req', 300);
+    expect(dependencies.acquire).toHaveBeenCalledWith('user:x:profile', 'req', 300);
+  });
+
+  it('leaves the lease undefined when the caller does not supply one', async () => {
+    const dependencies = deps(entry('v2'));
+    await withCache(dependencies, 'user:x:profile', 60, 'v3', async () => 'stored', async () => 'new', 'req');
+    expect(dependencies.acquire).toHaveBeenCalledWith('user:x:profile', 'req', undefined);
   });
 });

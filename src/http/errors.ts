@@ -3,7 +3,7 @@ import { ServiceError } from '../services/cacheable';
 import { isMissingSchema, SETUP_HINT } from './diagnostics';
 
 export function errorResponse(c: Context, error: unknown, requestId: string): Response {
-  if (error instanceof ServiceError) return c.json({ error: { code: error.code, message: error.message, requestId } }, error.status as 400);
+  if (error instanceof ServiceError) return c.json({ error: { code: error.code, message: error.message, requestId } }, error.status);
   // An un-migrated database is a deploy problem, not a request problem: answering INTERNAL_ERROR here
   // sends the operator hunting through code that is working fine.
   if (isMissingSchema(error)) {

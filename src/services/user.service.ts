@@ -29,6 +29,15 @@ const UPDATES_PARSER_VERSION = `${PARSER_VERSION}:updates`;
  * prefix, which means the number is wrong loudly rather than the data being wrong silently.
  */
 const MAX_LIST_PAGES = 20;
+// withCache's default lock lease (30s, RefreshLockRepository's own default) is sized for a single
+// upstream fetch. mediaList can make up to MAX_LIST_PAGES sequential fetches, each bounded by
+// sourceTimeoutMs — worst case far exceeds 30s. A lease that expires mid-refresh lets a second
+// request read the lock as abandoned and start a redundant full scrape of the same list in
+// parallel. Sized off the real worst case (pages * per-page timeout) plus headroom for parsing and
+// D1 writes between pages, not a guess.
+export function listRefreshLeaseSeconds(sourceTimeoutMs: number): number {
+  return Math.ceil((MAX_LIST_PAGES * sourceTimeoutMs) / 1000) + 60;
+}
 
 export interface UserFullProfile { profile: UserProfile; statistics: UserStatistics; favorites: Favorites; updates: UserUpdates }
 
@@ -49,8 +58,8 @@ export class UserService {
     return usernameKey(username);
   }
 
-  private withCache<T>(key: string, ttl: number, parserVersion: string, read: () => Promise<T | null>, refresh: () => Promise<T>, owner: string): Promise<ServiceResponse<T>> {
-    return withCache({ cache: this.cache, locks: this.locks }, key, ttl, parserVersion, read, refresh, owner);
+  private withCache<T>(key: string, ttl: number, parserVersion: string, read: () => Promise<T | null>, refresh: () => Promise<T>, owner: string, leaseSeconds?: number): Promise<ServiceResponse<T>> {
+    return withCache({ cache: this.cache, locks: this.locks }, key, ttl, parserVersion, read, refresh, owner, leaseSeconds);
   }
 
   async profile(username: string, requestId: string): Promise<ServiceResponse<UserProfile>> {
@@ -185,6 +194,6 @@ export class UserService {
       }
       await this.users.replaceList(key, mediaType, deduped);
       return this.users.listEntries(key, mediaType, page, limit);
-    }, requestId);
+    }, requestId, listRefreshLeaseSeconds(this.config.sourceTimeoutMs));
   }
 }
