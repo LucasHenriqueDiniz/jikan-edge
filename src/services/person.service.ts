@@ -49,6 +49,7 @@ export class PersonService {
       const fetchedAt = new Date().toISOString();
       const detail = parsePersonDetail(source.value, malId, fetchedAt);
       await this.people.put(detail, fetchedAt, PERSON_PARSER_VERSION);
+      await this.primeSiblingsFromHtml(malId, source.value, fetchedAt, 'detail');
       return detail;
     }, requestId);
   }
@@ -62,6 +63,7 @@ export class PersonService {
       const fetchedAt = new Date().toISOString();
       const full = parsePersonFull(source.value, malId, fetchedAt);
       await this.catalog.put(cacheKey, full, fetchedAt, PERSON_FULL_PARSER_VERSION);
+      await this.primeSiblingsFromFull(malId, full, fetchedAt, 'full');
       return full;
     }, requestId);
   }
@@ -75,8 +77,55 @@ export class PersonService {
       const value = { anime: parsePersonAnimeStaff(source.value), manga: parsePersonManga(source.value), voices: parsePersonVoiceActingRoles(source.value) };
       const fetchedAt = new Date().toISOString();
       await this.catalog.put(cacheKey, value, fetchedAt, PERSON_MEDIA_PARSER_VERSION);
+      await this.primeSiblingsFromHtml(malId, source.value, fetchedAt, 'media');
       return value;
     }, requestId);
+  }
+
+  // Same 3-way duplication as CharacterService, same fix: parsePersonFull already computes every
+  // sub-shape (detail + anime + manga + voices) in one pass, so whichever of detail()/full()/
+  // media() actually refreshes primes the other two from it instead of each doing its own fetch.
+  // Best-effort — a priming failure must not fail the request that triggered it.
+  private async primeSiblingsFromHtml(malId: number, html: string, fetchedAt: string, skip: 'detail' | 'media'): Promise<void> {
+    try {
+      await this.writeSiblingCaches(malId, parsePersonFull(html, malId, fetchedAt), fetchedAt, skip);
+    } catch (error) {
+      console.warn(JSON.stringify({ type: 'cache_priming_failed', resource: 'person', malId, error: String(error) }));
+    }
+  }
+
+  private async primeSiblingsFromFull(malId: number, full: PersonFull, fetchedAt: string, skip: 'full'): Promise<void> {
+    try {
+      await this.writeSiblingCaches(malId, full, fetchedAt, skip);
+    } catch (error) {
+      console.warn(JSON.stringify({ type: 'cache_priming_failed', resource: 'person', malId, error: String(error) }));
+    }
+  }
+
+  private async writeSiblingCaches(malId: number, full: PersonFull, fetchedAt: string, skip: 'detail' | 'full' | 'media'): Promise<void> {
+    if (skip !== 'detail') {
+      // PersonFull is PersonDetail plus anime/manga/voices — strip them before writing to the
+      // plain detail cache, or /v1/people/:id would leak fields only /full ever promised.
+      const { anime: _animeStaff, manga: _manga, voices: _voices, ...detail } = full;
+      await this.people.put(detail, fetchedAt, PERSON_PARSER_VERSION);
+      await this.primeCacheEntry(`person:${malId}:detail`, PERSON_PARSER_VERSION, fetchedAt);
+    }
+    if (skip !== 'full') {
+      const cacheKey = `catalog:person:${malId}:full`;
+      await this.catalog.put(cacheKey, full, fetchedAt, PERSON_FULL_PARSER_VERSION);
+      await this.primeCacheEntry(cacheKey, PERSON_FULL_PARSER_VERSION, fetchedAt);
+    }
+    if (skip !== 'media') {
+      const cacheKey = `catalog:person:${malId}:media`;
+      const value: PersonMediaBundle = { anime: full.anime, manga: full.manga, voices: full.voices };
+      await this.catalog.put(cacheKey, value, fetchedAt, PERSON_MEDIA_PARSER_VERSION);
+      await this.primeCacheEntry(cacheKey, PERSON_MEDIA_PARSER_VERSION, fetchedAt);
+    }
+  }
+
+  private async primeCacheEntry(resourceKey: string, parserVersion: string, fetchedAt: string): Promise<void> {
+    const expiresAt = new Date(Date.parse(fetchedAt) + this.config.animeTtlSeconds * 1000).toISOString();
+    await this.cache.put({ resourceKey, fetchedAt, expiresAt, sourceStatus: 'success', parserVersion });
   }
 
   async anime(rawId: string, requestId: string): Promise<ServiceResponse<StaffPosition[]>> {

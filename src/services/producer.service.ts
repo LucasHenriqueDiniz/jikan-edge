@@ -51,6 +51,7 @@ export class ProducerService {
       const fetchedAt = new Date().toISOString();
       const detail = parseProducerDetail(source.value, malId, fetchedAt);
       await this.producers.put(detail, fetchedAt, PRODUCER_PARSER_VERSION);
+      await this.primeFullCache(malId, source.value, fetchedAt);
       return detail;
     }, requestId);
   }
@@ -64,6 +65,7 @@ export class ProducerService {
       const fetchedAt = new Date().toISOString();
       const full = parseProducerFull(source.value, malId, fetchedAt);
       await this.catalog.put(cacheKey, full, fetchedAt, PRODUCER_FULL_PARSER_VERSION);
+      await this.primeDetailCache(malId, full, fetchedAt);
       return full;
     }, requestId);
   }
@@ -71,5 +73,37 @@ export class ProducerService {
   async external(rawId: string, requestId: string): Promise<ServiceResponse<ExternalLink[]>> {
     const result = await this.full(rawId, requestId);
     return { ...result, data: result.data.external };
+  }
+
+  // detail() and full() read the exact same MAL page. Same fix as AnimeService: whichever one
+  // actually refreshes also writes the other's cache row from the HTML already in hand, so a
+  // near-simultaneous call to the other doesn't cost a second real upstream fetch. Best-effort —
+  // a priming failure must not fail the request that triggered it.
+  private async primeFullCache(malId: number, html: string, fetchedAt: string): Promise<void> {
+    try {
+      const full = parseProducerFull(html, malId, fetchedAt);
+      const cacheKey = `catalog:producer:${malId}:full`;
+      await this.catalog.put(cacheKey, full, fetchedAt, PRODUCER_FULL_PARSER_VERSION);
+      await this.primeCacheEntry(cacheKey, PRODUCER_FULL_PARSER_VERSION, fetchedAt);
+    } catch (error) {
+      console.warn(JSON.stringify({ type: 'cache_priming_failed', resource: 'producer_full', malId, error: String(error) }));
+    }
+  }
+
+  private async primeDetailCache(malId: number, full: ProducerFull, fetchedAt: string): Promise<void> {
+    try {
+      // ProducerFull is ProducerDetail plus about/external — strip them before writing to the
+      // plain detail cache, or /v1/producers/:id would leak fields only /full ever promised.
+      const { about: _about, external: _external, ...detail } = full;
+      await this.producers.put(detail, fetchedAt, PRODUCER_PARSER_VERSION);
+      await this.primeCacheEntry(`producer:${malId}:detail`, PRODUCER_PARSER_VERSION, fetchedAt);
+    } catch (error) {
+      console.warn(JSON.stringify({ type: 'cache_priming_failed', resource: 'producer_detail', malId, error: String(error) }));
+    }
+  }
+
+  private async primeCacheEntry(resourceKey: string, parserVersion: string, fetchedAt: string): Promise<void> {
+    const expiresAt = new Date(Date.parse(fetchedAt) + this.config.animeTtlSeconds * 1000).toISOString();
+    await this.cache.put({ resourceKey, fetchedAt, expiresAt, sourceStatus: 'success', parserVersion });
   }
 }

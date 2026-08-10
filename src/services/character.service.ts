@@ -48,6 +48,7 @@ export class CharacterService {
       const fetchedAt = new Date().toISOString();
       const detail = parseCharacterDetail(source.value, malId, fetchedAt);
       await this.characters.put(detail, fetchedAt, CHARACTER_PARSER_VERSION);
+      await this.primeSiblingsFromHtml(malId, source.value, fetchedAt, 'detail');
       return detail;
     }, requestId);
   }
@@ -61,6 +62,7 @@ export class CharacterService {
       const fetchedAt = new Date().toISOString();
       const full = parseCharacterFull(source.value, malId, fetchedAt);
       await this.catalog.put(cacheKey, full, fetchedAt, CHARACTER_FULL_PARSER_VERSION);
+      await this.primeSiblingsFromFull(malId, full, fetchedAt, 'full');
       return full;
     }, requestId);
   }
@@ -74,8 +76,56 @@ export class CharacterService {
       const value = { anime: parseCharacterAnimeography(source.value), manga: parseCharacterMangaography(source.value), voices: parseCharacterVoiceActors(source.value) };
       const fetchedAt = new Date().toISOString();
       await this.catalog.put(cacheKey, value, fetchedAt, CHARACTER_MEDIA_PARSER_VERSION);
+      await this.primeSiblingsFromHtml(malId, source.value, fetchedAt, 'media');
       return value;
     }, requestId);
+  }
+
+  // detail(), full() and media() (backing anime()/manga()/voices()) all read the exact same MAL
+  // page — up to 3 real upstream fetches for one page if a client hits them close together.
+  // parseCharacterFull already computes every sub-shape in one pass (it's detail + anime + manga +
+  // voices), so whichever of the three actually refreshes primes the other two from it. Best-effort
+  // — a priming failure must not fail the request that triggered it.
+  private async primeSiblingsFromHtml(malId: number, html: string, fetchedAt: string, skip: 'detail' | 'media'): Promise<void> {
+    try {
+      await this.writeSiblingCaches(malId, parseCharacterFull(html, malId, fetchedAt), fetchedAt, skip);
+    } catch (error) {
+      console.warn(JSON.stringify({ type: 'cache_priming_failed', resource: 'character', malId, error: String(error) }));
+    }
+  }
+
+  private async primeSiblingsFromFull(malId: number, full: CharacterFull, fetchedAt: string, skip: 'full'): Promise<void> {
+    try {
+      await this.writeSiblingCaches(malId, full, fetchedAt, skip);
+    } catch (error) {
+      console.warn(JSON.stringify({ type: 'cache_priming_failed', resource: 'character', malId, error: String(error) }));
+    }
+  }
+
+  private async writeSiblingCaches(malId: number, full: CharacterFull, fetchedAt: string, skip: 'detail' | 'full' | 'media'): Promise<void> {
+    if (skip !== 'detail') {
+      // CharacterFull is CharacterDetail plus anime/manga/voices — strip them before writing to
+      // the plain detail cache, or /v1/characters/:id would leak fields only /full ever promised.
+      const { anime: _animeography, manga: _mangaography, voices: _voices, ...detail } = full;
+      await this.characters.put(detail, fetchedAt, CHARACTER_PARSER_VERSION);
+      await this.primeCacheEntry(`character:${malId}:detail`, CHARACTER_PARSER_VERSION, fetchedAt);
+    }
+    if (skip !== 'full') {
+      const cacheKey = `catalog:character:${malId}:full`;
+      await this.catalog.put(cacheKey, full, fetchedAt, CHARACTER_FULL_PARSER_VERSION);
+      await this.primeCacheEntry(cacheKey, CHARACTER_FULL_PARSER_VERSION, fetchedAt);
+    }
+    if (skip !== 'media') {
+      const cacheKey = `catalog:character:${malId}:media`;
+      const value: CharacterMediaBundle = { anime: full.anime, manga: full.manga, voices: full.voices };
+      await this.catalog.put(cacheKey, value, fetchedAt, CHARACTER_MEDIA_PARSER_VERSION);
+      await this.primeCacheEntry(cacheKey, CHARACTER_MEDIA_PARSER_VERSION, fetchedAt);
+    }
+  }
+
+  private async primeCacheEntry(resourceKey: string, parserVersion: string, fetchedAt: string): Promise<void> {
+    const expiresAt = new Date(Date.parse(fetchedAt) + this.config.animeTtlSeconds * 1000).toISOString();
+    await this.cache.put({ resourceKey, fetchedAt, expiresAt, sourceStatus: 'success', parserVersion });
   }
 
   async anime(rawId: string, requestId: string): Promise<ServiceResponse<CharacterMediaEntry[]>> {
