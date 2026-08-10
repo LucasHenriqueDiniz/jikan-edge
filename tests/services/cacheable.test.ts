@@ -54,4 +54,14 @@ describe('withCache', () => {
     await withCache(dependencies, 'user:x:profile', 60, 'v3', async () => 'stored', async () => 'new', 'req');
     expect(dependencies.put).toHaveBeenCalledWith(expect.objectContaining({ resourceKey: 'user:x:profile', parserVersion: 'v3' }));
   });
+
+  // refresh() already persisted the new value to its own domain table by the time cache.put() runs
+  // — that write is only the freshness bookkeeping. Losing it must not throw away data we already
+  // have, nor report a successful refresh as `refreshFailed`.
+  it('still returns the freshly refreshed value when only the cache bookkeeping write fails', async () => {
+    const dependencies = deps(entry('v2'));
+    dependencies.put.mockImplementationOnce(async () => { throw new Error('D1 blip'); });
+    const result = await withCache(dependencies, 'user:x:profile', 60, 'v3', async () => 'stored', async () => 'new', 'req');
+    expect(result).toMatchObject({ data: 'new', cached: false, stale: false, refreshFailed: false });
+  });
 });

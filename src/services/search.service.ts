@@ -4,6 +4,7 @@ import { PERSON_SEARCH_PARSER_VERSION, type PersonSearchResult } from '../domain
 import { ANIME_SEARCH_PARSER_VERSION, MANGA_SEARCH_PARSER_VERSION, type AnimeSearchEntry, type MangaSearchEntry, type SearchEntry } from '../domain/search';
 import { USER_SEARCH_PARSER_VERSION, type UserSearchResult } from '../domain/user-search';
 import { parseCharacterSearch } from '../parsers/character-search.parser';
+import { ParserError } from '../parsers/html';
 import { parsePersonSearch } from '../parsers/person-search.parser';
 import { parseAnimeSearchResults, parseMangaSearchResults } from '../parsers/search.parser';
 import { parseUserSearch } from '../parsers/user-search.parser';
@@ -163,7 +164,18 @@ export class SearchService {
     return withCache({ cache: this.cache, locks: this.locks }, cacheKey, this.config.catalogTtlSeconds, USER_SEARCH_PARSER_VERSION, () => this.catalog.get<UserSearchResult[]>(cacheKey), async () => {
       const source = await this.source.getHtml(userSearchUrl(query, page), []);
       if (source.kind !== 'success') throw sourceError(source);
-      const value = parseUserSearch(source.value, query);
+      let value: UserSearchResult[];
+      try {
+        value = parseUserSearch(source.value, query);
+      } catch (error) {
+        // Two legitimate shapes exist here (a results list, or an exact match redirecting straight
+        // to a single profile), so a blanket requiredMarkers check on getHtml would false-positive
+        // on whichever shape it didn't ask for. Anything that fails to parse as either is upstream
+        // behaving unexpectedly, not a bug on our side — the same 502 every other route gives for a
+        // suspicious response, instead of leaking a raw ParserError as a generic 500.
+        if (error instanceof ParserError) throw sourceError({ kind: 'suspicious', reason: error.message, metadata: source.metadata });
+        throw error;
+      }
       const fetchedAt = new Date().toISOString();
       await this.catalog.put(cacheKey, value, fetchedAt, USER_SEARCH_PARSER_VERSION);
       return value;

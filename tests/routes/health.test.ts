@@ -37,4 +37,14 @@ describe('health route', () => {
   it('stays 200 while degraded', async () => {
     expect((await health({ DB: stubDatabase('missing-schema') })).status).toBe(200);
   });
+
+  // /health is declared as taking no parameters in QUERY_CONTRACT, but its handler used to be
+  // registered ahead of registerQueryGuards() — Hono's ordered composition meant the guard never
+  // ran for this one route, and a bogus param silently answered 200 instead of 400.
+  it('refuses a query parameter, like every other route', async () => {
+    const response = await app.request('http://localhost/health?bogus=1', undefined, { DB: stubDatabase('ok') });
+    expect(response.status).toBe(400);
+    const { error } = (await response.json()) as { error: { code: string } };
+    expect(error.code).toBe('UNKNOWN_PARAMETER');
+  });
 });

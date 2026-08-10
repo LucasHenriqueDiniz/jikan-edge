@@ -34,7 +34,15 @@ export async function withCache<T>(deps: CacheDeps, key: string, ttl: number, pa
   try {
     const value = await refresh();
     const fetchedAt = new Date().toISOString();
-    await deps.cache.put({ resourceKey: key, fetchedAt, expiresAt: new Date(Date.now() + ttl * 1000).toISOString(), sourceStatus: 'success', parserVersion });
+    // The bookkeeping write to cache_entries is separate from refresh() succeeding: by this point
+    // `value` is already the new data (refresh() persisted it to the domain table itself). A
+    // failure writing this row only means the next request may re-check freshness sooner than
+    // ideal — it must not throw away data we already have and report it as a failed refresh.
+    try {
+      await deps.cache.put({ resourceKey: key, fetchedAt, expiresAt: new Date(Date.now() + ttl * 1000).toISOString(), sourceStatus: 'success', parserVersion });
+    } catch (bookkeepingError) {
+      console.warn(JSON.stringify({ type: 'cache_bookkeeping_failed', key, error: String(bookkeepingError) }));
+    }
     return { data: value, cached: false, stale: false, refreshFailed: false, fetchedAt };
   } catch (error) {
     if (stored && cache) return { data: stored, cached: true, stale: true, refreshFailed: true, fetchedAt: cache.fetchedAt };

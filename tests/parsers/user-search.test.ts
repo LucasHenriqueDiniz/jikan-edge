@@ -19,4 +19,13 @@ describe('user search parser', () => {
     expect(results[0].username).toBe('Amayacrab');
     expect(results[0].url).toBe('https://myanimelist.net/profile/Amayacrab');
   });
+
+  // parseUserProfile degrades gracefully on a genuine but partial profile page, defaulting missing
+  // fields to null and even the canonical username to whatever was requested. Left unguarded, that
+  // leniency let arbitrary unrelated HTML (neither a results list nor a real profile page) fall
+  // through and fabricate a plausible single-result match instead of failing.
+  it('refuses a page that is neither a results list nor a real profile page', () => {
+    const html = `<html><body>${'x'.repeat(600)}</body></html>`;
+    expect(() => parseUserSearch(html, 'someone')).toThrow();
+  });
 });

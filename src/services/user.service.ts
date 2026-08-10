@@ -85,7 +85,7 @@ export class UserService {
   }
 
   async userUpdates(username: string, requestId: string): Promise<ServiceResponse<UserUpdates>> {
-    const key=this.validateUsername(username); return this.withCache(`user:${key}:updates`,this.config.profileTtlSeconds,UPDATES_PARSER_VERSION,()=>this.updates.get(key),async()=>{const source=await this.source.getHtml(profileUrl(username),['Last Anime Updates']);if(source.kind!=='success')throw sourceError(source);const value=parseUserUpdates(source.value);const at=new Date().toISOString();await this.updates.put(key,value,at);return value},requestId);
+    const key=this.validateUsername(username); return this.withCache(`user:${key}:updates`,this.config.profileTtlSeconds,UPDATES_PARSER_VERSION,()=>this.updates.get(key),async()=>{const source=await this.source.getHtml(profileUrl(username),['Last Anime Updates']);if(source.kind!=='success')throw sourceError(source);const value=parseUserUpdates(source.value);const at=new Date().toISOString();await this.updates.put(key,value,at,UPDATES_PARSER_VERSION);return value},requestId);
   }
 
   async about(username: string, requestId: string): Promise<ServiceResponse<{ about: string | null }>> {

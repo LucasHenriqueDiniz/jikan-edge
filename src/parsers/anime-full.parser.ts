@@ -10,7 +10,13 @@ const themeSongsSchema = z.object({ openings: z.array(themeSongSchema), endings:
 function extractSongs(block: string): ThemeSong[] {
   const songs: ThemeSong[] = [];
   for (const row of block.split('<td width="84%">').slice(1)) {
-    const rawTitle = row.match(/class="theme-song-title">([^<]+)<\/span>/i)?.[1];
+    // MAL is mid-rollout of a newer widget that drops the dedicated title span: the index span
+    // ("1:") is followed directly by a quoted plain-text title instead of a nested
+    // theme-song-title span. Both shapes appear on the same page during the rollout (confirmed
+    // live: Frieren is 100% new, Fullmetal Alchemist: Brotherhood mixes both), so each row is
+    // checked independently rather than branching on the whole document.
+    const rawTitle = row.match(/class="theme-song-title">([^<]+)<\/span>/i)?.[1]
+      ?? row.match(/class="theme-song-index">[^<]*<\/span>&nbsp;("[^"]+")/i)?.[1];
     if (!rawTitle) continue;
     const title = decodeHtml(rawTitle.replace(/^"+|"+$/g, ''));
     if (!title) continue;

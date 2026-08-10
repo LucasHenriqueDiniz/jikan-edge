@@ -46,9 +46,16 @@ export function parseCharacters(html: string, mediaType: 'anime' | 'manga'): Cha
 }
 
 export function parseStaff(html: string): StaffMember[] {
-  const headingIdx = html.indexOf('<h2 class="h2_overwrite">Staff</h2>');
+  const heading = '<h2 class="h2_overwrite">Staff</h2>';
+  const headingIdx = html.indexOf(heading);
   if (headingIdx === -1) return [];
-  const section = html.slice(headingIdx, headingIdx + 80_000);
+  const body = html.slice(headingIdx + heading.length);
+  // No fixed byte budget: a large production's staff table can run past half a megabyte (One Piece
+  // measured at 543 KB live) with no heading in between at all, and a fixed cap silently dropped
+  // everything past it — the same mistake backgroundSection was already fixed for. Cut at the next
+  // real heading, or the end of the document if the page doesn't have one after Staff.
+  const nextHeading = body.search(/<h2[^>]*>/i);
+  const section = nextHeading === -1 ? body : body.slice(0, nextHeading);
   const staff: StaffMember[] = [];
   for (const row of section.split('<tr>').slice(1)) {
     const idMatch = row.match(/href="https:\/\/myanimelist\.net\/people\/(\d+)\/[^"]*">([^<]+)<\/a>/i);

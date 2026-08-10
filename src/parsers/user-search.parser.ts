@@ -33,6 +33,15 @@ export function parseUserSearch(html: string, requestedQuery: string, fetchedAt 
     return results;
   }
 
+  // Recognize the redirect-to-profile shape by the same marker the profile route itself requires
+  // (getHtml(profileUrl(username), ['Profile', 'Anime Stats'])), rather than trusting
+  // parseUserProfile's own leniency to gatekeep this. That leniency exists to degrade gracefully on
+  // a genuine but partial profile page (missing bio, stats, etc.) — it is not a check that the page
+  // is a profile page at all. Without this guard, arbitrary non-profile HTML (a MAL page this parser
+  // has never seen, not just a Cloudflare challenge) fell through to parseUserProfile, which
+  // fabricated a plausible-looking single-result match out of nothing rather than failing.
+  if (!html.includes('Anime Stats')) throw new ParserError('unrecognized_user_search_page');
+
   try {
     const profile = parseUserProfile(html, requestedQuery, fetchedAt);
     return [{ username: profile.canonicalUsername, url: profile.profileUrl, avatarUrl: profile.avatarUrl, joinedAt: profile.joinedAt }];

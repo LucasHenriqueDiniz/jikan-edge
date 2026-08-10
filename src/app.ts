@@ -47,11 +47,6 @@ app.use('*', async (c, next) => {
   logMetric({ route: new URL(c.req.url).pathname, resourceType: 'http', cacheStatus: 'miss', stale: false, responseDurationMs: Math.round(performance.now() - c.get('startedAt')), refreshResult: String(c.res.status), responseSizeBytes: Number(c.res.headers.get('content-length') ?? 0) });
 });
 
-// `status` answers "is the Worker up"; `checks.database` answers "is this deploy actually usable".
-// Keeping the status code at 200 for a degraded database is deliberate: uptime monitors watch this
-// route, and a self-hoster needs the diagnosis in the body, not a second failure to interpret.
-app.get('/health', async (c) => c.json({ data: { status: 'ok', service: 'jikan-edge', checks: { database: await probeDatabase(c.env?.DB) } }, meta: { requestId: c.get('requestId') } }));
-
 // Every /v1 route reads D1 before anything else, so a missing binding would 500 all 96 of them with
 // no clue why. Checked up front rather than inferred from a downstream error message.
 app.use('/v1/*', async (c, next) => {
@@ -60,8 +55,16 @@ app.use('/v1/*', async (c, next) => {
 });
 
 // Per-route query validation, registered before the handlers so it runs first. Refuses any
-// parameter the route does not honour instead of accepting it and doing nothing.
+// parameter the route does not honour instead of accepting it and doing nothing. This must also
+// run before /health is registered below — Hono composes middleware in registration order, so a
+// handler registered ahead of its guard never reaches it. /health used to be registered first,
+// which made its entry in QUERY_CONTRACT dead: `GET /health?bogus=1` answered 200 instead of 400.
 registerQueryGuards(app);
+
+// `status` answers "is the Worker up"; `checks.database` answers "is this deploy actually usable".
+// Keeping the status code at 200 for a degraded database is deliberate: uptime monitors watch this
+// route, and a self-hoster needs the diagnosis in the body, not a second failure to interpret.
+app.get('/health', async (c) => c.json({ data: { status: 'ok', service: 'jikan-edge', checks: { database: await probeDatabase(c.env?.DB) } }, meta: { requestId: c.get('requestId') } }));
 
 function service(c: Context<{ Bindings: Env; Variables: Variables }>): UserService { return new UserService(c.env.DB, configFrom(c.env)); }
 function animeService(c: Context<{ Bindings: Env; Variables: Variables }>): AnimeService { return new AnimeService(c.env.DB, configFrom(c.env)); }
