@@ -20,7 +20,11 @@ function extractAbout(html: string): string | null {
   const closeTagIndex = html.indexOf('</h2>', headerIndex);
   if (closeTagIndex === -1) return null;
   const nextSectionIndex = html.indexOf('class="normal_header"', closeTagIndex);
-  const block = html.slice(closeTagIndex + '</h2>'.length, nextSectionIndex === -1 ? closeTagIndex + 4_000 : nextSectionIndex);
+  // No fixed byte budget: when "About" is the last normal_header section on the page (a character
+  // with no voice actors or anime/manga appearances following it), cut only at the end of the
+  // document instead of an arbitrary window — the same fixed-budget mistake already paid for in
+  // parseStaff and backgroundSection.
+  const block = html.slice(closeTagIndex + '</h2>'.length, nextSectionIndex === -1 ? undefined : nextSectionIndex);
   const decoded = richText(block);
   return decoded.length > 0 ? decoded : null;
 }

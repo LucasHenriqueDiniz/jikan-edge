@@ -14,6 +14,7 @@ import type { CharacterDetail } from '../../src/domain/character';
 import type { ProducerDetail } from '../../src/domain/producer';
 import type { ClubDetail } from '../../src/domain/club';
 import type { PersonDetail } from '../../src/domain/person';
+import type { GenreTaxonomyEntry } from '../../src/domain/genre';
 
 const bindings = env as unknown as { DB: D1Database; TEST_MIGRATIONS: import('cloudflare:test').D1Migration[] };
 const fetchedAt = '2026-07-19T00:00:00.000Z';
@@ -100,9 +101,14 @@ describe('D1 integration: catalog repositories', () => {
 
   it('stores and overwrites list-shaped catalog resources by key', async () => {
     const repo = new CatalogListRepository(bindings.DB);
-    await repo.put('catalog:genres:anime', [{ malId: 1, name: 'Action', url: 'https://myanimelist.net/anime/genre/1/Action' }], fetchedAt, 'test');
-    await repo.put('catalog:genres:anime', [{ malId: 1, name: 'Action', url: 'https://myanimelist.net/anime/genre/1/Action' }, { malId: 2, name: 'Adventure', url: 'https://myanimelist.net/anime/genre/2/Adventure' }], fetchedAt, 'test');
-    const stored = await repo.get<{ malId: number; name: string; url: string }[]>('catalog:genres:anime');
+    // GenreTaxonomyEntry gained count and type in the 2026-07-30 contract change; this fixture
+    // predated that and tsconfig excludes tests/integration/** from typecheck, so a missing
+    // required field here would not have failed anywhere.
+    const action: GenreTaxonomyEntry = { malId: 1, name: 'Action', url: 'https://myanimelist.net/anime/genre/1/Action', count: 100, type: 'genres' };
+    const adventure: GenreTaxonomyEntry = { malId: 2, name: 'Adventure', url: 'https://myanimelist.net/anime/genre/2/Adventure', count: 50, type: 'genres' };
+    await repo.put('catalog:genres:anime', [action], fetchedAt, 'test');
+    await repo.put('catalog:genres:anime', [action, adventure], fetchedAt, 'test');
+    const stored = await repo.get<GenreTaxonomyEntry[]>('catalog:genres:anime');
     expect(stored).toHaveLength(2);
     expect(await repo.get('catalog:top:anime:page:1')).toBeNull();
   });

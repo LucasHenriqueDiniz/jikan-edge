@@ -460,7 +460,7 @@ app.get('/v1/schedules', async (c) => {
 });
 
 for (const kind of ['anime', 'manga', 'characters', 'people'] as RandomKind[]) app.get(`/v1/random/${kind}`, async (c) => {
-  try { const data = await new RandomService(c.env.DB).pick(kind); c.header('X-Cache-Status', 'local'); return c.json(success(data, {})); }
+  try { const data = await new RandomService(c.env.DB).pick(kind); c.header('X-Cache-Status', 'local'); return c.json(success(data, { requestId: c.get('requestId') })); }
   catch (error) { return errorResponse(c, error, c.get('requestId')); }
 });
 app.get('/v1/random/users', async (c) => {
