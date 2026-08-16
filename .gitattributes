@@ -1,0 +1,12 @@
+# No end-of-line conversion, anywhere. Git's default on Windows (`core.autocrlf=true`) rewrites
+# checked-out files to CRLF, and this repo cannot afford that in either direction:
+#
+#   - `scripts/setup.mjs` checked out with CRLF fails to parse inside the Workers test pool, so
+#     `npm test` broke on a fresh Windows clone (12 tests, the whole self-hosting setup suite)
+#     while passing on the machine where the file had been written with LF.
+#   - The HTML fixtures are byte-for-byte captures of real MyAnimeList pages, `\r` included — one
+#     of them exists precisely to pin a bug where MAL emits a stray `\r` inside an href. Letting
+#     Git normalise those bytes would silently rewrite the evidence the parser tests rest on.
+#
+# So: store what is committed, check out what is stored.
+* -text
