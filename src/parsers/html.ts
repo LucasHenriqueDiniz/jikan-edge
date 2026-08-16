@@ -224,6 +224,11 @@ export function parseDateRange(raw: string | null): { from: string | null; to: s
 // The curated "Background" section, which most titles do not have. Anchored on the heading id and
 // stopped at the next heading — not at a byte budget, which is the mistake this codebase has
 // already paid for twice in the profile parser.
+//
+// `</td>` and `floatRightHeader` are stops because MAL puts each section's "Edit" link *before* its
+// own `<h2>`: `<div class="floatRightHeader"><a>Edit</a></div><h2 id="related_entries">`. Cutting
+// only at `<h2` left that anchor inside the previous section, so every title with a Background
+// answered with a trailing "Edit".
 export function backgroundSection(html: string): string | null {
   const start = html.search(/<h2[^>]*id="background"/i);
   if (start === -1) return null;
@@ -231,7 +236,7 @@ export function backgroundSection(html: string): string | null {
   const bodyStart = rest.indexOf('</h2>');
   if (bodyStart === -1) return null;
   const body = rest.slice(bodyStart + '</h2>'.length);
-  const end = body.search(/<h2|<div class="border_solid"/i);
+  const end = body.search(/<h2|<\/td>|<div class="border_solid"|<div class="floatRightHeader"/i);
   return richText(end === -1 ? body : body.slice(0, end)) || null;
 }
 

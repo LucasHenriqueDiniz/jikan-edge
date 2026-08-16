@@ -95,6 +95,12 @@ describe('anime detail parser', () => {
       expect(detail.background).toContain('first aired in spring of 1998 on TV Tokyo');
     });
 
+    // The next section's "Edit" link sits before its own <h2>, so a cut anchored only on the
+    // heading dragged it into the Background text.
+    it('stops the Background before the next section\'s Edit link', () => {
+      expect(detail.background).toMatch(/gateway drug.+anime aimed at adult audiences\.$/s);
+    });
+
     it('keeps the synopsis paragraphs', () => {
       expect(detail.synopsis).toContain('\n\n');
     });
