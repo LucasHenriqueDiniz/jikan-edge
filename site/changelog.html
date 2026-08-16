@@ -106,6 +106,43 @@ footer a { color: var(--paper-dim); }
 
     <div class="entry">
       <div class="date">
+        <h2>2026-08-16 — a backlog that never shipped</h2>
+        <span class="versions">2 releases</span>
+      </div>
+      <p class="summary">Written on 2026-08-10, live only today: a stray workspace file made every Cloudflare build
+      fail while installing dependencies, so production went on serving code from 2026-07-31. These are fixes you
+      had not been getting yet, not fixes you already had.</p>
+      <div class="groups">
+        <div>
+          <span class="group-label breaking">Breaking</span>
+          <ul>
+            <li><b><code>ClubDetail.staff</code> is <code>{ username, url, role }[]</code></b>, where it was strings
+            shaped like <code>"Name (Role)"</code> — the profile link was in the markup all along, and the
+            concatenated form was ambiguous whenever a name or role contained parentheses.</li>
+          </ul>
+        </div>
+        <div>
+          <span class="group-label fixed">Fixed</span>
+          <ul>
+            <li><b>Themes came back empty.</b> <code>GET /v1/anime/:id/full</code> and <code>/themes</code> answered
+            <code>{ "openings": [], "endings": [] }</code> for titles whose widget MAL has already migrated — Frieren
+            returned nothing, Fullmetal Alchemist: Brotherhood lost half.</li>
+            <li><b>Staff stopped at the first 80 KB of the page</b> — 80 of One Piece's 542 members, dropped under a
+            <code>200</code> with nothing to indicate the list was cut.</li>
+            <li><b><code>background</code> ended with a stray "Edit"</b>, the next section's edit link read as the
+            last word of the text.</li>
+            <li><code>GET /health</code> accepted query parameters it documents as invalid; a database blip could
+            answer with the previous value while the refreshed one was already stored; user search answered
+            <code>500</code> instead of <code>502</code> on an unrecognised page.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <hr class="rule">
+
+    <div class="entry">
+      <div class="date">
         <h2>2026-07-30 — content parity sweep</h2>
         <span class="versions">7 releases that day</span>
       </div>

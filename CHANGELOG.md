@@ -6,6 +6,59 @@ Changes that matter to anyone **consuming** the API. The technical detail behind
 
 This file starts on 2026-07-30 and does not reconstruct earlier history.
 
+## 2026-08-16
+
+Published versions: `d75c8e94`, `80846de6`.
+
+Everything here except the last two entries was written on **2026-08-10** and only reached production
+today. The deploy pipeline itself was broken: a stray `pnpm-workspace.yaml` made every Cloudflare
+build fail while installing dependencies, so no build had succeeded since the Git integration was
+connected on that date, and production kept serving code from 2026-07-31. If you consume this API,
+these are fixes you had not been getting yet — not fixes you already had.
+
+### Fixed
+
+- **Opening and ending themes came back empty.** `GET /v1/anime/:id/full` and `/themes` answered
+  `{ "openings": [], "endings": [] }` for titles whose theme widget MAL has already migrated —
+  Frieren returned nothing at all, and Fullmetal Alchemist: Brotherhood, which carries both markups
+  on the same page, lost half its themes. Both formats are now read per line rather than per page.
+
+- **Staff lists stopped at the first 80 KB of the page.** `GET /v1/anime/:id/staff` returned 80 of
+  One Piece's 542 staff members — ~85 % dropped with a `200` and no indication anything was missing.
+  The cut now falls at the next real heading, or at the end of the document.
+
+- **`GET /health` accepted query parameters it documents as invalid.** `?anything=1` answered `200`
+  instead of `400`; the guard existed but was registered after the route, so it never ran.
+
+- **A database blip could hide data that had already been saved.** When the refreshed value was
+  stored but the bookkeeping write that follows it failed, the response fell back to the **previous**
+  value labelled `refreshFailed: true`, even though the new one was already in the database.
+
+- **User search answered `500` on an unrecognised page.** `GET /v1/users?q=` now answers
+  `502 UPSTREAM_SUSPICIOUS`, and no longer risks echoing the query back as if it were a username it
+  had actually found.
+
+- **`background` ended with a stray "Edit".** Every anime with a Background section carried the
+  next section's edit link as the last word of the text — `"…anime aimed at adult audiences.\n\nEdit"`.
+  Cached entries keep the old value until their 6 h TTL expires; nothing else changes about the field.
+
+### Changed
+
+- **`ClubDetail.staff` is now `{ username, url, role }[]`**, where it used to be strings shaped like
+  `"Name (Role)"`. `GET /v1/clubs/:id` and `/staff` are affected. The profile link was always in the
+  markup and was being thrown away, and the concatenated form was ambiguous whenever a name or a role
+  contained parentheses.
+
+### Operational notes
+
+- Detail, `full` and the media sub-routes of the same entity now prime each other's cache, so asking
+  for `/full` right after `/detail` no longer triggers a second fetch of the same page upstream. No
+  response shape or value changes.
+- Failed upstream requests are retried once, but only for connection errors and timeouts — never for
+  answers MAL gave deliberately (not found, private, rate limited).
+- One migration ships, `0012`, and it only repairs stored bookkeeping: the parser version recorded
+  for user update rows, which had been frozen at its first value.
+
 ## 2026-07-30 (second release of the day)
 
 Published versions: `42f848f4`, `c098b3b5`, `1320a613`, `89bfcadc`, `cdcce2cd`, `499408ac`, `53c31b76`.
