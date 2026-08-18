@@ -8,7 +8,12 @@ This file starts on 2026-07-30 and does not reconstruct earlier history.
 
 ## 2026-08-18
 
-Published version: `3810fd7b`.
+Published versions: `3810fd7b`, `96e592e6`, `5fb481a6`, `40959124`, `b0e3ba13`, `b689413b`,
+`3d97bdf8`, `2d4f3446`, `c214be3f`.
+
+Nine for three changes, because each one shipped twice: the Cloudflare Git integration deploys on
+every push to `main`, and these were also deployed by hand. The push-triggered build is the one
+that ends up serving, since it lands last. Deploying manually before pushing is redundant here.
 
 ### Changed
 
