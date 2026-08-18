@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "setup": "node scripts/setup.mjs",
+    "og": "node scripts/render-og.mjs",
     "dev": "wrangler dev --remote",
     "dev:local": "wrangler dev --local",
     "deploy": "wrangler deploy",
