@@ -8,7 +8,7 @@ This file starts on 2026-07-30 and does not reconstruct earlier history.
 
 ## 2026-08-18
 
-Published version: a confirmar.
+Published version: `3810fd7b`.
 
 ### Changed
 
