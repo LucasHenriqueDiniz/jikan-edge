@@ -1,0 +1,13 @@
+# jikan-edge — https://jikan.lucashdo.com
+#
+# The marketing pages are open to every crawler. /v1/* is deliberately excluded: those are JSON API
+# responses, not pages. Crawling them would burn this instance's per-IP rate limit and fill the D1
+# cache with entities nobody asked for, and the results are worthless in a search index. The route
+# reference a crawler actually wants is /docs, which is HTML.
+
+User-agent: *
+Allow: /
+Disallow: /v1/
+Disallow: /health
+
+Sitemap: https://jikan.lucashdo.com/sitemap.xml

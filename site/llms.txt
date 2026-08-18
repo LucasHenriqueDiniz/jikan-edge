@@ -2,7 +2,7 @@
 
 > Self-hosted, Jikan-compatible REST API over public MyAnimeList data, running on Cloudflare Workers + D1. No authentication, fully open CORS, MIT licensed. Not affiliated with MyAnimeList or Jikan.
 
-jikan-edge mirrors the functional surface of [Jikan v4](https://jikan.moe) — 96 GET routes under `/v1` — by scraping and caching public MyAnimeList pages at the edge, instead of proxying a shared upstream. Field names are camelCase; this is functional parity with Jikan, not a schema-identical clone. If you already integrate against Jikan, most requests are a drop-in base-URL swap; check the breaking differences below before assuming byte-for-byte compatibility.
+jikan-edge mirrors the functional surface of [Jikan v4](https://jikan.moe) — 97 GET routes under `/v1` — by scraping and caching public MyAnimeList pages at the edge, instead of proxying a shared upstream. Field names are camelCase; this is functional parity with Jikan, not a schema-identical clone. If you already integrate against Jikan, most requests are a drop-in base-URL swap; check the breaking differences below before assuming byte-for-byte compatibility.
 
 ## Base URL
 
@@ -27,6 +27,7 @@ The former base URL `https://jikan-edge.lucas-hdo.workers.dev` still points at t
 - Self-hosting guide (run your own copy on your own Cloudflare account): https://github.com/LucasHenriqueDiniz/jikan-edge/blob/main/docs/self-hosting.md
 - Changelog: https://jikan.lucashdo.com/changelog
 - Privacy: https://jikan.lucashdo.com/privacy
+- Health check (also reports whether this instance's database is reachable): https://jikan.lucashdo.com/health
 
 ## Known limitations
 
