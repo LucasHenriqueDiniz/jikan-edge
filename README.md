@@ -1,3 +1,7 @@
+<p align="center">
+  <img src=".github/banner.png" alt="jikan-edge" width="100%" />
+</p>
+
 # jikan-edge
 
 **A [Jikan](https://github.com/jikan-me/jikan)-parity anime & manga REST API running entirely on Cloudflare Workers.**
