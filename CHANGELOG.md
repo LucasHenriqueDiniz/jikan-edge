@@ -29,7 +29,11 @@ Published version: `3810fd7b`.
 
 ## 2026-08-16
 
-Published versions: `d75c8e94`, `80846de6`.
+Published versions: `d75c8e94`, `80846de6`, `3853a33d`.
+
+`3853a33d` carried no code — it is the deploy that published this entry, and it was added here on
+2026-08-18, after the fact. An entry cannot name the version that ships it, so the last id of any
+day has to be filled in afterwards; the gap is expected, not a missing release.
 
 Everything here except the last two entries was written on **2026-08-10** and only reached production
 today. The deploy pipeline itself was broken: a stray `pnpm-workspace.yaml` made every Cloudflare
