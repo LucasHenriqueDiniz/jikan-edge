@@ -46,6 +46,9 @@ export function configPatches({ databaseId, dbName, contact, workerName }) {
   const patches = [
     [/("database_id"\s*:\s*")[^"]*(")/, `$1${databaseId}$2`],
     [/("database_name"\s*:\s*")[^"]*(")/, `$1${dbName}$2`],
+    // The upstream custom domain lives in a zone the fork does not own, and `wrangler deploy` fails
+    // outright on a route it cannot claim. Emptying it leaves the fork on its own workers.dev URL.
+    [/("routes"\s*:\s*)\[[^\]]*\]/, '$1[]'],
   ];
   // The user agent is what MyAnimeList sees. Left unchanged, a fork's traffic is attributed to the
   // upstream author's domain.

@@ -396,7 +396,7 @@ footer .stamp .kanji { color: var(--vermillion); }
         </p>
         <div class="baseurl" id="baseurl" title="Click to copy">
           <span class="dot"></span>
-          <span id="baseurl-text">https://jikan-edge.lucas-hdo.workers.dev</span>
+          <span id="baseurl-text">https://jikan.lucashdo.com</span>
           <span class="copy" id="baseurl-copy">copy</span>
         </div>
         <div class="facts">
@@ -653,7 +653,7 @@ footer .stamp .kanji { color: var(--vermillion); }
         </div>
         <div class="mig-line mig-new">
           <span class="mig-tag">after</span>
-          <code>https://jikan-edge.lucas-hdo.workers.dev/v1/anime/1 → malId, images.medium, aired.from</code>
+          <code>https://jikan.lucashdo.com/v1/anime/1 → malId, images.medium, aired.from</code>
         </div>
       </div>
       <button class="mig-btn" id="prompt-copy"><span class="mig-ico">⧉</span><span class="mig-txt">Copy the agent prompt</span></button>
@@ -694,7 +694,7 @@ footer .stamp .kanji { color: var(--vermillion); }
 <script>
 (function () {
   // Base URL: relative in production (same origin), absolute fallback when opened as a file.
-  var base = location.protocol === 'file:' ? 'https://jikan-edge.lucas-hdo.workers.dev' : '';
+  var base = location.protocol === 'file:' ? 'https://jikan.lucashdo.com' : '';
   if (base) document.getElementById('baseurl-text').textContent = base;
   else document.getElementById('baseurl-text').textContent = location.origin;
 
@@ -780,10 +780,10 @@ footer .stamp .kanji { color: var(--vermillion); }
 
   var AGENT_PROMPT = [
     'Migrate this project from the Jikan API (https://api.jikan.moe/v4) to jikan-edge',
-    '(https://jikan-edge.lucas-hdo.workers.dev/v1). Full docs: https://jikan-edge.lucas-hdo.workers.dev/docs',
+    '(https://jikan.lucashdo.com/v1). Full docs: https://jikan.lucashdo.com/docs',
     '',
     'Key differences to apply:',
-    '1. Base URL: replace https://api.jikan.moe/v4 with https://jikan-edge.lucas-hdo.workers.dev/v1.',
+    '1. Base URL: replace https://api.jikan.moe/v4 with https://jikan.lucashdo.com/v1.',
     '   Route paths and groups mirror Jikan v4 (anime, manga, characters, people, users, seasons,',
     '   schedules, top, producers, clubs, magazines, watch, reviews, recommendations, random).',
     '2. Response envelope: every success is { "data": ..., "meta": { cached, stale, refreshFailed,',

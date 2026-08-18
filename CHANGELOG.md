@@ -6,6 +6,27 @@ Changes that matter to anyone **consuming** the API. The technical detail behind
 
 This file starts on 2026-07-30 and does not reconstruct earlier history.
 
+## 2026-08-18
+
+Published version: a confirmar.
+
+### Changed
+
+- **New base URL: `https://jikan.lucashdo.com`.** All documentation, the landing page and `llms.txt`
+  now point there. **Nothing breaks:** `https://jikan-edge.lucas-hdo.workers.dev` still serves the
+  exact same Worker, on the same D1 cache, and is not scheduled for removal — no redirect, no
+  deprecation window, no action required from existing integrations. The custom domain is additive
+  (`workers_dev` stays `true`); prefer it for new work so a future move off `*.workers.dev` costs
+  nothing.
+
+- **`MAL_USER_AGENT` now identifies the API as `jikan-edge/0.1 (+https://jikan.lucashdo.com)`.**
+  Only MyAnimeList sees this; no response changes.
+
+### Fixed
+
+- **Self-hosting: `npm run setup` empties the `routes` list.** Without it a fork would inherit the
+  maintainer's custom domain and `wrangler deploy` would fail on a zone it cannot claim.
+
 ## 2026-08-16
 
 Published versions: `d75c8e94`, `80846de6`.

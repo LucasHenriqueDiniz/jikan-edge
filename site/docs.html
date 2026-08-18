@@ -178,7 +178,7 @@ footer a { color: var(--paper-dim); }
       MyAnimeList pages. No authentication, fully open CORS. Every route below has a <b>try</b> button that fires
       a real request from your browser.</p>
       <div class="basebar" id="basebar" title="Click to copy">
-        <span class="dot"></span><span id="base-text">https://jikan-edge.lucas-hdo.workers.dev</span><span class="copy">copy</span>
+        <span class="dot"></span><span id="base-text">https://jikan.lucashdo.com</span><span class="copy">copy</span>
       </div>
 
       <section id="conventions">
@@ -360,7 +360,7 @@ npm install</pre>
 
 <script>
 (function () {
-  var base = location.protocol === 'file:' ? 'https://jikan-edge.lucas-hdo.workers.dev' : '';
+  var base = location.protocol === 'file:' ? 'https://jikan.lucashdo.com' : '';
   document.getElementById('base-text').textContent = base || location.origin;
   document.getElementById('basebar').addEventListener('click', function () {
     navigator.clipboard.writeText(document.getElementById('base-text').textContent);

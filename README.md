@@ -5,26 +5,28 @@
 Public MyAnimeList data — anime, manga, characters, people, producers, clubs, seasons, schedules, reviews, recommendations, user profiles and more — served from the edge with D1-backed caching, stale fallback, and per-route contract tests.
 
 ```
-Base URL: https://jikan-edge.lucas-hdo.workers.dev
+Base URL: https://jikan.lucashdo.com
 ```
+
+The previous hostname, `https://jikan-edge.lucas-hdo.workers.dev`, still serves the same Worker and is not scheduled for removal — existing integrations keep working without a change.
 
 ## Quick start
 
 ```bash
 # Anime detail
-curl https://jikan-edge.lucas-hdo.workers.dev/v1/anime/1
+curl https://jikan.lucashdo.com/v1/anime/1
 
 # Search with server-side filters
-curl "https://jikan-edge.lucas-hdo.workers.dev/v1/anime?q=naruto&type=movie"
-curl "https://jikan-edge.lucas-hdo.workers.dev/v1/anime?genres=1&score=9&order_by=score"
+curl "https://jikan.lucashdo.com/v1/anime?q=naruto&type=movie"
+curl "https://jikan.lucashdo.com/v1/anime?genres=1&score=9&order_by=score"
 
 # Current season, weekly schedule, top rankings
-curl https://jikan-edge.lucas-hdo.workers.dev/v1/seasons/now
-curl "https://jikan-edge.lucas-hdo.workers.dev/v1/schedules?filter=monday"
-curl "https://jikan-edge.lucas-hdo.workers.dev/v1/top/anime?page=1"
+curl https://jikan.lucashdo.com/v1/seasons/now
+curl "https://jikan.lucashdo.com/v1/schedules?filter=monday"
+curl "https://jikan.lucashdo.com/v1/top/anime?page=1"
 
 # User profiles
-curl https://jikan-edge.lucas-hdo.workers.dev/v1/users/USERNAME/full
+curl https://jikan.lucashdo.com/v1/users/USERNAME/full
 ```
 
 Every response is wrapped in `{ "data": ..., "meta": { cached, stale, refreshFailed, fetchedAt } }`. Errors return `{ "error": { code, message, requestId } }`.

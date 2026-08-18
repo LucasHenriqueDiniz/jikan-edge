@@ -1,6 +1,8 @@
 # Rotas do jikan-edge
 
-Base publicada: `https://jikan-edge.lucas-hdo.workers.dev`.
+Base publicada: `https://jikan.lucashdo.com`. O hostname anterior
+`https://jikan-edge.lucas-hdo.workers.dev` continua servindo o mesmo Worker (`workers_dev` segue
+`true` de propósito) — nenhum consumidor precisa migrar.
 
 | Método | Rota | Fonte quando há refresh | Cache D1 | TTL |
 | --- | --- | --- | --- | --- |

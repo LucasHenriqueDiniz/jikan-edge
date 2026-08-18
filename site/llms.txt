@@ -6,7 +6,9 @@ jikan-edge mirrors the functional surface of [Jikan v4](https://jikan.moe) — 9
 
 ## Base URL
 
-https://jikan-edge.lucas-hdo.workers.dev
+https://jikan.lucashdo.com
+
+The former base URL `https://jikan-edge.lucas-hdo.workers.dev` still points at the same Worker and keeps serving indefinitely; prefer the one above for new integrations.
 
 ## Conventions
 
@@ -20,11 +22,11 @@ https://jikan-edge.lucas-hdo.workers.dev
 
 ## Docs
 
-- Full route reference, live try-it-out: https://jikan-edge.lucas-hdo.workers.dev/docs
+- Full route reference, live try-it-out: https://jikan.lucashdo.com/docs
 - Route reference source, with the evidence behind each route's behaviour: https://github.com/LucasHenriqueDiniz/jikan-edge/blob/main/docs/routes.md
 - Self-hosting guide (run your own copy on your own Cloudflare account): https://github.com/LucasHenriqueDiniz/jikan-edge/blob/main/docs/self-hosting.md
-- Changelog: https://jikan-edge.lucas-hdo.workers.dev/changelog
-- Privacy: https://jikan-edge.lucas-hdo.workers.dev/privacy
+- Changelog: https://jikan.lucashdo.com/changelog
+- Privacy: https://jikan.lucashdo.com/privacy
 
 ## Known limitations
 

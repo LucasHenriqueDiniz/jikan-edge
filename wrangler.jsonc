@@ -3,12 +3,17 @@
   "name": "jikan-edge",
   "main": "src/index.ts",
   "compatibility_date": "2026-07-19",
+  // `workers_dev` stays true on purpose: the *.workers.dev hostname keeps serving alongside the
+  // custom domain, so consumers that integrated before the migration are never broken.
   "workers_dev": true,
+  // Forking this? `npm run setup` empties this list — `wrangler deploy` fails outright on a custom
+  // domain whose zone is not in your own account.
+  "routes": [{ "pattern": "jikan.lucashdo.com", "custom_domain": true }],
   // Static landing site at "/" — asset-first routing keeps /v1/* and /health on the Worker.
   "assets": { "directory": "./site" },
   "observability": { "enabled": true, "head_sampling_rate": 1 },
   "vars": {
-    "MAL_USER_AGENT": "jikan-edge/0.1 (+https://jikan-edge.lucas-hdo.workers.dev)",
+    "MAL_USER_AGENT": "jikan-edge/0.1 (+https://jikan.lucashdo.com)",
     "PROFILE_TTL_SECONDS": "21600",
     "LIST_TTL_SECONDS": "7200",
     "ANIME_TTL_SECONDS": "21600",

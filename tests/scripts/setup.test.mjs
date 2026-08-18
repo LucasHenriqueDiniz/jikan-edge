@@ -49,6 +49,15 @@ describe('patching wrangler.jsonc', () => {
     expect(result.split('\n').length).toBe(CONFIG.split('\n').length);
   });
 
+  // A fork inheriting the maintainer's custom domain fails `wrangler deploy` outright: the zone is
+  // not in its account. Emptying the list leaves the fork on its own workers.dev URL.
+  it('drops the custom domain route, and stays idempotent once it is empty', () => {
+    const result = patched({});
+    expect(result).toContain('"routes": []');
+    expect(result).not.toContain('custom_domain');
+    expect(applyPatches(result, configPatches({ databaseId: ID, dbName: 'jikan-edge' }))).toBe(result);
+  });
+
   // The rate limiters carry a `"name"` too — renaming one of those would silently split a fork's
   // rate-limit counters instead of renaming the Worker.
   it('renames the Worker without touching the rate limiter names', () => {
@@ -63,7 +72,7 @@ describe('patching wrangler.jsonc', () => {
   });
 
   it('leaves the user agent alone when no contact is given', () => {
-    expect(patched({})).toContain('"MAL_USER_AGENT": "jikan-edge/0.1 (+https://jikan-edge.lucas-hdo.workers.dev)"');
+    expect(patched({})).toContain('"MAL_USER_AGENT": "jikan-edge/0.1 (+https://jikan.lucashdo.com)"');
   });
 
   it('refuses to write a half-patched config when a pattern stops matching', () => {
