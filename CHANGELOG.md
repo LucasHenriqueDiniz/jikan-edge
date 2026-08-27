@@ -20,6 +20,30 @@ behaviour.
 The `?sfw` item below was written on 2026-08-26 and merged the next morning. As with the 2026-08-16
 section, the date here is the one it reached production, not the one it was written on.
 
+### Added
+
+- **Responses now carry `Cache-Control` and `ETag`, so they can finally be cached and
+  revalidated.** Until now not one response carried either, which made every route uncacheable by
+  omission: browsers, CDNs and your own HTTP client had no way to reuse an answer or to ask whether
+  it had changed, so a client polling a route re-downloaded an identical body every time.
+
+  `Cache-Control` states the freshness that **remains**, not the full TTL — a resource fetched five
+  hours into its six-hour life advertises one hour, so a shared cache cannot keep serving it long
+  after this API considers it stale. It also carries `stale-while-revalidate`, which lets a shared
+  cache keep answering during a refresh instead of making a caller wait on MyAnimeList.
+
+  `ETag` enables conditional requests. Send it back as `If-None-Match` and an unchanged resource
+  answers `304` with no body — on `GET /v1/anime/21/characters` that is **1,132,672 bytes down to
+  0**. All the header's real forms work: a list, `*`, and `W/` weak tags.
+
+  **Two things are deliberately never cached.** Errors are `no-store`, so an upstream outage or a
+  rate-limit answer cannot outlive the condition that caused it. `/v1/random/*` is `no-store` too —
+  a shared cache storing those would pin one entity and serve it to everyone, which is the opposite
+  of what the route promises.
+
+  **Nothing about the bodies changed**, and no request that worked before behaves differently. If
+  you ignore the new headers you get exactly what you got yesterday.
+
 ### Fixed
 
 - **User profiles were missing their avatar and their About text — for every user.** `GET

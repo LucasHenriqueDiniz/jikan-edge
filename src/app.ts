@@ -3,6 +3,7 @@ import { configFrom, type Env } from './config/env';
 import { errorResponse } from './http/errors';
 import { registerQueryGuards } from './http/query-guard';
 import { probeDatabase, SETUP_HINT } from './http/diagnostics';
+import { cacheControlFor, etagFor, matchesEtag, NO_STORE } from './http/caching';
 import { success } from './http/response';
 import { paginationMeta, parseLimitParam } from './domain/pagination';
 import { CLUB_LIST_PAGE_SIZE, CLUB_MEMBERS_PAGE_SIZE, RECOMMENDATIONS_PAGE_SIZE, REVIEWS_PAGE_SIZE, SEARCH_PAGE_SIZE, TITLE_REVIEWS_PAGE_SIZE, TOP_PAGE_SIZE, USER_SEARCH_PAGE_SIZE } from './source/mal-urls';
@@ -47,6 +48,33 @@ app.use('*', async (c, next) => {
   logMetric({ route: new URL(c.req.url).pathname, resourceType: 'http', cacheStatus: 'miss', stale: false, responseDurationMs: Math.round(performance.now() - c.get('startedAt')), refreshResult: String(c.res.status), responseSizeBytes: Number(c.res.headers.get('content-length') ?? 0) });
 });
 
+// ETag + conditional GET, for every /v1 response. Registered here, ahead of the routes, because
+// Hono composes middleware in registration order — the same ordering that once made the /health
+// query guard dead code.
+//
+// The tag is a hash of the body actually sent, not of (key, fetchedAt): `meta.cached` flips from
+// false to true between the refresh that produced a payload and every read after it, so a tag
+// derived from cache bookkeeping would call two different bodies identical. Two cached reads of an
+// unchanged resource ARE byte-identical — success responses carry no requestId — so the 304 path
+// works exactly when it should.
+//
+// Worth it because the heavy routes are heavy: /v1/anime/21/characters is 1.13 MB, and without a
+// validator a caller polling it re-downloads all of it every time even when nothing changed.
+// Hashing costs a few ms on the largest body in the catalogue and nothing on a typical one.
+app.use('/v1/*', async (c, next) => {
+  await next();
+  if (c.res.status !== 200 || c.res.headers.get('cache-control') === NO_STORE) return;
+  const etag = await etagFor(await c.res.clone().arrayBuffer());
+  if (matchesEtag(c.req.header('If-None-Match'), etag)) {
+    const headers = new Headers(c.res.headers);
+    headers.delete('Content-Length');
+    headers.set('ETag', etag);
+    c.res = new Response(null, { status: 304, headers });
+    return;
+  }
+  c.res.headers.set('ETag', etag);
+});
+
 // Every /v1 route reads D1 before anything else, so a missing binding would 500 all 96 of them with
 // no clue why. Checked up front rather than inferred from a downstream error message.
 app.use('/v1/*', async (c, next) => {
@@ -77,7 +105,22 @@ function watchService(c: Context<{ Bindings: Env; Variables: Variables }>): Watc
 function recommendationService(c: Context<{ Bindings: Env; Variables: Variables }>): RecommendationService { return new RecommendationService(c.env.DB, configFrom(c.env)); }
 function reviewService(c: Context<{ Bindings: Env; Variables: Variables }>): ReviewService { return new ReviewService(c.env.DB, configFrom(c.env)); }
 function searchService(c: Context<{ Bindings: Env; Variables: Variables }>): SearchService { return new SearchService(c.env.DB, configFrom(c.env)); }
-function cacheHeader(c: Context<{ Bindings: Env; Variables: Variables }>, result: { cached: boolean; stale: boolean }): void { c.header('X-Cache-Status', result.stale ? 'stale' : result.cached ? 'hit' : 'miss'); }
+// `X-Cache-Status` describes what *this* Worker did. `Cache-Control` tells everything downstream —
+// browsers, CDNs, the caller's own HTTP client — how long the answer stays good, which nothing
+// could know before: every response was previously uncacheable by omission, so a client polling a
+// route re-downloaded an identical body every time.
+//
+// max-age is the freshness that REMAINS, not the full TTL: a resource fetched five hours into a
+// six-hour TTL has one hour left, and advertising six would let a cache serve it five hours after
+// it went stale here. A stale response advertises 0, so the next request revalidates.
+//
+// stale-while-revalidate lets a shared cache keep serving during a refresh, which matches how this
+// API already behaves internally and spares callers the multi-second upstream wait.
+function cacheHeader(c: Context<{ Bindings: Env; Variables: Variables }>, result: { cached: boolean; stale: boolean; fetchedAt?: string; ttlSeconds?: number }): void {
+  c.header('X-Cache-Status', result.stale ? 'stale' : result.cached ? 'hit' : 'miss');
+  const cacheControl = cacheControlFor(result);
+  if (cacheControl) c.header('Cache-Control', cacheControl);
+}
 
 app.get('/v1/users/:username', async (c) => {
   try { const result = await service(c).profile(c.req.param('username'), c.get('requestId')); cacheHeader(c, result); return c.json(success(result.data, { cached: result.cached, stale: result.stale, refreshFailed: result.refreshFailed, fetchedAt: result.fetchedAt })); }
@@ -460,7 +503,10 @@ app.get('/v1/schedules', async (c) => {
 });
 
 for (const kind of ['anime', 'manga', 'characters', 'people'] as RandomKind[]) app.get(`/v1/random/${kind}`, async (c) => {
-  try { const data = await new RandomService(c.env.DB).pick(kind); c.header('X-Cache-Status', 'local'); return c.json(success(data, { requestId: c.get('requestId') })); }
+  // Explicitly uncacheable: a shared cache that stored this would pin one entity and serve it to
+  // everyone for the rest of its lifetime, which is the opposite of what the route promises. The
+  // random picks are also the only reads that bypass withCache, so they have no TTL to advertise.
+  try { const data = await new RandomService(c.env.DB).pick(kind); c.header('X-Cache-Status', 'local'); c.header('Cache-Control', NO_STORE); return c.json(success(data, { requestId: c.get('requestId') })); }
   catch (error) { return errorResponse(c, error, c.get('requestId')); }
 });
 app.get('/v1/random/users', async (c) => {

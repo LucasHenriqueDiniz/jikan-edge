@@ -13,7 +13,11 @@ export class ServiceError extends Error {
   constructor(public readonly code: string, public readonly status: ServiceErrorStatus, message: string) { super(message); }
 }
 
-export interface ServiceResponse<T> { data: T; cached: boolean; stale: boolean; refreshFailed: boolean; fetchedAt: string; }
+// `ttlSeconds` is how long this resource stays fresh, carried out to the HTTP layer so
+// `Cache-Control` can state the *remaining* freshness instead of a guess. Optional because a few
+// responses are not produced by withCache at all (the random picks read D1 directly), and those
+// must not advertise any cache lifetime.
+export interface ServiceResponse<T> { data: T; cached: boolean; stale: boolean; refreshFailed: boolean; fetchedAt: string; ttlSeconds?: number; }
 
 export function sourceError(result: Exclude<SourceResult<string>, { kind: 'success' }>): ServiceError {
   const mapping: Record<string, [string, ServiceErrorStatus]> = { not_found: ['NOT_FOUND', 404], private: ['PRIVATE_PROFILE', 403], rate_limited: ['UPSTREAM_RATE_LIMITED', 429], timeout: ['UPSTREAM_TIMEOUT', 504], suspicious: ['UPSTREAM_SUSPICIOUS', 502], upstream_error: ['UPSTREAM_UNAVAILABLE', 503] };
@@ -25,7 +29,7 @@ export interface CacheDeps { cache: CacheRepository; locks: RefreshLockRepositor
 
 export async function withCache<T>(deps: CacheDeps, key: string, ttl: number, parserVersion: string, read: () => Promise<T | null>, refresh: () => Promise<T>, owner: string, leaseSeconds?: number): Promise<ServiceResponse<T>> {
   const [cache, stored] = await Promise.all([deps.cache.get(key), read()]);
-  if (cache && stored && cache.parserVersion === parserVersion && deps.cache.isFresh(cache)) return { data: stored, cached: true, stale: false, refreshFailed: false, fetchedAt: cache.fetchedAt };
+  if (cache && stored && cache.parserVersion === parserVersion && deps.cache.isFresh(cache)) return { data: stored, cached: true, stale: false, refreshFailed: false, fetchedAt: cache.fetchedAt, ttlSeconds: ttl };
   // The stale fallbacks below deliberately do NOT re-check `parserVersion`. After a change to the
   // *shape* of a payload that would mean serving the previous shape back, flagged only as
   // `stale: true` — but refusing instead would give up the one property this API is built on:
@@ -39,7 +43,7 @@ export async function withCache<T>(deps: CacheDeps, key: string, ttl: number, pa
   // second request that reads the lease as abandoned and starts a redundant scrape in parallel.
   const locked = await deps.locks.acquire(key, owner, leaseSeconds);
   if (!locked) {
-    if (stored && cache) return { data: stored, cached: true, stale: true, refreshFailed: false, fetchedAt: cache.fetchedAt };
+    if (stored && cache) return { data: stored, cached: true, stale: true, refreshFailed: false, fetchedAt: cache.fetchedAt, ttlSeconds: ttl };
     throw new ServiceError('REFRESH_IN_PROGRESS', 503, 'Resource refresh is already in progress.');
   }
   try {
@@ -54,9 +58,9 @@ export async function withCache<T>(deps: CacheDeps, key: string, ttl: number, pa
     } catch (bookkeepingError) {
       console.warn(JSON.stringify({ type: 'cache_bookkeeping_failed', key, error: String(bookkeepingError) }));
     }
-    return { data: value, cached: false, stale: false, refreshFailed: false, fetchedAt };
+    return { data: value, cached: false, stale: false, refreshFailed: false, fetchedAt, ttlSeconds: ttl };
   } catch (error) {
-    if (stored && cache) return { data: stored, cached: true, stale: true, refreshFailed: true, fetchedAt: cache.fetchedAt };
+    if (stored && cache) return { data: stored, cached: true, stale: true, refreshFailed: true, fetchedAt: cache.fetchedAt, ttlSeconds: ttl };
     throw error;
   } finally { await deps.locks.release(key, owner); }
 }

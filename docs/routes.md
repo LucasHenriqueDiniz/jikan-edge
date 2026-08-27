@@ -288,6 +288,17 @@ deploy e não o código. Só o `no such table` vira `DATABASE_NOT_MIGRATED`; qua
 continua sendo 500 — mandar alguém rodar migração que já rodou é pior que não dizer nada. Ver
 [`self-hosting.md`](self-hosting.md).
 
+## Cabeçalhos de cache HTTP (2026-08-27)
+
+Antes disso **nenhuma das 124 chamadas medidas na varredura devolvia `Cache-Control`, `ETag` ou `Vary`** — só `Content-Type`, `X-Request-Id` e o `X-Cache-Status` de diagnóstico. Ou seja: toda rota era não-cacheável por omissão, nada (navegador, CDN, cliente HTTP do consumidor) podia reaproveitar resposta nem perguntar se mudou, e quem faz polling rebaixava o corpo inteiro toda vez. A rota mais pesada tem 1,13 MB.
+
+- **`Cache-Control` anuncia o frescor que RESTA, não o TTL inteiro.** Recurso buscado há 5 h num TTL de 6 h anuncia 1 h. Anunciar 6 h deixaria um cache compartilhado servindo por 5 h depois de esta API já considerar o dado velho. Resposta `stale` anuncia `max-age=0` para forçar revalidação em vez de propagar a idade adiante. `stale-while-revalidate` permite que o cache compartilhado siga respondendo durante um refresh — é o mesmo comportamento que a API já tem internamente, e poupa o consumidor da espera de segundos de um miss frio.
+- **O `ETag` é hash do corpo realmente enviado**, não de `(chave, fetchedAt)`. Motivo concreto: `meta.cached` vira de `false` para `true` entre a requisição que fez o refresh e todas as leituras seguintes, então tag derivada da bookkeeping de cache declararia idênticos dois corpos visivelmente diferentes. Duas leituras cacheadas de um recurso inalterado **são** byte a byte iguais (resposta de sucesso não carrega `requestId`), então o 304 dispara exatamente quando deve. 64 bits de SHA-256, custo de poucos ms no maior corpo do catálogo.
+- **`If-None-Match` é tratado como a especificação manda**, não com comparação de string: o header é uma *lista*, aceita `*`, e pode marcar entradas como fracas com `W/`. Comparação exata simples devolveria o corpo inteiro para quem manda qualquer uma dessas formas, e a falha pareceria "revalidação não funciona aqui" em vez de erro — o tipo mais difícil de notar. Comparação fraca é a correta para `If-None-Match` (RFC 9110).
+- **Dois casos nunca são cacheados, de propósito.** Erros são `no-store` (uma indisponibilidade do MAL ou um 429 guardados por CDN sobreviveriam à condição que os causou; além disso um handler pode já ter setado `Cache-Control` de sucesso antes de lançar). E `/v1/random/*` é `no-store`: cache compartilhado guardando isso fixaria uma entidade e a serviria para todo mundo, o oposto do que a rota promete. As rotas de random são também as únicas leituras que **não** passam por `withCache`, então não têm TTL para anunciar — por isso `ttlSeconds` é opcional em `ServiceResponse`.
+
+Lógica em `src/http/caching.ts` (`cacheControlFor`, `etagFor`, `matchesEtag`), fora do `app.ts` justamente para ser testável sem rede — o caminho de sucesso das rotas depende do MAL, então a aritmética de idade e a comparação de tag não teriam teste se ficassem embutidas no handler.
+
 ## Rate limiting
 
 Endurecido em 2026-07-27, antes de divulgação pública. Dois limites por **IP global** (a chave antiga era `IP:rota`, o que multiplicava o orçamento de um IP pelo número de rotas — ~5.700 req/min com 96 rotas; corrigido):
