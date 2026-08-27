@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import app from '../../src/app';
 import type { Env } from '../../src/config/env';
-import { QUERY_CONTRACT } from '../../src/http/query-contract';
+import { QUERY_CONTRACT, UNSUPPORTED_PARAMS } from '../../src/http/query-contract';
 import { stubDatabase } from '../helpers/stub-database';
 
 const env = { DB: stubDatabase('ok') } as Partial<Env>;
@@ -21,6 +21,19 @@ describe('query contract coverage', () => {
   it('has no entry for a route that no longer exists', () => {
     const registered = new Set(app.routes.filter((route) => route.method === 'GET').map((route) => route.path));
     expect(Object.keys(QUERY_CONTRACT).filter((path) => !registered.has(path))).toEqual([]);
+  });
+
+  // These messages exist to hand the caller a way forward, so a substitute that is itself refused
+  // is worse than none: it costs a second request to arrive at the same 400. `sfw` shipped for
+  // weeks recommending `genres_exclude`, which has its own entry in this very table.
+  it('never recommends a parameter that is itself refused', () => {
+    const refused = new Set(Object.keys(UNSUPPORTED_PARAMS));
+    const deadEnds = Object.entries(UNSUPPORTED_PARAMS).flatMap(([name, message]) =>
+      [...message.matchAll(/"([^"]+)"/g)]
+        .map((quoted) => quoted[1])
+        .filter((token) => token !== name && refused.has(token))
+        .map((token) => `${name} -> ${token}`));
+    expect(deadEnds).toEqual([]);
   });
 });
 
@@ -42,7 +55,7 @@ describe('query guard', () => {
   it('tells an unsupported Jikan parameter apart from an unknown one, and explains why', async () => {
     const { error } = await body(await call('/v1/anime?q=cowboy&sfw'));
     expect(error?.code).toBe('UNSUPPORTED_PARAMETER');
-    expect(error?.message).toContain('genres_exclude');
+    expect(error?.message).toContain('"rating"');
   });
 
   it('refuses limit outside the user list routes, where it would slice a MAL page', async () => {
