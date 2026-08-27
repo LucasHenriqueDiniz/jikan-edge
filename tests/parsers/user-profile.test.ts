@@ -46,6 +46,52 @@ describe('user profile parser', () => {
   });
 });
 
+// The synthetic fixture above is 6.5 KB, so every field sits within the first few thousand bytes and
+// a prefix-window bug cannot show up in it. This one is a byte-exact capture of a real profile:
+// 94 KB, avatar markup at byte 30,040. Both fields below were `null` in production for every user
+// while the synthetic fixture stayed green.
+const realHtml = readFileSync('tests/fixtures/users/profile-real.html', 'utf8');
+describe('user profile parser, against a real profile', () => {
+  it('finds the avatar even though it sits past the old 30 KB prefix window', () => {
+    expect(realHtml.indexOf('class="user-image')).toBeGreaterThan(30_000);
+    const profile = parseUserProfile(realHtml, 'AMayacrab', '2026-07-19T00:00:00.000Z');
+    expect(profile.avatarUrl).toContain('cdn.myanimelist.net');
+    expect(profile.avatarUrl).toContain('userimages');
+  });
+
+  // The old lookup anchored on the literal "About Me", which appears nowhere on a profile, so this
+  // field could only ever be null. The real container also opens with a nested <div>, which a
+  // non-greedy match to the first </div> truncates to the wrapper markup with none of the text.
+  it('reads the About text through its nested markup', () => {
+    expect(realHtml.includes('About Me')).toBe(false);
+    expect(/word-break">\s*<div/.test(realHtml)).toBe(true);
+    const profile = parseUserProfile(realHtml, 'AMayacrab', '2026-07-19T00:00:00.000Z');
+    expect(profile.about).toBeTruthy();
+    // Truncating at the first </div> yielded the wrapper markup and none of the prose, so assert on
+    // what distinguishes the two: real text, past the nested image, with the tags gone.
+    expect(profile.about?.length).toBeGreaterThan(50);
+    expect(profile.about).not.toContain('<');
+    expect(profile.about).not.toContain('class=');
+    expect(profile.about).toContain('\n');
+  });
+
+  it('still reads the fields that already worked', () => {
+    const profile = parseUserProfile(realHtml, 'AMayacrab', '2026-07-19T00:00:00.000Z');
+    // MyAnimeList renders the display name as "Amayacrab" even though the URL is /profile/AMayacrab.
+    expect(profile).toMatchObject({ canonicalUsername: 'Amayacrab', location: 'Brazil', joinedAt: 'May 17, 2016' });
+  });
+
+  // A profile with no picture renders a "No Picture" placeholder with no <img> at all, and one with
+  // no About omits the container rather than emitting an empty one. Both must stay null instead of
+  // becoming a scrape of whatever markup sits nearby.
+  it('returns null rather than guessing when the profile genuinely has neither', () => {
+    const noAvatar = realHtml.replace(/<div class="user-image[^>]*>[\s\S]*?<\/div>/, '<div class="user-image mb8"><div class="btn-detail-add-picture nolink"><span class="text">No Picture</span></div>');
+    expect(parseUserProfile(noAvatar, 'AMayacrab', '2026-07-19T00:00:00.000Z').avatarUrl).toBeNull();
+    const noAbout = realHtml.replace('class="user-profile-about', 'class="user-profile-nothing');
+    expect(parseUserProfile(noAbout, 'AMayacrab', '2026-07-19T00:00:00.000Z').about).toBeNull();
+  });
+});
+
 describe('user favorites parser', () => {
   it('emits camelCase ids with type and start year for media favorites', () => {
     const favorites = parseUserFavorites(html);

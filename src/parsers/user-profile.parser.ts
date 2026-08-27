@@ -1,6 +1,6 @@
 ﻿import { z } from 'zod';
 import { type AnimeStatistics, type MangaStatistics, type UserProfile, type UserStatistics, usernameKey } from '../domain/user';
-import { capture, numeric, ParserError, richCapture } from './html';
+import { capture, divContent, numeric, ParserError, richText } from './html';
 
 const profileSchema = z.object({
   username: z.string().min(1).max(64),
@@ -21,6 +21,24 @@ function section(html: string, marker: string, maxLength = 8_000): string {
   return index === -1 ? '' : html.slice(index, index + maxLength);
 }
 
+// The About text was looked up by anchoring on the literal string "About Me", which appears nowhere
+// on a MyAnimeList profile - so the field could only ever be null, for every user. The real markup
+// is a dedicated container, and it is absent (not empty) when a user has written nothing, which is
+// what makes it a safe anchor: no container means no About, rather than a lookup that silently
+// missed. Verified 2026-08-27 against five real profiles - the three with an About had exactly one
+// container each, the two without had none.
+//
+// The content is read by div depth, not to the first `</div>`: an About commonly opens with a
+// nested div (a centred image), and stopping at the inner close returned the wrapper markup with
+// none of the prose.
+function parseAbout(html: string): string | null {
+  const container = html.indexOf('class="user-profile-about');
+  if (container === -1) return null;
+  const opening = html.indexOf('<div class="word-break">', container);
+  if (opening === -1) return null;
+  return richText(divContent(html, opening)) || null;
+}
+
 function labelledValue(html: string, label: string): string | null {
   const escaped = label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   return capture(html, new RegExp(`${escaped}<\\/span>\\s*<span[^>]*>([\\s\\S]*?)<\\/span>`, 'i'));
@@ -36,8 +54,13 @@ export function parseUserProfile(html: string, requestedUsername: string, fetche
     username: requestedUsername,
     canonicalUsername: canonical,
     profileUrl: `https://myanimelist.net/profile/${encodeURIComponent(canonical)}`,
-    avatarUrl: capture(head, /<div class="user-image[^>]*">\s*<img[^>]+(?:data-src|src)="([^"]+)"/i),
-    about: richCapture(section(html, 'About Me', 12_000), /<div[^>]*class="[^\"]*text[^\"]*"[^>]*>([\s\S]*?)<\/div>/i),
+    // Searched over the whole document rather than `head`: `user-image` lands around byte 30k, right
+    // on the old 30,000-char prefix boundary, so whether a profile got an avatar was decided by a
+    // few dozen bytes of unrelated markup above it (measured 2026-08-27: Archaeon at 29,965 parsed,
+    // AMayacrab at 30,047 did not - 82 bytes apart). The class occurs exactly once per profile, so
+    // there is no second avatar for this to drift onto.
+    avatarUrl: capture(html, /<div class="user-image[^>]*">\s*<img[^>]+(?:data-src|src)="([^"]+)"/i),
+    about: parseAbout(html),
     gender: labelledValue(status, 'Gender'),
     location: labelledValue(status, 'Location'),
     birthday: labelledValue(status, 'Birthday'),

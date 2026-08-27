@@ -22,6 +22,24 @@ section, the date here is the one it reached production, not the one it was writ
 
 ### Fixed
 
+- **User profiles were missing their avatar and their About text — for every user.** `GET
+  /v1/users/:username` returned `avatarUrl: null` and `about: null`, and
+  `GET /v1/users/:username/about` returned `{ "about": null }`, no matter whose profile you asked
+  for. Both fields are now populated whenever MyAnimeList actually has them.
+
+  These were two unrelated faults that happened to land on the same page. The avatar was searched
+  for only in the first 30,000 characters of the profile, and it sits right around that boundary —
+  so whether you got an avatar was decided by a few dozen bytes of unrelated markup further up the
+  page. The About text was looked up by searching for the heading `About Me`, which does not appear
+  anywhere on a MyAnimeList profile, so that field could never have been anything but null.
+
+  **`null` still means null.** A user with no profile picture, or who has written no About, still
+  gets `null` for that field — the fix does not invent content. Verified against real profiles in
+  both directions.
+
+  If you worked around these by treating the fields as unavailable, you can stop. Cached profiles
+  refresh into the new shape on their next read rather than all at once.
+
 - **One Piece and Detective Conan now return their cast and staff too.** These were the two titles
   the earlier fix in this same section could not reach — 9.9 MB and 7.3 MB, past both the 5 MiB
   ceiling and the 8-second upstream timeout. `GET /v1/anime/21/staff` returns **541 staff members**

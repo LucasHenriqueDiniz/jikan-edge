@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
-  anchorTexts, capture, COMPANY_LOGO_IMAGE, COVER_IMAGE, decodeHtml, imageFrom, imageVariants,
+  anchorTexts, capture, COMPANY_LOGO_IMAGE, COVER_IMAGE, decodeHtml, divContent, imageFrom, imageVariants,
   labelBlock, labelValue, numeric, originalImage, PORTRAIT_IMAGE, rankedValue, richText,
   taggedImage, VOICE_ACTOR_IMAGE,
 } from '../../src/parsers/html';
@@ -239,5 +239,33 @@ describe('labelValue / labelBlock', () => {
 
   it('anchorTexts keeps only the link text', () => {
     expect(anchorTexts(labelBlock(sidebar, 'Genres'))).toEqual(['Action', 'Award Winning']);
+  });
+});
+
+// User-controlled free text (a profile About, a review body) routinely nests divs, and the usual
+// non-greedy `([\s\S]*?)<\/div>` stops at the inner close and silently truncates the field.
+describe('divContent', () => {
+  const at = (html: string) => divContent(html, html.indexOf('<div class="target">'));
+
+  it('reads past a nested div instead of stopping at its close', () => {
+    const html = '<div class="target">before <div class="inner">nested</div> after</div><div>sibling</div>';
+    expect(at(html)).toBe('before <div class="inner">nested</div> after');
+  });
+
+  it('handles several levels of nesting', () => {
+    const html = '<div class="target">a<div>b<div>c</div>d</div>e</div>tail';
+    expect(at(html)).toBe('a<div>b<div>c</div>d</div>e');
+  });
+
+  it('returns the plain content when there is no nesting', () => {
+    expect(at('<div class="target">just text</div>rest')).toBe('just text');
+  });
+
+  it('handles attributes and whitespace in the closing tag', () => {
+    expect(at('<div class="target">x<div id="y">z</div ></div >after')).toBe('x<div id="y">z</div >');
+  });
+
+  it('returns the rest of the document rather than nothing when the div is never closed', () => {
+    expect(at('<div class="target">unterminated content')).toBe('unterminated content');
   });
 });

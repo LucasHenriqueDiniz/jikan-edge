@@ -44,7 +44,12 @@ export interface UserStatistics {
   manga: MangaStatistics;
 }
 
-export const PARSER_VERSION = 'user-html-v4';
+// v5: avatarUrl and about now resolve on real profiles. Both were structurally null — the avatar
+// because it sits past the 30,000-char prefix the parser searched, the About because its lookup
+// anchored on a string ("About Me") that does not exist on the page. The bump is required, not
+// cosmetic: every profile cached under v4 holds `null` for both, and those rows would otherwise
+// serve the missing fields until their 6 h TTL expired.
+export const PARSER_VERSION = 'user-html-v5';
 
 export function usernameKey(username: string): string {
   return username.trim().toLowerCase();

@@ -45,6 +45,38 @@ export function richText(value: string): string {
     .trim();
 }
 
+/**
+ * Inner HTML of the `<div>` that starts at `openIndex`, matched by depth rather than by the first
+ * `</div>`.
+ *
+ * Free-text fields users control — a profile About, a review body — routinely contain nested divs
+ * (a centred image is the common case). A non-greedy `([\s\S]*?)<\/div>` stops at the *inner*
+ * close and silently truncates: measured against a real profile whose About opens with a centred
+ * image, that pattern returned the wrapper markup and none of the text. Counting depth is the
+ * difference between reading the whole field and reading its first tag.
+ *
+ * Returns everything to the end of the document if the div is never closed, which beats returning
+ * nothing when MyAnimeList emits unbalanced markup.
+ */
+export function divContent(html: string, openIndex: number): string {
+  const tags = /<div\b|<\/div\s*>/gi;
+  tags.lastIndex = openIndex;
+  let depth = 0;
+  for (let match = tags.exec(html); match; match = tags.exec(html)) {
+    if (match[0].startsWith('</')) {
+      depth -= 1;
+      if (depth === 0) {
+        const inner = html.slice(openIndex, match.index);
+        return inner.slice(inner.indexOf('>') + 1);
+      }
+    } else {
+      depth += 1;
+    }
+  }
+  const inner = html.slice(openIndex);
+  return inner.slice(inner.indexOf('>') + 1);
+}
+
 // MAL's CDN serves a resized copy under `/r/{width}x{height}/`, signed with `?s=`. That resize is
 // what the list pages embed, so every list route in this API was publishing a 50x70 stamp (2 KB)
 // where a 56 KB poster exists at the same path. Dropping both segments yields the original.
