@@ -9,14 +9,14 @@ This file starts on 2026-07-30 and does not reconstruct earlier history.
 ## 2026-08-27
 
 Published versions: `4ce71084`, `9d3445dd`, `a07e0742`, `629508ce`, `ebeba400`, `5b41891e`,
-`f2b389cd`, `086145f9`, `2139e894`, `9679c755`. The deploy publishing this filled-in line is not
-named — an entry can never name the version that ships it, the same structural gap as the
-2026-08-16 section.
+`f2b389cd`, `086145f9`, `2139e894`, `9679c755`, `44d028aa`, `0523faba`. The deploy publishing this
+filled-in line is not named — an entry can never name the version that ships it, the same
+structural gap as the 2026-08-16 section.
 
-Of those, three carried the changes below: `629508ce` raised the size ceiling to 5 MiB, recovering
+Of those, four carried the changes below: `629508ce` raised the size ceiling to 5 MiB, recovering
 five of the seven affected titles, `5b41891e` added the per-call fetch budget that recovered the
-remaining two, and `9679c755` carried both the profile fix and the cache headers. The rest are
-documentation and a line-ending correction, with no change in behaviour.
+remaining two, `9679c755` carried both the profile fix and the cache headers, and `0523faba` the
+genre fix. The rest are documentation and a line-ending correction, with no change in behaviour.
 
 The `?sfw` item below was written on 2026-08-26 and merged the next morning. As with the 2026-08-16
 section, the date here is the one it reached production, not the one it was written on.
