@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { CacheEntry, CacheRepository } from '../../src/repositories/cache.repository';
 import type { RefreshLockRepository } from '../../src/repositories/refresh-lock.repository';
-import { withCache, type CacheDeps, type WaitUntil } from '../../src/services/cacheable';
+import { isOversizeRow, withCache, type CacheDeps, type WaitUntil } from '../../src/services/cacheable';
 
 const FRESH = '2999-01-01T00:00:00.000Z';
 
@@ -92,6 +92,63 @@ describe('withCache', () => {
     const dependencies = deps(entry('v2'));
     await withCache(dependencies, 'user:x:profile', 60, 'v3', async () => 'stored', async () => 'new', 'req');
     expect(dependencies.acquire).toHaveBeenCalledWith('user:x:profile', 'req', undefined);
+  });
+});
+
+// Measured against the real remote D1 on 2026-08-27: a bound parameter of 4,194,256 bytes stores
+// and reads back byte-identical; 4,194,257 raises this. Nothing truncates, and the ceiling is
+// per-row, not per-value. Until then this failure reached the caller as a bare 500 with no clue
+// that the cause was a size limit rather than a bug.
+const TOO_BIG = () => { throw new Error('D1_ERROR: string or blob too big: SQLITE_TOOBIG'); };
+
+describe('a row D1 refuses for being too large', () => {
+  it('is an explained 507 rather than a bare 500 when there is nothing cached to fall back to', async () => {
+    const dependencies = deps(null);
+    await expect(withCache(dependencies, 'k', 60, 'v3', async () => null, TOO_BIG, 'req')).rejects.toMatchObject({
+      code: 'PAYLOAD_TOO_LARGE',
+      status: 507,
+    });
+  });
+
+  // Serving something beats serving nothing, exactly as for an upstream outage — but this one never
+  // clears on its own, so it is logged at error level rather than passing as a transient blip.
+  it('keeps answering from the stored copy when there is one, and says so loudly', async () => {
+    const logged = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const result = await withCache(deps(entry('v3', '2000-01-01T00:00:00.000Z')), 'k', 60, 'v3', async () => 'stored', TOO_BIG, 'req');
+    expect(result).toMatchObject({ data: 'stored', cached: true, stale: true, refreshFailed: true });
+    expect(logged.mock.calls[0]?.[0]).toContain('payload_too_large');
+    logged.mockRestore();
+  });
+
+  // The match is only on SQLITE_TOOBIG. Widening it would start reporting ordinary bugs to callers
+  // as a capacity limit, which is the sort of wrong signal that costs an afternoon.
+  it('leaves every other write failure exactly as it was', async () => {
+    const dependencies = deps(null);
+    await expect(withCache(dependencies, 'k', 60, 'v3', async () => null, () => { throw new Error('D1_ERROR: no such column: x'); }, 'req'))
+      .rejects.toThrow('no such column');
+  });
+
+  it('reports the same way when the failure lands in a background refresh', async () => {
+    const logged = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const waitUntil = background();
+    const dependencies = { ...deps(entry('v3', JUST_EXPIRED)), waitUntil };
+    await withCache(dependencies, 'k', 60, 'v3', async () => 'stored', TOO_BIG, 'req');
+    await waitUntil.settled();
+    expect(logged.mock.calls[0]?.[0]).toContain('payload_too_large');
+    logged.mockRestore();
+  });
+});
+
+describe('isOversizeRow', () => {
+  it('recognises the error however D1 wraps it', () => {
+    expect(isOversizeRow(new Error('D1_ERROR: string or blob too big: SQLITE_TOOBIG'))).toBe(true);
+    expect(isOversizeRow(Object.assign(new Error('D1_ERROR'), { cause: new Error('string or blob too big: SQLITE_TOOBIG') }))).toBe(true);
+  });
+
+  it('does not fire on anything else', () => {
+    expect(isOversizeRow(new Error('D1_ERROR: no such table: anime'))).toBe(false);
+    expect(isOversizeRow(new Error('too big'))).toBe(false);
+    expect(isOversizeRow('SQLITE_TOOBIG')).toBe(false);
   });
 });
 

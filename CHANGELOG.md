@@ -48,6 +48,26 @@ section, the date here is the one it reached production, not the one it was writ
   **Nothing about the bodies changed**, and no request that worked before behaves differently. If
   you ignore the new headers you get exactly what you got yesterday.
 
+### Added
+
+- **A resource too large for this deployment to store now says so: `507 PAYLOAD_TOO_LARGE`.** The
+  database has a hard ceiling on how large a single stored record can be. Nothing reaches it today —
+  the largest is a little under a third of the measured limit — but the biggest records are cast and
+  staff lists for very long-running series, and those only grow.
+
+  Until now hitting it would have been indistinguishable from a bug. With no earlier copy of the
+  resource stored, you would have received a bare `500 INTERNAL_ERROR` with nothing pointing at
+  size; with an earlier copy, you would have kept receiving that copy, flagged `"stale": true`,
+  with no way to tell a passing MyAnimeList outage from a resource that can never be updated again.
+
+  Now the first case is `507` with the code `PAYLOAD_TOO_LARGE`, and the second still serves the
+  stored copy — answering something beats answering nothing — but is recorded as an operational
+  error rather than a routine refresh failure, because unlike an outage it does not clear on its
+  own.
+
+  No other error changed. This is recognised only from the database's own too-large signal, so an
+  ordinary failure is still reported as an ordinary failure.
+
 ### Changed
 
 - **The request that trips a cache expiry is no longer the one that pays for the refresh.** When a

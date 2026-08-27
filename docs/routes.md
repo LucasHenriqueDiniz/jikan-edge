@@ -348,6 +348,25 @@ Espelha a política pública do próprio Jikan (3 req/s, 60 req/min). Estourou �
 
 ## Fluxo de cache
 
-Um hit fresh não faz fetch ao MAL. Um miss faz um fetch da fonte, grava o dado normalizado e então `cache_entries`. Cache stale é devolvido se o refresh falhar; sem cache, a falha vira erro HTTP. O lease é por recurso e tem 30 segundos. O refresh é síncrono: ainda não há revalidação assíncrona.
+Um hit fresh não faz fetch ao MAL. Um miss faz um fetch da fonte, grava o dado normalizado e então `cache_entries`. Cache stale é devolvido se o refresh falhar; sem cache, a falha vira erro HTTP. O lease é por recurso e tem 30 segundos. Desde 2026-08-27 o refresh **não é mais síncrono** na requisição que estoura o TTL — ver "Stale-while-revalidate interno" acima.
+
+### Teto de tamanho de linha do D1 e `507 PAYLOAD_TOO_LARGE` (2026-08-27)
+
+Payload grande demais para o D1 aceitar **não** era erro tratado: o `catalog.put` roda dentro do `refresh()`, então o erro cru virava "refresh falhou" — 200 com dado congelado se houvesse linha antiga, **500 mudo** se não houvesse (deploy novo, ou título pedido pela primeira vez). Nada dizia que a causa era tamanho.
+
+**O teto foi medido, não lido da doc, e os dois números divergem.** A [doc oficial do D1](https://developers.cloudflare.com/d1/platform/limits/) diz `Maximum string, BLOB or table row size: 2,000,000 bytes (2 MB)`. Contra o D1 remoto real, escrevendo por parâmetro vinculado exatamente como os repositórios fazem:
+
+| bytes | resultado |
+| --- | --- |
+| 4.194.256 | grava, e a leitura volta byte a byte idêntica |
+| 4.194.257 | `D1_ERROR: string or blob too big: SQLITE_TOOBIG` |
+
+São 4 MiB (4.194.304) menos os 48 bytes das outras colunas — ou seja, **o teto é da linha, não do valor**, confirmado enchendo a chave primária com 1.000 bytes a mais e vendo a fronteira cair na mesma medida. **Nada trunca**: abaixo do teto o valor sempre volta íntegro. Método: a primeira sonda foi por SQL literal (`hex(zeroblob(...))`), o que poderia ser um caminho especial, então foi refeita por parâmetro vinculado num Worker descartável apontando para o mesmo banco.
+
+**Não construa em cima dessa folga.** Ela não é documentada e pode ser alinhada à doc a qualquer momento; contra o teto **documentado** de 2 MB, a maior linha de hoje (`catalog:anime:21:characters-staff`, One Piece, 1.207.652 B) já está em 60%. Contra o teto medido, 28,8%.
+
+**O que mudou:** `isOversizeRow` reconhece **só** `SQLITE_TOOBIG` — mesma disciplina de `no such table` → `DATABASE_NOT_MIGRATED`; alargar faria bug comum ser reportado ao chamador como limite de capacidade. Sem cópia guardada, vira **507 `PAYLOAD_TOO_LARGE`** (`ServiceErrorStatus` ganhou o 507; `tests/http/errors.test.ts` verifica que **todos** os status da união chegam ao cliente sem serem coagidos a 500). Com cópia guardada, segue servindo stale — responder algo continua melhor que não responder — mas sai `console.error` com `type: payload_too_large`, porque essa é a falha que **não se resolve sozinha**: o MAL volta, um documento que passou do teto não encolhe. O log sai igual quando a falha cai no refresh de fundo.
+
+**507 e não 501.** O `LIST_TOO_LARGE` usa 501 e continua usando: lá o limite é nosso (teto de páginas a buscar). Aqui o servidor não consegue **armazenar a representação**, que é literalmente o que o 507 (RFC 4918) descreve.
 
 As listas são obtidas de um único documento público do MAL; a paginação exposta é apenas D1, depois de persistir o snapshot. Não existe coleta de múltiplas páginas upstream neste slice.
