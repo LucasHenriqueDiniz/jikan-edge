@@ -16,7 +16,7 @@ import { CharacterRepository } from '../repositories/character.repository';
 import { RefreshLockRepository } from '../repositories/refresh-lock.repository';
 import { MalClient } from '../source/mal-client';
 import { characterDetailUrl, picturesUrl, topCharactersUrl } from '../source/mal-urls';
-import { ServiceError, type ServiceResponse, sourceError, withCache } from './cacheable';
+import { type CacheDeps, ServiceError, type ServiceResponse, sourceError, type WaitUntil, withCache } from './cacheable';
 
 interface CharacterMediaBundle {
   anime: CharacterMediaEntry[];
@@ -27,11 +27,12 @@ interface CharacterMediaBundle {
 export class CharacterService {
   private readonly cache: CacheRepository;
   private readonly locks: RefreshLockRepository;
+  private readonly deps: CacheDeps;
   private readonly characters: CharacterRepository;
   private readonly catalog: CatalogListRepository;
   private readonly source: MalClient;
-  constructor(private readonly db: D1Database, private readonly config: RuntimeConfig, source?: MalClient) {
-    this.cache = new CacheRepository(db); this.locks = new RefreshLockRepository(db); this.characters = new CharacterRepository(db); this.catalog = new CatalogListRepository(db); this.source = source ?? new MalClient(config);
+  constructor(private readonly db: D1Database, private readonly config: RuntimeConfig, source?: MalClient, waitUntil?: WaitUntil) {
+    this.cache = new CacheRepository(db); this.locks = new RefreshLockRepository(db); this.deps = { cache: this.cache, locks: this.locks, waitUntil }; this.characters = new CharacterRepository(db); this.catalog = new CatalogListRepository(db); this.source = source ?? new MalClient(config);
   }
 
   private validateMalId(rawId: string): number {
@@ -42,7 +43,7 @@ export class CharacterService {
 
   async detail(rawId: string, requestId: string): Promise<ServiceResponse<CharacterDetail>> {
     const malId = this.validateMalId(rawId);
-    return withCache({ cache: this.cache, locks: this.locks }, `character:${malId}:detail`, this.config.animeTtlSeconds, CHARACTER_PARSER_VERSION, () => this.characters.get(malId), async () => {
+    return withCache(this.deps, `character:${malId}:detail`, this.config.animeTtlSeconds, CHARACTER_PARSER_VERSION, () => this.characters.get(malId), async () => {
       const source = await this.source.getHtml(characterDetailUrl(malId), ['title-name']);
       if (source.kind !== 'success') throw sourceError(source);
       const fetchedAt = new Date().toISOString();
@@ -56,7 +57,7 @@ export class CharacterService {
   full(rawId: string, requestId: string): Promise<ServiceResponse<CharacterFull>> {
     const malId = this.validateMalId(rawId);
     const cacheKey = `catalog:character:${malId}:full`;
-    return withCache({ cache: this.cache, locks: this.locks }, cacheKey, this.config.animeTtlSeconds, CHARACTER_FULL_PARSER_VERSION, () => this.catalog.get<CharacterFull>(cacheKey), async () => {
+    return withCache(this.deps, cacheKey, this.config.animeTtlSeconds, CHARACTER_FULL_PARSER_VERSION, () => this.catalog.get<CharacterFull>(cacheKey), async () => {
       const source = await this.source.getHtml(characterDetailUrl(malId), ['title-name']);
       if (source.kind !== 'success') throw sourceError(source);
       const fetchedAt = new Date().toISOString();
@@ -70,7 +71,7 @@ export class CharacterService {
   private media(rawId: string, requestId: string): Promise<ServiceResponse<CharacterMediaBundle>> {
     const malId = this.validateMalId(rawId);
     const cacheKey = `catalog:character:${malId}:media`;
-    return withCache({ cache: this.cache, locks: this.locks }, cacheKey, this.config.animeTtlSeconds, CHARACTER_MEDIA_PARSER_VERSION, () => this.catalog.get<CharacterMediaBundle>(cacheKey), async () => {
+    return withCache(this.deps, cacheKey, this.config.animeTtlSeconds, CHARACTER_MEDIA_PARSER_VERSION, () => this.catalog.get<CharacterMediaBundle>(cacheKey), async () => {
       const source = await this.source.getHtml(characterDetailUrl(malId), ['title-name']);
       if (source.kind !== 'success') throw sourceError(source);
       const value = { anime: parseCharacterAnimeography(source.value), manga: parseCharacterMangaography(source.value), voices: parseCharacterVoiceActors(source.value) };
@@ -146,7 +147,7 @@ export class CharacterService {
   pictures(rawId: string, requestId: string): Promise<ServiceResponse<Picture[]>> {
     const malId = this.validateMalId(rawId);
     const cacheKey = `catalog:character:${malId}:pictures`;
-    return withCache({ cache: this.cache, locks: this.locks }, cacheKey, this.config.animeTtlSeconds, PICTURES_PARSER_VERSION, () => this.catalog.get<Picture[]>(cacheKey), async () => {
+    return withCache(this.deps, cacheKey, this.config.animeTtlSeconds, PICTURES_PARSER_VERSION, () => this.catalog.get<Picture[]>(cacheKey), async () => {
       const source = await this.source.getHtml(picturesUrl('character', malId), ['js-picture-gallery']);
       if (source.kind !== 'success') throw sourceError(source);
       const value = parsePictures(source.value);
@@ -158,7 +159,7 @@ export class CharacterService {
 
   topCharacters(page: number, requestId: string): Promise<ServiceResponse<TopCharacterEntry[]>> {
     const cacheKey = `catalog:top:characters:page:${page}`;
-    return withCache({ cache: this.cache, locks: this.locks }, cacheKey, this.config.catalogTtlSeconds, TOP_CHARACTERS_PARSER_VERSION, () => this.catalog.get<TopCharacterEntry[]>(cacheKey), async () => {
+    return withCache(this.deps, cacheKey, this.config.catalogTtlSeconds, TOP_CHARACTERS_PARSER_VERSION, () => this.catalog.get<TopCharacterEntry[]>(cacheKey), async () => {
       const source = await this.source.getHtml(topCharactersUrl(page), ['ranking-list']);
       if (source.kind !== 'success') throw sourceError(source);
       const value = parseTopCharacters(source.value);

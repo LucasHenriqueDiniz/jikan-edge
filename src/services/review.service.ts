@@ -6,15 +6,16 @@ import { CatalogListRepository } from '../repositories/catalog-list.repository';
 import { RefreshLockRepository } from '../repositories/refresh-lock.repository';
 import { MalClient } from '../source/mal-client';
 import { reviewsUrl } from '../source/mal-urls';
-import { type ServiceResponse, sourceError, withCache } from './cacheable';
+import { type CacheDeps, type ServiceResponse, sourceError, type WaitUntil, withCache } from './cacheable';
 
 export class ReviewService {
   private readonly cache: CacheRepository;
   private readonly locks: RefreshLockRepository;
+  private readonly deps: CacheDeps;
   private readonly catalog: CatalogListRepository;
   private readonly source: MalClient;
-  constructor(private readonly db: D1Database, private readonly config: RuntimeConfig, source?: MalClient) {
-    this.cache = new CacheRepository(db); this.locks = new RefreshLockRepository(db); this.catalog = new CatalogListRepository(db); this.source = source ?? new MalClient(config);
+  constructor(private readonly db: D1Database, private readonly config: RuntimeConfig, source?: MalClient, waitUntil?: WaitUntil) {
+    this.cache = new CacheRepository(db); this.locks = new RefreshLockRepository(db); this.deps = { cache: this.cache, locks: this.locks, waitUntil }; this.catalog = new CatalogListRepository(db); this.source = source ?? new MalClient(config);
   }
 
   private async forType(type: 'anime' | 'manga', page: number, requestId: string): Promise<ServiceResponse<ReviewEntry[]>> {
@@ -22,7 +23,7 @@ export class ReviewService {
     // shape, which every other paginated route in this codebase does not do — see migration 0011,
     // which renames the four rows it left behind.
     const cacheKey = `catalog:reviews:${type}:page:${page}`;
-    return withCache({ cache: this.cache, locks: this.locks }, cacheKey, this.config.catalogTtlSeconds, REVIEW_PARSER_VERSION, () => this.catalog.get<ReviewEntry[]>(cacheKey), async () => {
+    return withCache(this.deps, cacheKey, this.config.catalogTtlSeconds, REVIEW_PARSER_VERSION, () => this.catalog.get<ReviewEntry[]>(cacheKey), async () => {
       const source = await this.source.getHtml(reviewsUrl(type, page), ['review-element']);
       if (source.kind !== 'success') throw sourceError(source);
       const value = parseReviews(source.value);

@@ -308,10 +308,32 @@ continua sendo 500 — mandar alguém rodar migração que já rodou é pior que
 
 Antes disso **nenhuma das 124 chamadas medidas na varredura devolvia `Cache-Control`, `ETag` ou `Vary`** — só `Content-Type`, `X-Request-Id` e o `X-Cache-Status` de diagnóstico. Ou seja: toda rota era não-cacheável por omissão, nada (navegador, CDN, cliente HTTP do consumidor) podia reaproveitar resposta nem perguntar se mudou, e quem faz polling rebaixava o corpo inteiro toda vez. A rota mais pesada tem 1,13 MB.
 
-- **`Cache-Control` anuncia o frescor que RESTA, não o TTL inteiro.** Recurso buscado há 5 h num TTL de 6 h anuncia 1 h. Anunciar 6 h deixaria um cache compartilhado servindo por 5 h depois de esta API já considerar o dado velho. Resposta `stale` anuncia `max-age=0` para forçar revalidação em vez de propagar a idade adiante. `stale-while-revalidate` permite que o cache compartilhado siga respondendo durante um refresh — é o mesmo comportamento que a API já tem internamente, e poupa o consumidor da espera de segundos de um miss frio.
+- **`Cache-Control` anuncia o frescor que RESTA, não o TTL inteiro.** Recurso buscado há 5 h num TTL de 6 h anuncia 1 h. Anunciar 6 h deixaria um cache compartilhado servindo por 5 h depois de esta API já considerar o dado velho. Resposta `stale` anuncia `max-age=0` para forçar revalidação em vez de propagar a idade adiante. `stale-while-revalidate` permite que o cache compartilhado siga respondendo durante um refresh — é o mesmo comportamento que a API tem internamente **desde 2026-08-27** (ver abaixo; até então essa frase valia só para as requisições concorrentes, não para a que estourava o TTL), e poupa o consumidor da espera de segundos de um miss frio.
 - **O `ETag` é hash do corpo realmente enviado**, não de `(chave, fetchedAt)`. Motivo concreto: `meta.cached` vira de `false` para `true` entre a requisição que fez o refresh e todas as leituras seguintes, então tag derivada da bookkeeping de cache declararia idênticos dois corpos visivelmente diferentes. Duas leituras cacheadas de um recurso inalterado **são** byte a byte iguais (resposta de sucesso não carrega `requestId`), então o 304 dispara exatamente quando deve. 64 bits de SHA-256, custo de poucos ms no maior corpo do catálogo.
 - **`If-None-Match` é tratado como a especificação manda**, não com comparação de string: o header é uma *lista*, aceita `*`, e pode marcar entradas como fracas com `W/`. Comparação exata simples devolveria o corpo inteiro para quem manda qualquer uma dessas formas, e a falha pareceria "revalidação não funciona aqui" em vez de erro — o tipo mais difícil de notar. Comparação fraca é a correta para `If-None-Match` (RFC 9110).
 - **Dois casos nunca são cacheados, de propósito.** Erros são `no-store` (uma indisponibilidade do MAL ou um 429 guardados por CDN sobreviveriam à condição que os causou; além disso um handler pode já ter setado `Cache-Control` de sucesso antes de lançar). E `/v1/random/*` é `no-store`: cache compartilhado guardando isso fixaria uma entidade e a serviria para todo mundo, o oposto do que a rota promete. Quatro das cinco rotas de random são também as únicas leituras que **não** passam por `withCache`, então não têm TTL para anunciar — por isso `ttlSeconds` é opcional em `ServiceResponse`. **`/v1/random/users` é a exceção e por isso escapou até 2026-08-27**: ela passa por `withCache` e herdava o `Cache-Control` do perfil sorteado (`max-age=21599`), o que deixava um CDN fixar um usuário por seis horas; hoje sobrescreve com `no-store` como as outras quatro.
+
+### Stale-while-revalidate interno (2026-08-27)
+
+O `withCache` já servia stale na hora — mas **só para quem chegava junto**. A requisição que estourava o TTL adquiria o lock e ficava bloqueada no fetch ao MAL (segundos), enquanto toda requisição concorrente caía no ramo de lock contendido e recebia a linha antiga instantaneamente. A penalidade caía em quem chegou **primeiro**, o que é o inverso do razoável.
+
+Agora essa requisição também recebe a linha antiga na hora, e o refresh corre atrás da resposta via `ExecutionContext.waitUntil`. Medido ao vivo com `wrangler dev --remote` e TTL de 60 s, mesma rota e mesma página:
+
+| | antes desta mudança | agora |
+| --- | --- | --- |
+| miss frio | 1747 ms | 1747 ms (inalterado — não há o que servir) |
+| hit fresco | 512 ms | 512 ms |
+| **primeira requisição depois do TTL** | fazia o mesmo trabalho do miss frio | **686 ms**, `X-Cache-Status: stale` |
+| requisição seguinte | — | `hit`, `max-age=57` — a linha foi reescrita pelo refresh de fundo |
+
+**Quatro decisões que valem mais que o código:**
+
+- **A janela é uma TTL além do vencimento — exatamente o que o `stale-while-revalidate` do header já promete.** Comportamento interno e anunciado passam a ser a mesma regra. Linha mais velha que isso faz o chamador esperar: devolver dado de semanas atrás seria pior que a espera. Timestamp ilegível também faz esperar.
+- **Divergência de `parserVersion` NÃO entra no caminho SWR.** Os *fallbacks* de falha continuam ignorando a versão de propósito (a alternativa lá é não responder nada), mas aqui a alternativa é esperar alguns segundos, e um bump significa que o valor guardado não é só mais velho — é errado. As listas de gênero vazias de 2026-08-27 são o caso concreto: com SWR indiscriminado, cada chave serviria a lista vazia mais uma vez depois do deploy. Esses chamadores esperam e recebem o valor corrigido.
+- **O lock é liberado pela tarefa de fundo, não na saída.** Liberar antes deixaria uma segunda requisição começar um scrape duplicado do mesmo recurso.
+- **Falha no refresh de fundo não tem para quem ser reportada** — o chamador já recebeu um 200 com o corpo stale. Vai para `console.warn` como `background_refresh_failed`, e a linha guardada mantém o vencimento antigo, então a próxima requisição tenta de novo em vez de recuar.
+
+`waitUntil` é opcional em todo o caminho (`CacheDeps.waitUntil`). Sem `ExecutionContext` — que é o caso do `app.request()` dos testes — o refresh roda inline, exatamente como antes desta mudança; um promise solto sem `waitUntil` pode ser morto junto com o isolate assim que a resposta sai. Isso também é o que mantém a suíte determinística.
 
 Lógica em `src/http/caching.ts` (`cacheControlFor`, `etagFor`, `matchesEtag`), fora do `app.ts` justamente para ser testável sem rede — o caminho de sucesso das rotas depende do MAL, então a aritmética de idade e a comparação de tag não teriam teste se ficassem embutidas no handler.
 

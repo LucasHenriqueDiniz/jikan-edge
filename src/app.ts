@@ -19,6 +19,7 @@ import { WatchService } from './services/watch.service';
 import { RecommendationService } from './services/recommendation.service';
 import { ReviewService } from './services/review.service';
 import { SearchService } from './services/search.service';
+import type { WaitUntil } from './services/cacheable';
 import { RandomService, type RandomKind } from './services/random.service';
 
 type Variables = { requestId: string; startedAt: number; page: number };
@@ -94,17 +95,30 @@ registerQueryGuards(app);
 // route, and a self-hoster needs the diagnosis in the body, not a second failure to interpret.
 app.get('/health', async (c) => c.json({ data: { status: 'ok', service: 'jikan-edge', checks: { database: await probeDatabase(c.env?.DB) } }, meta: { requestId: c.get('requestId') } }));
 
-function service(c: Context<{ Bindings: Env; Variables: Variables }>): UserService { return new UserService(c.env.DB, configFrom(c.env)); }
-function animeService(c: Context<{ Bindings: Env; Variables: Variables }>): AnimeService { return new AnimeService(c.env.DB, configFrom(c.env)); }
-function mangaService(c: Context<{ Bindings: Env; Variables: Variables }>): MangaService { return new MangaService(c.env.DB, configFrom(c.env)); }
-function characterService(c: Context<{ Bindings: Env; Variables: Variables }>): CharacterService { return new CharacterService(c.env.DB, configFrom(c.env)); }
-function producerService(c: Context<{ Bindings: Env; Variables: Variables }>): ProducerService { return new ProducerService(c.env.DB, configFrom(c.env)); }
-function clubService(c: Context<{ Bindings: Env; Variables: Variables }>): ClubService { return new ClubService(c.env.DB, configFrom(c.env)); }
-function personService(c: Context<{ Bindings: Env; Variables: Variables }>): PersonService { return new PersonService(c.env.DB, configFrom(c.env)); }
-function watchService(c: Context<{ Bindings: Env; Variables: Variables }>): WatchService { return new WatchService(c.env.DB, configFrom(c.env)); }
-function recommendationService(c: Context<{ Bindings: Env; Variables: Variables }>): RecommendationService { return new RecommendationService(c.env.DB, configFrom(c.env)); }
-function reviewService(c: Context<{ Bindings: Env; Variables: Variables }>): ReviewService { return new ReviewService(c.env.DB, configFrom(c.env)); }
-function searchService(c: Context<{ Bindings: Env; Variables: Variables }>): SearchService { return new SearchService(c.env.DB, configFrom(c.env)); }
+// Lets a service finish a refresh after its response is sent, which is what turns the request that
+// trips a TTL from the one that pays the multi-second upstream cost into one that is served the
+// stale row immediately, like every request arriving beside it already was.
+//
+// `c.executionCtx` throws when there is no ExecutionContext — `app.request()` in the tests does not
+// supply one. Returning undefined there is deliberate: `withCache` falls back to refreshing inline,
+// which is the behaviour that existed before this, so tests stay deterministic rather than racing a
+// promise nothing is waiting on.
+function background(c: Context<{ Bindings: Env; Variables: Variables }>): WaitUntil | undefined {
+  try { const ctx = c.executionCtx; return (promise) => ctx.waitUntil(promise); }
+  catch { return undefined; }
+}
+
+function service(c: Context<{ Bindings: Env; Variables: Variables }>): UserService { return new UserService(c.env.DB, configFrom(c.env), undefined, background(c)); }
+function animeService(c: Context<{ Bindings: Env; Variables: Variables }>): AnimeService { return new AnimeService(c.env.DB, configFrom(c.env), undefined, background(c)); }
+function mangaService(c: Context<{ Bindings: Env; Variables: Variables }>): MangaService { return new MangaService(c.env.DB, configFrom(c.env), undefined, background(c)); }
+function characterService(c: Context<{ Bindings: Env; Variables: Variables }>): CharacterService { return new CharacterService(c.env.DB, configFrom(c.env), undefined, background(c)); }
+function producerService(c: Context<{ Bindings: Env; Variables: Variables }>): ProducerService { return new ProducerService(c.env.DB, configFrom(c.env), undefined, background(c)); }
+function clubService(c: Context<{ Bindings: Env; Variables: Variables }>): ClubService { return new ClubService(c.env.DB, configFrom(c.env), undefined, background(c)); }
+function personService(c: Context<{ Bindings: Env; Variables: Variables }>): PersonService { return new PersonService(c.env.DB, configFrom(c.env), undefined, background(c)); }
+function watchService(c: Context<{ Bindings: Env; Variables: Variables }>): WatchService { return new WatchService(c.env.DB, configFrom(c.env), undefined, background(c)); }
+function recommendationService(c: Context<{ Bindings: Env; Variables: Variables }>): RecommendationService { return new RecommendationService(c.env.DB, configFrom(c.env), undefined, background(c)); }
+function reviewService(c: Context<{ Bindings: Env; Variables: Variables }>): ReviewService { return new ReviewService(c.env.DB, configFrom(c.env), undefined, background(c)); }
+function searchService(c: Context<{ Bindings: Env; Variables: Variables }>): SearchService { return new SearchService(c.env.DB, configFrom(c.env), undefined, background(c)); }
 // `X-Cache-Status` describes what *this* Worker did. `Cache-Control` tells everything downstream —
 // browsers, CDNs, the caller's own HTTP client — how long the answer stays good, which nothing
 // could know before: every response was previously uncacheable by omission, so a client polling a

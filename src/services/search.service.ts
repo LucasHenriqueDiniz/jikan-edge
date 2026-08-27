@@ -13,7 +13,7 @@ import { CatalogListRepository } from '../repositories/catalog-list.repository';
 import { RefreshLockRepository } from '../repositories/refresh-lock.repository';
 import { MalClient } from '../source/mal-client';
 import { searchUrl, userSearchUrl } from '../source/mal-urls';
-import { ServiceError, type ServiceResponse, sourceError, withCache } from './cacheable';
+import { type CacheDeps, ServiceError, type ServiceResponse, sourceError, type WaitUntil, withCache } from './cacheable';
 
 const MAX_QUERY_LENGTH = 64;
 
@@ -123,10 +123,11 @@ function buildTitleSearchParams(type: 'anime' | 'manga', filters: TitleSearchFil
 export class SearchService {
   private readonly cache: CacheRepository;
   private readonly locks: RefreshLockRepository;
+  private readonly deps: CacheDeps;
   private readonly catalog: CatalogListRepository;
   private readonly source: MalClient;
-  constructor(private readonly db: D1Database, private readonly config: RuntimeConfig, source?: MalClient) {
-    this.cache = new CacheRepository(db); this.locks = new RefreshLockRepository(db); this.catalog = new CatalogListRepository(db); this.source = source ?? new MalClient(config);
+  constructor(private readonly db: D1Database, private readonly config: RuntimeConfig, source?: MalClient, waitUntil?: WaitUntil) {
+    this.cache = new CacheRepository(db); this.locks = new RefreshLockRepository(db); this.deps = { cache: this.cache, locks: this.locks, waitUntil }; this.catalog = new CatalogListRepository(db); this.source = source ?? new MalClient(config);
   }
 
   private validateQuery(rawQuery: string | undefined): string {
@@ -145,7 +146,7 @@ export class SearchService {
     // Separate versions because the two searches no longer share a shape: the anime row's middle
     // column is episodes, the manga row's is volumes.
     const version = type === 'anime' ? ANIME_SEARCH_PARSER_VERSION : MANGA_SEARCH_PARSER_VERSION;
-    return withCache({ cache: this.cache, locks: this.locks }, cacheKey, this.config.catalogTtlSeconds, version, () => this.catalog.get<SearchEntry[]>(cacheKey), async () => {
+    return withCache(this.deps, cacheKey, this.config.catalogTtlSeconds, version, () => this.catalog.get<SearchEntry[]>(cacheKey), async () => {
       // The marker used to be `filterByType`, which the genre-browse page MAL redirected us to also
       // contains — it has a type-filter widget of its own — so a wrong page passed the guard and the
       // parser answered with an empty list instead of failing. The page title is the one string that
@@ -167,7 +168,7 @@ export class SearchService {
   users(rawQuery: string | undefined, page: number, requestId: string): Promise<ServiceResponse<UserSearchResult[]>> {
     const query = this.validateQuery(rawQuery);
     const cacheKey = `catalog:search:users:${query.toLowerCase()}:page:${page}`;
-    return withCache({ cache: this.cache, locks: this.locks }, cacheKey, this.config.catalogTtlSeconds, USER_SEARCH_PARSER_VERSION, () => this.catalog.get<UserSearchResult[]>(cacheKey), async () => {
+    return withCache(this.deps, cacheKey, this.config.catalogTtlSeconds, USER_SEARCH_PARSER_VERSION, () => this.catalog.get<UserSearchResult[]>(cacheKey), async () => {
       const source = await this.source.getHtml(userSearchUrl(query, page), []);
       if (source.kind !== 'success') throw sourceError(source);
       let value: UserSearchResult[];
@@ -191,7 +192,7 @@ export class SearchService {
   characters(rawQuery: string | undefined, page: number, requestId: string): Promise<ServiceResponse<CharacterSearchResult[]>> {
     const query = this.validateQuery(rawQuery);
     const cacheKey = `catalog:search:characters:${query.toLowerCase()}:page:${page}`;
-    return withCache({ cache: this.cache, locks: this.locks }, cacheKey, this.config.catalogTtlSeconds, CHARACTER_SEARCH_PARSER_VERSION, () => this.catalog.get<CharacterSearchResult[]>(cacheKey), async () => {
+    return withCache(this.deps, cacheKey, this.config.catalogTtlSeconds, CHARACTER_SEARCH_PARSER_VERSION, () => this.catalog.get<CharacterSearchResult[]>(cacheKey), async () => {
       const source = await this.source.getHtml(searchUrl('character', query, page), ['Search Results']);
       if (source.kind !== 'success') throw sourceError(source);
       const value = parseCharacterSearch(source.value);
@@ -204,7 +205,7 @@ export class SearchService {
   people(rawQuery: string | undefined, page: number, requestId: string): Promise<ServiceResponse<PersonSearchResult[]>> {
     const query = this.validateQuery(rawQuery);
     const cacheKey = `catalog:search:people:${query.toLowerCase()}:page:${page}`;
-    return withCache({ cache: this.cache, locks: this.locks }, cacheKey, this.config.catalogTtlSeconds, PERSON_SEARCH_PARSER_VERSION, () => this.catalog.get<PersonSearchResult[]>(cacheKey), async () => {
+    return withCache(this.deps, cacheKey, this.config.catalogTtlSeconds, PERSON_SEARCH_PARSER_VERSION, () => this.catalog.get<PersonSearchResult[]>(cacheKey), async () => {
       const source = await this.source.getHtml(searchUrl('people', query, page), ['Search Results']);
       if (source.kind !== 'success') throw sourceError(source);
       const value = parsePersonSearch(source.value);

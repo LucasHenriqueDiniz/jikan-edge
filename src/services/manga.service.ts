@@ -47,7 +47,7 @@ import {
   topMangaUrl,
 } from '../source/mal-urls';
 import { CHARACTER_PAGE_BUDGET, refreshLeaseSecondsFor } from '../source/fetch-policy';
-import { ServiceError, type ServiceResponse, sourceError, withCache } from './cacheable';
+import { type CacheDeps, ServiceError, type ServiceResponse, sourceError, type WaitUntil, withCache } from './cacheable';
 import { parseGenreFilter } from './genre-filter';
 
 const GENRES_CACHE_KEY = 'catalog:genres:manga';
@@ -56,11 +56,12 @@ const MAGAZINES_CACHE_KEY = 'catalog:magazines';
 export class MangaService {
   private readonly cache: CacheRepository;
   private readonly locks: RefreshLockRepository;
+  private readonly deps: CacheDeps;
   private readonly manga: MangaRepository;
   private readonly catalog: CatalogListRepository;
   private readonly source: MalClient;
-  constructor(private readonly db: D1Database, private readonly config: RuntimeConfig, source?: MalClient) {
-    this.cache = new CacheRepository(db); this.locks = new RefreshLockRepository(db); this.manga = new MangaRepository(db); this.catalog = new CatalogListRepository(db); this.source = source ?? new MalClient(config);
+  constructor(private readonly db: D1Database, private readonly config: RuntimeConfig, source?: MalClient, waitUntil?: WaitUntil) {
+    this.cache = new CacheRepository(db); this.locks = new RefreshLockRepository(db); this.deps = { cache: this.cache, locks: this.locks, waitUntil }; this.manga = new MangaRepository(db); this.catalog = new CatalogListRepository(db); this.source = source ?? new MalClient(config);
   }
 
   private validateMalId(rawId: string): number {
@@ -71,7 +72,7 @@ export class MangaService {
 
   async detail(rawId: string, requestId: string): Promise<ServiceResponse<MangaDetail>> {
     const malId = this.validateMalId(rawId);
-    return withCache({ cache: this.cache, locks: this.locks }, `manga:${malId}:detail`, this.config.animeTtlSeconds, MANGA_PARSER_VERSION, () => this.manga.get(malId), async () => {
+    return withCache(this.deps, `manga:${malId}:detail`, this.config.animeTtlSeconds, MANGA_PARSER_VERSION, () => this.manga.get(malId), async () => {
       const source = await this.source.getHtml(mangaDetailUrl(malId), ['Score:', 'Genre']);
       if (source.kind !== 'success') throw sourceError(source);
       const fetchedAt = new Date().toISOString();
@@ -101,7 +102,7 @@ export class MangaService {
   async characters(rawId: string, requestId: string): Promise<ServiceResponse<CharacterRole[]>> {
     const malId = this.validateMalId(rawId);
     const cacheKey = `catalog:manga:${malId}:characters`;
-    return withCache({ cache: this.cache, locks: this.locks }, cacheKey, this.config.animeTtlSeconds, CHARACTERS_STAFF_PARSER_VERSION, () => this.catalog.get<CharacterRole[]>(cacheKey), async () => {
+    return withCache(this.deps, cacheKey, this.config.animeTtlSeconds, CHARACTERS_STAFF_PARSER_VERSION, () => this.catalog.get<CharacterRole[]>(cacheKey), async () => {
       const source = await this.source.getHtml(charactersUrl('manga', malId), ['js-manga-character-table'], CHARACTER_PAGE_BUDGET);
       if (source.kind !== 'success') throw sourceError(source);
       const value = parseCharacters(source.value, 'manga');
@@ -113,7 +114,7 @@ export class MangaService {
 
   async genres(rawFilter: string | undefined, requestId: string): Promise<ServiceResponse<GenreTaxonomyEntry[]>> {
     const filter = parseGenreFilter(rawFilter);
-    const result = await withCache({ cache: this.cache, locks: this.locks }, GENRES_CACHE_KEY, this.config.catalogTtlSeconds, GENRE_PARSER_VERSION, () => this.catalog.get<GenreTaxonomyEntry[]>(GENRES_CACHE_KEY), async () => {
+    const result = await withCache(this.deps, GENRES_CACHE_KEY, this.config.catalogTtlSeconds, GENRE_PARSER_VERSION, () => this.catalog.get<GenreTaxonomyEntry[]>(GENRES_CACHE_KEY), async () => {
       const source = await this.source.getHtml(genreTaxonomyUrl('manga'), ['category-type', 'name="genre[]"']);
       if (source.kind !== 'success') throw sourceError(source);
       const value = parseGenreTaxonomy(source.value, 'manga');
@@ -127,7 +128,7 @@ export class MangaService {
   async topManga(page: number, rawFilter: string | undefined, requestId: string): Promise<ServiceResponse<MangaListEntry[]>> {
     const filter = parseTopFilter(rawFilter, TOP_MANGA_FILTERS);
     const cacheKey = `catalog:top:manga:page:${page}${filter ? `:${filter}` : ''}`;
-    return withCache({ cache: this.cache, locks: this.locks }, cacheKey, this.config.catalogTtlSeconds, TOP_MANGA_PARSER_VERSION, () => this.catalog.get<MangaListEntry[]>(cacheKey), async () => {
+    return withCache(this.deps, cacheKey, this.config.catalogTtlSeconds, TOP_MANGA_PARSER_VERSION, () => this.catalog.get<MangaListEntry[]>(cacheKey), async () => {
       const source = await this.source.getHtml(topMangaUrl(page, filter), ['ranking-list']);
       if (source.kind !== 'success') throw sourceError(source);
       const value = parseTopManga(source.value);
@@ -138,7 +139,7 @@ export class MangaService {
   }
 
   async magazines(rawQuery: string | undefined, requestId: string): Promise<ServiceResponse<Magazine[]>> {
-    const result = await withCache({ cache: this.cache, locks: this.locks }, MAGAZINES_CACHE_KEY, this.config.catalogTtlSeconds, MAGAZINE_PARSER_VERSION, () => this.catalog.get<Magazine[]>(MAGAZINES_CACHE_KEY), async () => {
+    const result = await withCache(this.deps, MAGAZINES_CACHE_KEY, this.config.catalogTtlSeconds, MAGAZINE_PARSER_VERSION, () => this.catalog.get<Magazine[]>(MAGAZINES_CACHE_KEY), async () => {
       const source = await this.source.getHtml(magazinesUrl(), ['genre-name-link']);
       if (source.kind !== 'success') throw sourceError(source);
       const value = parseMagazines(source.value);
@@ -161,7 +162,7 @@ export class MangaService {
   ): Promise<ServiceResponse<T>> {
     const malId = this.validateMalId(rawId);
     const cacheKey = `catalog:manga:${malId}:${resource}`;
-    return withCache({ cache: this.cache, locks: this.locks }, cacheKey, this.config.animeTtlSeconds, parserVersion, () => this.catalog.get<T>(cacheKey), async () => {
+    return withCache(this.deps, cacheKey, this.config.animeTtlSeconds, parserVersion, () => this.catalog.get<T>(cacheKey), async () => {
       const source = await this.source.getHtml(url, requiredMarkers);
       if (source.kind !== 'success') throw sourceError(source);
       const value = parse(source.value);
@@ -204,7 +205,7 @@ export class MangaService {
   reviews(rawId: string, page: number, requestId: string): Promise<ServiceResponse<TitleReview[]>> {
     const malId = this.validateMalId(rawId);
     const cacheKey = `catalog:manga:${malId}:reviews:page:${page}`;
-    return withCache({ cache: this.cache, locks: this.locks }, cacheKey, this.config.animeTtlSeconds, TITLE_REVIEWS_PARSER_VERSION, () => this.catalog.get<TitleReview[]>(cacheKey), async () => {
+    return withCache(this.deps, cacheKey, this.config.animeTtlSeconds, TITLE_REVIEWS_PARSER_VERSION, () => this.catalog.get<TitleReview[]>(cacheKey), async () => {
       const source = await this.source.getHtml(titleReviewsUrl('manga', malId, page), ['review-element']);
       if (source.kind !== 'success') throw sourceError(source);
       const value = parseTitleReviews(source.value);

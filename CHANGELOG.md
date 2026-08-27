@@ -48,6 +48,25 @@ section, the date here is the one it reached production, not the one it was writ
 
 ### Changed
 
+- **The request that trips a cache expiry is no longer the one that pays for the refresh.** When a
+  resource's six-hour lifetime lapsed, the next caller waited out the full fetch from MyAnimeList —
+  seconds — while everyone arriving beside them was handed the stored copy instantly. The penalty
+  landed on whoever got there first, which is backwards.
+
+  That caller now gets the stored copy immediately too, and the refresh runs after the response is
+  sent. Measured on one route with a 60-second lifetime: the first request past expiry went from
+  doing a cold fetch's work to **686 ms**, and the request after it already saw the refreshed
+  copy. Nothing else about the answer changed — it is flagged `"stale": true` exactly as the
+  concurrent case already was, and `Cache-Control` still says `max-age=0` so your own cache
+  revalidates.
+
+  **A resource that has been expired for longer than its own lifetime is not served this way** —
+  there the caller waits and gets fresh data, because handing back something that old is worse than
+  the wait. That boundary is the same one `stale-while-revalidate` in the header already advertised.
+
+  This does not apply after a parser fix either: when the stored copy predates a correction, callers
+  wait and get the corrected value rather than the old one one last time.
+
 - **The five `/v1/random/*` routes now all answer the same `meta` shape.** Four of them
   (`anime`, `manga`, `characters`, `people`) returned `meta: { requestId }` while
   `/v1/random/users` returned the standard `cached`, `stale`, `refreshFailed` and `fetchedAt`. A

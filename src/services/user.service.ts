@@ -20,7 +20,7 @@ import { REVIEW_PARSER_VERSION, type ReviewEntry } from '../domain/review';
 import { parseReviews } from '../parsers/reviews.parser';
 import { RECOMMENDATION_PARSER_VERSION, type RecommendationEntry } from '../domain/recommendation';
 import { parseRecommendations } from '../parsers/recommendations.parser';
-import { ServiceError, type ServiceResponse, sourceError, withCache } from './cacheable';
+import { type CacheDeps, ServiceError, type ServiceResponse, sourceError, type WaitUntil, withCache } from './cacheable';
 
 const UPDATES_PARSER_VERSION = `${PARSER_VERSION}:updates`;
 /**
@@ -44,13 +44,14 @@ export interface UserFullProfile { profile: UserProfile; statistics: UserStatist
 export class UserService {
   private readonly cache: CacheRepository;
   private readonly locks: RefreshLockRepository;
+  private readonly deps: CacheDeps;
   private readonly users: UserRepository;
   private readonly source: MalClient;
   private readonly favorites: FavoritesRepository;
   private readonly updates: UpdatesRepository;
   private readonly catalog: CatalogListRepository;
-  constructor(private readonly db: D1Database, private readonly config: RuntimeConfig, source?: MalClient) {
-    this.cache = new CacheRepository(db); this.locks = new RefreshLockRepository(db); this.users = new UserRepository(db); this.favorites = new FavoritesRepository(db); this.updates = new UpdatesRepository(db); this.catalog = new CatalogListRepository(db); this.source = source ?? new MalClient(config);
+  constructor(private readonly db: D1Database, private readonly config: RuntimeConfig, source?: MalClient, waitUntil?: WaitUntil) {
+    this.cache = new CacheRepository(db); this.locks = new RefreshLockRepository(db); this.deps = { cache: this.cache, locks: this.locks, waitUntil }; this.users = new UserRepository(db); this.favorites = new FavoritesRepository(db); this.updates = new UpdatesRepository(db); this.catalog = new CatalogListRepository(db); this.source = source ?? new MalClient(config);
   }
 
   private validateUsername(username: string): string {
@@ -59,7 +60,7 @@ export class UserService {
   }
 
   private withCache<T>(key: string, ttl: number, parserVersion: string, read: () => Promise<T | null>, refresh: () => Promise<T>, owner: string, leaseSeconds?: number): Promise<ServiceResponse<T>> {
-    return withCache({ cache: this.cache, locks: this.locks }, key, ttl, parserVersion, read, refresh, owner, leaseSeconds);
+    return withCache(this.deps, key, ttl, parserVersion, read, refresh, owner, leaseSeconds);
   }
 
   async profile(username: string, requestId: string): Promise<ServiceResponse<UserProfile>> {
