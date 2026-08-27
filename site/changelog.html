@@ -80,6 +80,7 @@ main .lede { color: var(--paper-dim); margin-top: 12px; max-width: 62ch; }
 .group-label.breaking { color: var(--vermillion); }
 .group-label.added { color: var(--teal); }
 .group-label.fixed { color: var(--gold); }
+.group-label.changed { color: var(--paper); }
 .entry ul { margin: 6px 0 0 18px; }
 .entry li { color: var(--paper-dim); font-size: 14px; margin-top: 6px; max-width: 66ch; }
 .entry li b { color: var(--paper); font-weight: 600; }
@@ -117,6 +118,67 @@ footer a { color: var(--paper-dim); }
     <a class="gh-cta" href="https://github.com/LucasHenriqueDiniz/jikan-edge/blob/main/CHANGELOG.md" target="_blank" rel="noopener">
       Full changelog on GitHub <span class="arrow">↗</span>
     </a>
+
+    <div class="entry">
+      <div class="date">
+        <h2>2026-08-27 — an error message that led nowhere</h2>
+        <span class="versions">1 release</span>
+      </div>
+      <p class="summary">One line of text and nothing else. The refusal for <code>?sfw</code> was sending
+      callers after a parameter this API refuses just as firmly, so taking the advice bought a second
+      request and the same wall.</p>
+      <div class="groups">
+        <div>
+          <span class="group-label fixed">Fixed</span>
+          <ul>
+            <li><b><code>?sfw</code> recommended a parameter that also fails.</b> The
+            <code>400 UNSUPPORTED_PARAMETER</code> ended with <code>Use "genres_exclude" or "rating".</code>,
+            and <code>genres_exclude</code> answers <code>400</code> here too — it was withdrawn the day it
+            was announced. The message now names only <code>rating</code>, and says that it applies to anime
+            search (<code>GET /v1/anime</code>): MyAnimeList's manga search page carries no classification
+            field. Error text only — the same requests are accepted and refused as before.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <hr class="rule">
+
+    <div class="entry">
+      <div class="date">
+        <h2>2026-08-18 — an address of its own</h2>
+        <span class="versions">9 releases, 3 changes</span>
+      </div>
+      <p class="summary">The API has a proper domain now, and the old one keeps working. Nine releases for
+      three changes because each shipped twice — a push to <code>main</code> deploys on its own, and these
+      were deployed by hand as well.</p>
+      <div class="groups">
+        <div>
+          <span class="group-label changed">Changed</span>
+          <ul>
+            <li><b>New base URL: <code>https://jikan.lucashdo.com</code>.</b> The documentation, the landing
+            page and <code>llms.txt</code> all point there now. <b>Nothing breaks:</b>
+            <code>https://jikan-edge.lucas-hdo.workers.dev</code> still serves the same Worker on the same
+            cache — no redirect, no deprecation window, nothing to do, and no removal planned. The custom
+            domain is additive; prefer it for new work so that a later move off <code>*.workers.dev</code>
+            costs you nothing.</li>
+            <li>The API identifies itself to MyAnimeList as
+            <code>jikan-edge/0.1 (+https://jikan.lucashdo.com)</code>. Only MAL sees this; no response
+            changes.</li>
+          </ul>
+        </div>
+        <div>
+          <span class="group-label fixed">Fixed</span>
+          <ul>
+            <li><b>Self-hosting: <code>npm run setup</code> now empties the <code>routes</code> list.</b>
+            A fork was inheriting the maintainer's custom domain, and <code>wrangler deploy</code> then
+            failed on a zone it could not claim.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <hr class="rule">
 
     <div class="entry">
       <div class="date">
