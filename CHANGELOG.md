@@ -8,8 +8,11 @@ This file starts on 2026-07-30 and does not reconstruct earlier history.
 
 ## 2026-08-27
 
-Published versions: `4ce71084`, `9d3445dd`, `a07e0742`, and the one publishing this entry —
-**to be confirmed**, since an entry can never name the version that ships it.
+Published versions: `4ce71084`, `9d3445dd`, `a07e0742`, `629508ce`.
+
+`629508ce` is the one that carries the character-page fix below; it went live 35 seconds after the
+push. The deploy that publishes this filled-in line is not named here — same structural gap as the
+2026-08-16 section, since an entry can never name the version that ships it.
 
 The `?sfw` item below was written on 2026-08-26 and merged the next morning. As with the 2026-08-16
 section, the date here is the one it reached production, not the one it was written on.
