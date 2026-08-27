@@ -10,14 +10,16 @@ This file starts on 2026-07-30 and does not reconstruct earlier history.
 
 Published versions: `4ce71084`, `9d3445dd`, `a07e0742`, `629508ce`, `ebeba400`, `5b41891e`,
 `f2b389cd`, `086145f9`, `2139e894`, `9679c755`, `44d028aa`, `0523faba`, `b9cf7782`, `f7d1a163`,
-`feaf775d`, `aa5baaa9`. The deploy publishing this filled-in line is not named — an entry can never
-name the version that ships it, the same structural gap as the 2026-08-16 section.
+`feaf775d`, `aa5baaa9`, `dff313ec`, `61a0c56e`. The deploy publishing this filled-in line is not
+named — an entry can never name the version that ships it, the same structural gap as the
+2026-08-16 section.
 
-Of those, six carried the changes below: `629508ce` raised the size ceiling to 5 MiB, recovering
+Of those, seven carried the changes below: `629508ce` raised the size ceiling to 5 MiB, recovering
 five of the seven affected titles, `5b41891e` added the per-call fetch budget that recovered the
 remaining two, `9679c755` carried both the profile fix and the cache headers, `0523faba` the genre
-fix, `f7d1a163` the seasonal media type, and `aa5baaa9` the random-route changes. The rest are
-documentation and a line-ending correction, with no change in behaviour.
+fix, `f7d1a163` the seasonal media type, `aa5baaa9` the random-route changes, and `61a0c56e` the
+refresh that no longer blocks the caller who trips it. The rest are documentation and a line-ending
+correction, with no change in behaviour.
 
 The `?sfw` item below was written on 2026-08-26 and merged the next morning. As with the 2026-08-16
 section, the date here is the one it reached production, not the one it was written on.
