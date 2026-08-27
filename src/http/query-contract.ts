@@ -128,7 +128,9 @@ export const QUERY_CONTRACT: Record<string, readonly string[]> = {
 // feature is not here" — and a bare UNKNOWN_PARAMETER cannot say which.
 export const UNSUPPORTED_PARAMS: Record<string, string> = {
   limit: 'Not supported outside the user list routes: this API serves one MyAnimeList page per request, so a limit would either slice that page (a different result from Jikan\'s) or require crawling several pages upstream.',
-  sfw: 'Not supported: MyAnimeList has no server-side safe-for-work switch, and approximating one by excluding a few genre ids would be a guess wearing the name of a guarantee. Use "genres_exclude" or "rating".',
+  // The substitute named here has to be one that works: this message used to send the caller to
+  // `genres_exclude`, which is refused a few lines below — one 400 pointing at the next.
+  sfw: 'Not supported: MyAnimeList has no server-side safe-for-work switch, and approximating one by excluding a few genre ids would be a guess wearing the name of a guarantee. Use "rating", which maps to MyAnimeList\'s own classification dropdown — anime search only, since the manga search page carries no equivalent field.',
   // Not impossible, but not free either: MyAnimeList's form has one score dropdown and it is a
   // minimum, so an upper bound could only be applied after parsing the page. Dropping entries from
   // a 50-row page would leave `meta.pagination.count` short of the page size, which is what

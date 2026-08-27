@@ -6,6 +6,20 @@ Changes that matter to anyone **consuming** the API. The technical detail behind
 
 This file starts on 2026-07-30 and does not reconstruct earlier history.
 
+## 2026-08-26
+
+Published version: to be confirmed — the id only exists once the push-triggered build lands
+(`npx wrangler deployments list`).
+
+### Fixed
+
+- **`?sfw` pointed you at a parameter that is also refused.** The `400 UNSUPPORTED_PARAMETER` for
+  `sfw` ended with `Use "genres_exclude" or "rating".`, but `genres_exclude` is refused by this same
+  API — taking the advice bought a second request and the same wall. The message now names only
+  `rating`, and says it applies to anime search (`GET /v1/anime`), since MyAnimeList's manga search
+  page carries no classification field. **Error text only:** the same requests are accepted and
+  refused as before.
+
 ## 2026-08-18
 
 Published versions: `3810fd7b`, `96e592e6`, `5fb481a6`, `40959124`, `b0e3ba13`, `b689413b`,
