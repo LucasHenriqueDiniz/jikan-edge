@@ -8,12 +8,34 @@ This file starts on 2026-07-30 and does not reconstruct earlier history.
 
 ## 2026-08-27
 
-Published version: `4ce71084`.
+Published versions: `4ce71084`, `9d3445dd`, `a07e0742`, and the one publishing this entry —
+**to be confirmed**, since an entry can never name the version that ships it.
 
-Written on 2026-08-26 and merged the next morning. As with the 2026-08-16 section, the date here is
-the one it reached production, not the one it was written on.
+The `?sfw` item below was written on 2026-08-26 and merged the next morning. As with the 2026-08-16
+section, the date here is the one it reached production, not the one it was written on.
 
 ### Fixed
+
+- **The longest-running series returned `502` for their entire cast and staff.** `GET
+  /v1/anime/:id/characters` and `/staff` answered `502 UPSTREAM_SUSPICIOUS` for **One Piece,
+  Detective Conan, Naruto, Naruto Shippuden, Bleach, Pokémon and Fairy Tail** — both routes read
+  the same MyAnimeList page, so both failed together. The page for these titles is simply larger
+  than the 2 MiB ceiling this API imposed on any upstream document; that ceiling is now 5 MiB.
+
+  **Five of the seven are fixed** (Naruto, Fairy Tail, Bleach, Pokémon, Naruto Shippuden), along
+  with the titles that were about to cross the same line — Dragon Ball Z sat at 96 % of the old
+  limit and One Piece's *manga* page at 91 %, both answering `200` only by luck of timing.
+  **One Piece and Detective Conan still fail**, at 9.9 MB and 7.3 MB: those are held back by the
+  8-second upstream timeout rather than by the size limit, and lifting that safely is a separate
+  change. If you consume those two titles, this release does not yet help you.
+
+  There was never any cached data behind these routes to fall back on, so this was a hard error
+  rather than stale data — and it means the One Piece staff fix announced on 2026-08-16 ("returned
+  80 of One Piece's 542 staff members") has in fact never been reachable in production for that
+  title. It becomes reachable when the timeout change lands.
+
+  **No response shape changes.** Requests that already worked return exactly what they returned
+  before; the parser was never the problem.
 
 - **`?sfw` pointed you at a parameter that is also refused.** The `400 UNSUPPORTED_PARAMETER` for
   `sfw` ended with `Use "genres_exclude" or "rating".`, but `genres_exclude` is refused by this same

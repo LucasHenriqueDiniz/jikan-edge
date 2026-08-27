@@ -19,7 +19,12 @@
     "ANIME_TTL_SECONDS": "21600",
     "CATALOG_TTL_SECONDS": "21600",
     "SOURCE_TIMEOUT_MS": "8000",
-    "MAX_UPSTREAM_BYTES": "2097152"
+    // 5 MiB. At 2 MiB the character/staff pages of long-running series were refused outright
+    // (Naruto 2.3 MB, Bleach 3.0 MB, Pokémon 3.5 MB, Naruto Shippuden 4.2 MB). Measured cost of
+    // allowing them: ~8.8 ms/MB to parse and ~2 s to fetch, both far inside their limits. The two
+    // titles still above this line (One Piece 9.9 MB, Detective Conan 7.3 MB) are held back by
+    // SOURCE_TIMEOUT_MS, not by this number — see docs/routes.md.
+    "MAX_UPSTREAM_BYTES": "5242880"
     ,"WORKER_VERSION": "jikan-edge-2026-07-19"
   },
   // Forking this? Run `npm run setup` — it creates your own D1 and rewrites the id below.

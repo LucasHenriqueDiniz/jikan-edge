@@ -34,7 +34,7 @@ export function configFrom(env: Env): RuntimeConfig {
     animeTtlSeconds: numberEnv(env.ANIME_TTL_SECONDS, 21_600),
     catalogTtlSeconds: numberEnv(env.CATALOG_TTL_SECONDS, 21_600),
     sourceTimeoutMs: numberEnv(env.SOURCE_TIMEOUT_MS, 8_000),
-    maxUpstreamBytes: numberEnv(env.MAX_UPSTREAM_BYTES, 2 * 1024 * 1024),
+    maxUpstreamBytes: numberEnv(env.MAX_UPSTREAM_BYTES, 5 * 1024 * 1024),
     malUserAgent: env.MAL_USER_AGENT ?? 'jikan-edge/0.1',
   };
 }
