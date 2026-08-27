@@ -47,6 +47,30 @@ section, the date here is the one it reached production, not the one it was writ
 
 ### Fixed
 
+- **Browsing by genre alone returned nothing, for every genre and both media types.** `GET
+  /v1/anime?genres=1` answered `200` with `"data": []` — for Action, which has 5012 titles by this
+  API's own `/v1/genres/anime` count. `GET /v1/manga?genres=1` did the same. Every genre id was
+  affected. You were told "nothing matches", which is worse than an error: a plausible wrong answer
+  is one you have no reason to question.
+
+  It only broke when a genre was the **whole** request. Adding anything at all — `q`, `type`,
+  `order_by`, or just asking for page 2 — worked, which is why the fault could sit there unnoticed:
+  `?genres=1` returned 0 items while `?genres=1&page=2` returned 50.
+
+  MyAnimeList redirects a request whose only parameter is one genre to its genre-browsing page,
+  which is a different page with different markup, and the results parser found no rows there.
+  Requests now carry the same category field MyAnimeList's own search form sends, so a genre-only
+  search stays on the search page. Nothing else about search changed: the same queries return the
+  same results in the same order.
+
+  **The guard that should have caught it was also fixed.** The check that decides whether an
+  upstream page is the page we asked for was weak enough to accept the genre-browsing page. It now
+  rejects it, so this class of mistake answers `502 UPSTREAM_SUSPICIOUS` instead of an empty list. A
+  search that genuinely matches nothing still returns an empty list, as before.
+
+  Empty results already cached for a genre-only search are discarded rather than served out for the
+  rest of their lifetime.
+
 - **User profiles were missing their avatar and their About text — for every user.** `GET
   /v1/users/:username` returned `avatarUrl: null` and `about: null`, and
   `GET /v1/users/:username/about` returned `{ "about": null }`, no matter whose profile you asked

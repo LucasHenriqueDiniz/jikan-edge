@@ -22,5 +22,8 @@ export interface MangaSearchEntry extends SearchEntryBase {
 
 export type SearchEntry = AnimeSearchEntry | MangaSearchEntry;
 
-export const ANIME_SEARCH_PARSER_VERSION = 'anime-search-html-v1';
-export const MANGA_SEARCH_PARSER_VERSION = 'manga-search-html-v1';
+// v2: a genre-only search on page 1 was cached as an empty list, because MAL redirected that URL to
+// the genre-browse page and the parser found no rows there. The bump is what stops those empty rows
+// from being served for the rest of their TTL now that the URL keeps the search on the search page.
+export const ANIME_SEARCH_PARSER_VERSION = 'anime-search-html-v2';
+export const MANGA_SEARCH_PARSER_VERSION = 'manga-search-html-v2';

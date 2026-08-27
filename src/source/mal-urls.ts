@@ -198,6 +198,14 @@ export function episodesUrl(malId: number): string {
 export function searchUrl(type: 'anime' | 'manga' | 'character' | 'people', query: string, page: number, extra: [string, string][] = []): string {
   const show = (page - 1) * 50;
   const params = new URLSearchParams({ q: query });
+  // MAL's own search form posts a hidden `cat` field, and leaving it out is not neutral. With a
+  // single genre and nothing else, `anime.php?q=&genre[]=1` answers 301 -> /anime/genre/1/Action, a
+  // genre-browse page with different markup and no result rows for this parser to find. That is why
+  // `?genres=N` alone returned an empty list on page 1 only: from page 2 on, `show=` is a second
+  // parameter, which is enough to suppress the redirect. Sending what the form sends keeps every
+  // search on the search page. Character and people search carry the field too (`cat=character`,
+  // `cat=person`) but never redirect, so they are left alone rather than churning their caches.
+  if (type === 'anime' || type === 'manga') params.set('cat', type);
   if (show > 0) params.set('show', String(show));
   for (const [key, value] of extra) params.append(key, value);
   return `${BASE}/${type}.php?${params.toString()}`;

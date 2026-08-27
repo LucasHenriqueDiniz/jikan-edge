@@ -146,7 +146,13 @@ export class SearchService {
     // column is episodes, the manga row's is volumes.
     const version = type === 'anime' ? ANIME_SEARCH_PARSER_VERSION : MANGA_SEARCH_PARSER_VERSION;
     return withCache({ cache: this.cache, locks: this.locks }, cacheKey, this.config.catalogTtlSeconds, version, () => this.catalog.get<SearchEntry[]>(cacheKey), async () => {
-      const source = await this.source.getHtml(searchUrl(type, query, page, extra), ['filterByType']);
+      // The marker used to be `filterByType`, which the genre-browse page MAL redirected us to also
+      // contains — it has a type-filter widget of its own — so a wrong page passed the guard and the
+      // parser answered with an empty list instead of failing. The page title is the one string that
+      // separates a search from every other MAL page, and it is present even when the search
+      // legitimately matched nothing.
+      const marker = type === 'anime' ? 'Search Anime - MyAnimeList.net' : 'Search Manga - MyAnimeList.net';
+      const source = await this.source.getHtml(searchUrl(type, query, page, extra), [marker]);
       if (source.kind !== 'success') throw sourceError(source);
       const value: SearchEntry[] = type === 'anime' ? parseAnimeSearchResults(source.value) : parseMangaSearchResults(source.value);
       const fetchedAt = new Date().toISOString();
