@@ -8,16 +8,34 @@ This file starts on 2026-07-30 and does not reconstruct earlier history.
 
 ## 2026-08-27
 
-Published versions: `4ce71084`, `9d3445dd`, `a07e0742`, `629508ce`.
+Published versions: `4ce71084`, `9d3445dd`, `a07e0742`, `629508ce`, and the one carrying the
+per-call fetch budget — **to be confirmed**, since an entry can never name the version that ships
+it (same structural gap as the 2026-08-16 section).
 
-`629508ce` is the one that carries the character-page fix below; it went live 35 seconds after the
-push. The deploy that publishes this filled-in line is not named here — same structural gap as the
-2026-08-16 section, since an entry can never name the version that ships it.
+`629508ce` raised the size ceiling to 5 MiB, recovering five of the seven affected titles.
 
 The `?sfw` item below was written on 2026-08-26 and merged the next morning. As with the 2026-08-16
 section, the date here is the one it reached production, not the one it was written on.
 
 ### Fixed
+
+- **One Piece and Detective Conan now return their cast and staff too.** These were the two titles
+  the earlier fix in this same section could not reach — 9.9 MB and 7.3 MB, past both the 5 MiB
+  ceiling and the 8-second upstream timeout. `GET /v1/anime/21/staff` returns **541 staff members**
+  and `/characters` returns **1482**; Detective Conan returns 471 and 2110. Every route listed as
+  broken earlier today now works.
+
+  This also makes the staff fix announced on 2026-08-16 real for the first time: it promised the
+  full One Piece staff list instead of the first 80, and that route has been answering `502` ever
+  since, so nobody ever received the fix. 541 is the number it was written for.
+
+  Rather than loosen the limits for all 96 routes, the character-page fetch now asks for its own
+  budget (20 s, 16 MiB) while the global defaults stay at 8 s and 5 MiB — a runaway document on any
+  other route still gets caught. **One consequence worth knowing if you time out clients:** a cold
+  request for One Piece takes around 7 seconds, because the page genuinely is 10 MB. Cached
+  requests are unaffected, and the 6-hour TTL means almost all of them are cached.
+
+  **No response shape changes**, and nothing that worked before behaves differently.
 
 - **The longest-running series returned `502` for their entire cast and staff.** `GET
   /v1/anime/:id/characters` and `/staff` answered `502 UPSTREAM_SUSPICIOUS` for **One Piece,

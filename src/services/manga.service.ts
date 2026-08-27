@@ -46,6 +46,7 @@ import {
   titleReviewsUrl,
   topMangaUrl,
 } from '../source/mal-urls';
+import { CHARACTER_PAGE_BUDGET, refreshLeaseSecondsFor } from '../source/fetch-policy';
 import { ServiceError, type ServiceResponse, sourceError, withCache } from './cacheable';
 import { parseGenreFilter } from './genre-filter';
 
@@ -101,13 +102,13 @@ export class MangaService {
     const malId = this.validateMalId(rawId);
     const cacheKey = `catalog:manga:${malId}:characters`;
     return withCache({ cache: this.cache, locks: this.locks }, cacheKey, this.config.animeTtlSeconds, CHARACTERS_STAFF_PARSER_VERSION, () => this.catalog.get<CharacterRole[]>(cacheKey), async () => {
-      const source = await this.source.getHtml(charactersUrl('manga', malId), ['js-manga-character-table']);
+      const source = await this.source.getHtml(charactersUrl('manga', malId), ['js-manga-character-table'], CHARACTER_PAGE_BUDGET);
       if (source.kind !== 'success') throw sourceError(source);
       const value = parseCharacters(source.value, 'manga');
       const fetchedAt = new Date().toISOString();
       await this.catalog.put(cacheKey, value, fetchedAt, CHARACTERS_STAFF_PARSER_VERSION);
       return value;
-    }, requestId);
+    }, requestId, refreshLeaseSecondsFor(CHARACTER_PAGE_BUDGET));
   }
 
   async genres(rawFilter: string | undefined, requestId: string): Promise<ServiceResponse<GenreTaxonomyEntry[]>> {

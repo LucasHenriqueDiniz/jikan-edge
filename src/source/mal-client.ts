@@ -1,4 +1,5 @@
 import type { RuntimeConfig } from '../config/env';
+import type { FetchBudget } from './fetch-policy';
 import { classifyHtml } from './response-validator';
 import type { SourceResult } from './source-types';
 
@@ -16,25 +17,36 @@ function delay(ms: number): Promise<void> {
 export class MalClient {
   constructor(private readonly config: RuntimeConfig, private readonly fetcher: typeof fetch = (input, init) => globalThis.fetch(input, init)) {}
 
-  async getHtml(url: string, requiredMarkers: string[] = []): Promise<SourceResult<string>> {
-    const first = await this.attempt(url, requiredMarkers);
+  async getHtml(url: string, requiredMarkers: string[] = [], budget?: Partial<FetchBudget>): Promise<SourceResult<string>> {
+    const timeoutMs = budget?.timeoutMs ?? this.config.sourceTimeoutMs;
+    const maxBytes = budget?.maxBytes ?? this.config.maxUpstreamBytes;
+    const first = await this.attempt(url, requiredMarkers, timeoutMs, maxBytes);
     // Only retry a transient network failure — not `suspicious` (a deliberate rejection, retrying
     // won't change a challenge page), not `not_found`/`private`/`rate_limited` (deterministic
     // upstream responses a second attempt would just reproduce).
     if (first.kind !== 'upstream_error' && first.kind !== 'timeout') return first;
+    // A timeout is only worth repeating on the default budget, where expiry plausibly means a blip
+    // rather than a verdict. When a caller has already granted an extended budget and the fetch
+    // still ran it out, retrying buys a low chance of recovery at the cost of doubling an already
+    // long wait — 40 s on the character-page budget, past the 30 s grace period the runtime gives
+    // in-flight requests during an update. Fail at the budget the caller actually asked for.
+    if (first.kind === 'timeout' && timeoutMs > this.config.sourceTimeoutMs) {
+      console.warn(JSON.stringify({ type: 'source_fetch_timeout_not_retried', url, timeoutMs }));
+      return first;
+    }
     await delay(RETRY_DELAY_MS);
     console.warn(JSON.stringify({ type: 'source_fetch_retry', url, firstAttemptKind: first.kind }));
-    return this.attempt(url, requiredMarkers);
+    return this.attempt(url, requiredMarkers, timeoutMs, maxBytes);
   }
 
-  private async attempt(url: string, requiredMarkers: string[]): Promise<SourceResult<string>> {
+  private async attempt(url: string, requiredMarkers: string[], timeoutMs: number, maxBytes: number): Promise<SourceResult<string>> {
     const parsed = new URL(url);
     if (!this.isAllowed(parsed)) {
       return { kind: 'suspicious', reason: 'host_not_allowed', metadata: { url, status: null, contentType: null, durationMs: 0, sizeBytes: 0 } };
     }
     const startedAt = performance.now();
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), this.config.sourceTimeoutMs);
+    const timeout = setTimeout(() => controller.abort(), timeoutMs);
     try {
       let target = parsed;
       let response: Response | undefined;
@@ -59,10 +71,10 @@ export class MalClient {
         durationMs: Math.round(performance.now() - startedAt),
         sizeBytes: contentLength,
       };
-      if (contentLength > this.config.maxUpstreamBytes) return { kind: 'suspicious', reason: 'document_too_large', metadata };
+      if (contentLength > maxBytes) return { kind: 'suspicious', reason: 'document_too_large', metadata };
       const body = await response.text();
       metadata.sizeBytes = new TextEncoder().encode(body).byteLength;
-      if (metadata.sizeBytes > this.config.maxUpstreamBytes) return { kind: 'suspicious', reason: 'document_too_large', metadata };
+      if (metadata.sizeBytes > maxBytes) return { kind: 'suspicious', reason: 'document_too_large', metadata };
       return classifyHtml(body, metadata, requiredMarkers);
     } catch (error) {
       const metadata = { url, status: null, contentType: null, durationMs: Math.round(performance.now() - startedAt), sizeBytes: 0 };

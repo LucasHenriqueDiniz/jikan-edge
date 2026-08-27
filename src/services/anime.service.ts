@@ -41,6 +41,7 @@ import { RefreshLockRepository } from '../repositories/refresh-lock.repository';
 import { MalClient } from '../source/mal-client';
 import { animeDetailUrl, charactersUrl, episodeDetailUrl, episodesUrl, forumUrl, genreTaxonomyUrl, moreInfoUrl, newsUrl, picturesUrl, scheduleUrl, seasonArchiveUrl, seasonByYearUrl, seasonNowUrl, seasonUpcomingUrl, statisticsUrl, titleRecommendationsUrl, titleReviewsUrl, TOP_ANIME_FILTERS, topAnimeUrl, videosUrl } from '../source/mal-urls';
 import { parseTopFilter } from './top-filter';
+import { CHARACTER_PAGE_BUDGET, refreshLeaseSecondsFor } from '../source/fetch-policy';
 import { ServiceError, type ServiceResponse, sourceError, withCache } from './cacheable';
 import { parseGenreFilter } from './genre-filter';
 
@@ -144,13 +145,13 @@ export class AnimeService {
     const malId = this.validateMalId(rawId);
     const cacheKey = `catalog:anime:${malId}:characters-staff`;
     return withCache({ cache: this.cache, locks: this.locks }, cacheKey, this.config.animeTtlSeconds, CHARACTERS_STAFF_PARSER_VERSION, () => this.catalog.get<AnimeCharactersAndStaff>(cacheKey), async () => {
-      const source = await this.source.getHtml(charactersUrl('anime', malId), ['js-anime-character-table']);
+      const source = await this.source.getHtml(charactersUrl('anime', malId), ['js-anime-character-table'], CHARACTER_PAGE_BUDGET);
       if (source.kind !== 'success') throw sourceError(source);
       const value = { characters: parseCharacters(source.value, 'anime'), staff: parseStaff(source.value) };
       const fetchedAt = new Date().toISOString();
       await this.catalog.put(cacheKey, value, fetchedAt, CHARACTERS_STAFF_PARSER_VERSION);
       return value;
-    }, requestId);
+    }, requestId, refreshLeaseSecondsFor(CHARACTER_PAGE_BUDGET));
   }
 
   async characters(rawId: string, requestId: string): Promise<ServiceResponse<CharacterRole[]>> {
