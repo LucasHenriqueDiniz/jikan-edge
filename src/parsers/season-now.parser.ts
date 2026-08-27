@@ -15,6 +15,27 @@ export type SeasonParseResult =
 
 const CARD_MARKER = 'js-seasonal-anime';
 
+// MAL tags each seasonal card with its media type in the card's own class list, next to the
+// `js-anime-type-all` that every card carries: `class="... js-seasonal-anime js-anime-type-all
+// js-anime-type-5"`. The obvious-looking alternative — the `<div class="anime-header">TV (New)</div>`
+// above each block — is the wrong anchor: the schedule page reuses these same cards under *day*
+// headings, so there the heading says "Monday". The card's own class is right on both pages.
+//
+// The ids were resolved against three detail pages each rather than guessed from the headers, which
+// matters for two of them: `9` sits under a heading that reads "Special" but is `TV Special` on the
+// detail page, and `0` is MAL's own `Unknown` (61 of the 415 upcoming entries), not a parse failure.
+// An id outside this table stays null rather than becoming an invented label.
+const TYPE_BY_ID: Record<string, string> = {
+  '0': 'Unknown', '1': 'TV', '2': 'OVA', '3': 'Movie', '4': 'Special', '5': 'ONA', '9': 'TV Special',
+};
+
+// Bounded to the head of the chunk because that is where the wrapper's class attribute is — the
+// longest real prefix seen is `r18 js-r18 js-anime-type-all js-anime-type-N`, 46 characters.
+function typeOf(chunk: string): string | null {
+  const id = chunk.slice(0, 200).match(/js-anime-type-(\d+)/)?.[1];
+  return id === undefined ? null : TYPE_BY_ID[id] ?? null;
+}
+
 function cardChunks(html: string): string[] {
   return html.split(CARD_MARKER).slice(1);
 }
@@ -27,7 +48,7 @@ function parseCard(chunk: string): AnimeListEntry | null {
     title: decodeHtml(link[2]),
     imageUrl: imageFrom(chunk),
     score: numeric(chunk.match(/class="js-score">([\d.]+)<\/span>/i)?.[1] ?? null),
-    type: null,
+    type: typeOf(chunk),
     episodes: numeric(chunk.match(/<span>(\d+)\s*eps?<\/span>/i)?.[1] ?? null),
     startDate: chunk.match(/class="js-start_date">(\d+)<\/span>/i)?.[1] ?? null,
     members: numeric(chunk.match(/class="js-members">(\d+)<\/span>/i)?.[1] ?? null),

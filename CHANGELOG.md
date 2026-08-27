@@ -47,6 +47,19 @@ section, the date here is the one it reached production, not the one it was writ
 
 ### Fixed
 
+- **Every seasonal entry said its `type` was `null`.** All 891 entries across `GET /v1/seasons/now`,
+  `/v1/seasons/upcoming` and `/v1/seasons/:year/:season`, plus all 130 in `GET /v1/schedules`,
+  reported `"type": null`. Not one entry in the group had a type, so anything that sorted or grouped
+  by media type — TV versus movie versus ONA — had nothing to work with.
+
+  They now carry the same value the detail route gives for the same anime: `TV`, `OVA`, `Movie`,
+  `Special`, `ONA`, `TV Special`, or `Unknown` where MyAnimeList itself says unknown (61 of the 415
+  upcoming entries, which is the honest answer for a show that has not announced a format yet).
+  Verified across 1,021 live entries with no nulls left, and one sample of each type checked against
+  `/v1/anime/:id`.
+
+  Cached seasons and schedules refresh into the new shape on their next read.
+
 - **Browsing by genre alone returned nothing, for every genre and both media types.** `GET
   /v1/anime?genres=1` answered `200` with `"data": []` — for Action, which has 5012 titles by this
   API's own `/v1/genres/anime` count. `GET /v1/manga?genres=1` did the same. Every genre id was

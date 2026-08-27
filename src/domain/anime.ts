@@ -106,4 +106,6 @@ export const ANIME_PARSER_VERSION = 'anime-html-v2';
 // detail — a stampede against MyAnimeList for a change that touched neither. `AnimeListEntry` and
 // `AnimeDetail` are different shapes produced by different parsers; they get different versions.
 export const TOP_ANIME_PARSER_VERSION = 'top-anime-html-v1';
-export const SEASON_PARSER_VERSION = 'season-html-v1';
+// v2: every seasonal entry carried `type: null`, so the cached rows are all missing a field that
+// now has a value. Schedules read the same card parser and bump alongside it.
+export const SEASON_PARSER_VERSION = 'season-html-v2';

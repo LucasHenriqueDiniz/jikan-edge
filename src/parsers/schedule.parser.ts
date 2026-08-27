@@ -5,7 +5,9 @@ import { parseSeasonalEntries } from './season-now.parser';
 export const SCHEDULE_DAYS = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday', 'other', 'unknown'] as const;
 export type ScheduleDay = (typeof SCHEDULE_DAYS)[number];
 export type ScheduleByDay = Record<ScheduleDay, AnimeListEntry[]>;
-export const SCHEDULE_PARSER_VERSION = 'schedule-html-v3';
+// v4: the shared seasonal card parser started emitting `type`, which was null on every entry here
+// too — the schedule reuses the same cards, one day heading at a time.
+export const SCHEDULE_PARSER_VERSION = 'schedule-html-v4';
 
 export function parseScheduleByDay(html: string): ScheduleByDay {
   const result = Object.fromEntries(SCHEDULE_DAYS.map((day) => [day, []])) as unknown as ScheduleByDay;
