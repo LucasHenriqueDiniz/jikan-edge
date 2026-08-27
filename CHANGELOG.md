@@ -8,11 +8,14 @@ This file starts on 2026-07-30 and does not reconstruct earlier history.
 
 ## 2026-08-27
 
-Published versions: `4ce71084`, `9d3445dd`, `a07e0742`, `629508ce`, and the one carrying the
-per-call fetch budget — **to be confirmed**, since an entry can never name the version that ships
-it (same structural gap as the 2026-08-16 section).
+Published versions: `4ce71084`, `9d3445dd`, `a07e0742`, `629508ce`, `ebeba400`, `5b41891e`,
+`f2b389cd`. The deploy publishing this filled-in line is not named — an entry can never name the
+version that ships it, the same structural gap as the 2026-08-16 section.
 
-`629508ce` raised the size ceiling to 5 MiB, recovering five of the seven affected titles.
+Of those, two carried the fixes below: `629508ce` raised the size ceiling to 5 MiB, recovering five
+of the seven affected titles, and `5b41891e` added the per-call fetch budget that recovered the
+remaining two. The rest are documentation and a line-ending correction, with no change in
+behaviour.
 
 The `?sfw` item below was written on 2026-08-26 and merged the next morning. As with the 2026-08-16
 section, the date here is the one it reached production, not the one it was written on.
