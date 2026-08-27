@@ -9,10 +9,13 @@ export type RandomKind = keyof typeof TABLES;
 export class RandomService {
   constructor(private readonly db: D1Database) {}
 
-  async pick(kind: RandomKind): Promise<unknown> {
-    const row = await this.db.prepare(`SELECT payload_json FROM ${TABLES[kind]} ORDER BY RANDOM() LIMIT 1`).first<{ payload_json: string }>();
+  // The row's own `fetched_at` comes back with it: this is the one read path that never refreshes,
+  // so without it the caller has no way to tell a picked entity scraped an hour ago from one that
+  // has been sitting in the catalog since the day it was first requested.
+  async pick(kind: RandomKind): Promise<{ data: unknown; fetchedAt: string }> {
+    const row = await this.db.prepare(`SELECT payload_json, fetched_at FROM ${TABLES[kind]} ORDER BY RANDOM() LIMIT 1`).first<{ payload_json: string; fetched_at: string }>();
     if (!row) throw new ServiceError('NO_LOCAL_ENTRIES', 404, `No ${kind} entries cached locally yet; fetch some detail pages first.`);
-    return JSON.parse(row.payload_json);
+    return { data: JSON.parse(row.payload_json), fetchedAt: row.fetched_at };
   }
 
   async pickUser(): Promise<{ username: string }> {

@@ -46,7 +46,32 @@ section, the date here is the one it reached production, not the one it was writ
   **Nothing about the bodies changed**, and no request that worked before behaves differently. If
   you ignore the new headers you get exactly what you got yesterday.
 
+### Changed
+
+- **The five `/v1/random/*` routes now all answer the same `meta` shape.** Four of them
+  (`anime`, `manga`, `characters`, `people`) returned `meta: { requestId }` while
+  `/v1/random/users` returned the standard `cached`, `stale`, `refreshFailed` and `fetchedAt`. A
+  client reading `meta.fetchedAt` got `undefined` on four routes of the same group and a real value
+  on the fifth. All five now return the standard four fields.
+
+  **`requestId` is gone from the body of those four successful responses.** It was the only one of
+  93 successful responses in this API that carried it — `requestId` belongs to error bodies, where
+  it is the handle to quote in a bug report, and every error still carries it. If you were reading
+  it from a `200` on these routes, it was available nowhere else, so nothing else in your code
+  depended on it.
+
+  `stale` on those four is worked out from the age of the stored entity, because they are the only
+  reads that never refresh: a pick can hand you something scraped weeks ago, and now says so.
+  `cached` is always `true` and `refreshFailed` always `false` — the entity comes from the local
+  catalogue and nothing was fetched to get it.
+
 ### Fixed
+
+- **`GET /v1/random/users` was cacheable, which made it not random.** It answered
+  `Cache-Control: public, max-age=21599`, so a shared cache or CDN would store one "random" user and
+  hand that same profile to everyone for six hours. The other four picks already said `no-store`;
+  this one reads a real profile through the normal caching path and inherited that profile's
+  lifetime. It now says `no-store` like the rest of the group.
 
 - **Every seasonal entry said its `type` was `null`.** All 891 entries across `GET /v1/seasons/now`,
   `/v1/seasons/upcoming` and `/v1/seasons/:year/:season`, plus all 130 in `GET /v1/schedules`,

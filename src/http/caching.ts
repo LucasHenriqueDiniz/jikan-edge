@@ -17,6 +17,21 @@ export interface Freshness {
 export const NO_STORE = 'no-store';
 
 /**
+ * Whether a stored row has outlived its TTL.
+ *
+ * `withCache` works this out internally and reports it as `meta.stale`. The random picks are the
+ * one read path that bypasses `withCache` entirely — they draw a row straight from the local
+ * catalogue and never refresh it — so they compute the same answer here rather than claiming a
+ * freshness nobody checked. An unreadable timestamp counts as stale: not knowing how old a payload
+ * is is not a reason to call it fresh.
+ */
+export function isStale(fetchedAt: string, ttlSeconds: number, now = Date.now()): boolean {
+  const fetchedAtMs = Date.parse(fetchedAt);
+  if (Number.isNaN(fetchedAtMs)) return true;
+  return now - fetchedAtMs >= ttlSeconds * 1_000;
+}
+
+/**
  * `Cache-Control` for a successful response, or `null` when the caller has no TTL to advertise.
  *
  * max-age is the freshness that REMAINS, not the whole TTL. A resource fetched five hours into a

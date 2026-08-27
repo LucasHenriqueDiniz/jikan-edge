@@ -95,8 +95,11 @@ describe('D1 integration: catalog repositories', () => {
     const random = new RandomService(bindings.DB);
     await expect(random.pick('anime')).rejects.toMatchObject({ code: 'NO_LOCAL_ENTRIES', status: 404 });
     await new AnimeRepository(bindings.DB).put(detail(42), fetchedAt, 'test');
-    const picked = await random.pick('anime') as AnimeDetail;
-    expect(picked.malId).toBe(42);
+    const picked = await random.pick('anime');
+    expect((picked.data as AnimeDetail).malId).toBe(42);
+    // The row's own timestamp comes back with it: this read path never refreshes, so it is the only
+    // thing that tells a caller how old the picked entity is.
+    expect(picked.fetchedAt).toBe(fetchedAt);
   });
 
   it('stores and overwrites list-shaped catalog resources by key', async () => {
