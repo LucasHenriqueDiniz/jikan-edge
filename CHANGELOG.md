@@ -6,10 +6,12 @@ Changes that matter to anyone **consuming** the API. The technical detail behind
 
 This file starts on 2026-07-30 and does not reconstruct earlier history.
 
-## 2026-08-26
+## 2026-08-27
 
-Published version: to be confirmed — the id only exists once the push-triggered build lands
-(`npx wrangler deployments list`).
+Published version: `4ce71084`.
+
+Written on 2026-08-26 and merged the next morning. As with the 2026-08-16 section, the date here is
+the one it reached production, not the one it was written on.
 
 ### Fixed
 
