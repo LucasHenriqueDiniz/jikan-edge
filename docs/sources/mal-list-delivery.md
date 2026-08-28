@@ -1,53 +1,53 @@
-# Entrega de listas pelo MAL
+# How MAL delivers lists
 
-## Estado atual (2026-07-30)
+## Current state (2026-07-30)
 
-O MAL renderiza a lista de um usuário em **dois layouts diferentes**, e qual deles é servido depende de uma configuração do próprio usuário — não da URL, não do User-Agent, não da rede:
+MAL renders a user's list in **two different layouts**, and which one is served depends on a setting the user controls — not on the URL, not on the User-Agent, not on the network:
 
-- **Clássico**: tabela renderizada no servidor, com âncoras `class="animetitle"`.
-- **Moderno**: as entradas vêm como um array JSON dentro do atributo `data-items`; a tabela é montada por JS.
+- **Classic**: a server-rendered table, with `class="animetitle"` anchors.
+- **Modern**: the entries come as a JSON array inside the `data-items` attribute; the table is assembled by JS.
 
-A URL da lista precisa do parâmetro **`?status=7`** (a aba "All"). Sem ele:
+The list URL needs the **`?status=7`** parameter (the "All" tab). Without it:
 
-- no layout moderno a página traz **uma única entrada** — o resto viria de `load.json`, endpoint interno que `docs/source-policy.md` proíbe;
-- no layout clássico a página traz **menos linhas do que o perfil declara**.
+- in the modern layout the page carries **a single entry** — the rest would come from `load.json`, an internal endpoint `docs/source-policy.md` forbids;
+- in the classic layout the page carries **fewer rows than the profile declares**.
 
-Com `?status=7`, os dois layouts servem a lista inteira a partir da página pública. Paginação por `&offset=` em blocos de 300 se aplica **só ao layout moderno**; o clássico ignora o offset e devolve tudo num documento só.
+With `?status=7`, both layouts serve the whole list from the public page. Pagination via `&offset=` in blocks of 300 applies **only to the modern layout**; the classic one ignores the offset and returns everything in a single document.
 
-Medições reais (2026-07-30), conferidas contra o `totalEntries` que `/v1/users/:u/statistics` reporta para cada usuário:
+Real measurements (2026-07-30), checked against the `totalEntries` that `/v1/users/:u/statistics` reports for each user:
 
-| Usuário | Layout | Sem `status=7` | Com `status=7` | Perfil declara |
+| User | Layout | Without `status=7` | With `status=7` | Profile declares |
 | --- | --- | ---: | ---: | ---: |
-| AMayacrab | clássico | 273 | 360 | 360 |
-| Zel | clássico | 514 | 514 | 514 |
-| Xinil | moderno | 1 | 300 + 99 = 399 | 399 |
-| jet2r0cks | moderno | 1 | 898 | 898 |
-| Karinyia | moderno | 1 | 2.354 (8 páginas) | 2.354 |
+| AMayacrab | classic | 273 | 360 | 360 |
+| Zel | classic | 514 | 514 | 514 |
+| Xinil | modern | 1 | 300 + 99 = 399 | 399 |
+| jet2r0cks | modern | 1 | 898 | 898 |
+| Karinyia | modern | 1 | 2,354 (8 pages) | 2,354 |
 
-**Título numérico chega como número JSON, não string.** O MAL não põe aspas quando o título parece um número: `86` (o anime *86 Eighty-Six*), `1`, `663114`. Ler só strings esvaziava esses títulos, e um título vazio reprova no schema — como um item inválido rejeita a página inteira, um único anime chamado "86" derrubava uma lista de 2.354 entradas.
+**A numeric title arrives as a JSON number, not a string.** MAL does not add quotes when the title looks like a number: `86` (the anime *86 Eighty-Six*), `1`, `663114`. Reading only strings emptied those titles, and an empty title fails the schema — since one invalid item rejects the whole page, a single anime called "86" brought down a list of 2,354 entries.
 
-**O atributo `data-items` tem que ser lido cru.** Passá-lo pelo helper `decodeHtml` (usado por `capture()`) corrompe o payload em silêncio: ele decodifica `&amp;` antes de `&quot;`, remove qualquer coisa com formato de tag e colapsa espaços repetidos — os três destroem título ou JSON sem levantar erro.
+**The `data-items` attribute has to be read raw.** Passing it through the `decodeHtml` helper (used by `capture()`) corrupts the payload silently: it decodes `&amp;` before `&quot;`, strips anything tag-shaped and collapses repeated whitespace — all three destroy the title or the JSON without raising an error.
 
-## Guards de completude
+## Completeness guards
 
-A página de lista **não declara em lugar nenhum quantas entradas a lista tem** — os contadores ao lado de "All Anime" são desenhados por JS. Então não existe total a extrair do documento, e a única comparação possível é contra o `totalEntries` do perfil já persistido no D1:
+The list page **declares nowhere how many entries the list has** — the counters next to "All Anime" are drawn by JS. So there is no total to extract from the document, and the only possible comparison is against the `totalEntries` of the profile already persisted in D1:
 
-- extrair **menos** que o declarado → snapshot rejeitado (502), com as contagens na mensagem;
-- extrair **mais** → aceito: um contador cacheado antes de o usuário adicionar entradas fica legitimamente para trás;
-- sem perfil em cache → sem contador, lista servida sem essa checagem.
+- extracting **fewer** than declared → snapshot rejected (502), with the counts in the message;
+- extracting **more** → accepted: a counter cached before the user added entries legitimately lags behind;
+- with no cached profile → no counter, and the list is served without that check.
 
-Além disso: snapshot só é aceito com IDs únicos e marcador terminal `</html>`; lista vazia, HTML truncado, duplicatas ou item inválido resultam em rejeição e **nunca** substituem o que já está no D1. Passar do teto de 20 páginas (6.000 entradas) levanta 501 `LIST_TOO_LARGE` em vez de gravar um prefixo.
+Beyond that: a snapshot is only accepted with unique IDs and a terminal `</html>` marker; an empty list, truncated HTML, duplicates or an invalid item all result in rejection and **never** replace what is already in D1. Passing the ceiling of 20 pages (6,000 entries) raises a 501 `LIST_TOO_LARGE` instead of storing a prefix.
 
-## Registro histórico — o que se acreditava em 2026-07-19, e por que estava errado
+## Historical record — what was believed on 2026-07-19, and why it was wrong
 
-A versão anterior deste documento afirmava:
+The previous version of this document stated:
 
-> Em 2026-07-19, `https://myanimelist.net/animelist/AMayacrab` retornou 595.422 bytes e 273 links de anime (…). A inspeção do HTML não encontrou `offset`, `page`, `ajax` ou `xhr`. Decisão atual: tratar a página como um snapshot de uma única página.
+> On 2026-07-19, `https://myanimelist.net/animelist/AMayacrab` returned 595,422 bytes and 273 anime links (…). Inspecting the HTML found no `offset`, `page`, `ajax` or `xhr`. Current decision: treat the page as a single-page snapshot.
 
-Três erros, todos confirmados em 2026-07-30:
+Three errors, all confirmed on 2026-07-30:
 
-1. **Os 273 links eram a lista truncada, não a lista.** O perfil do AMayacrab declara 360 entradas. O número foi registrado como se fosse o total, e a API serviu 273 como resposta 200 até ser corrigida — o modo de falha mais perigoso encontrado no projeto até agora, porque não havia erro nenhum.
-2. **`offset` existe e funciona** como query param na URL pública. A busca por essas palavras no HTML não achou porque o JS as constrói.
-3. **A conclusão de "página única" foi generalizada de um único perfil** que por acaso usava o layout clássico. O AMayacrab foi o perfil de referência do projeto inteiro, e o layout moderno — que quebrava a rota com 502 — só apareceu ao varrer usuários diferentes.
+1. **The 273 links were the truncated list, not the list.** AMayacrab's profile declares 360 entries. The number was recorded as if it were the total, and the API served 273 as a 200 response until it was fixed — the most dangerous failure mode found in this project so far, because there was no error at all.
+2. **`offset` exists and works** as a query param on the public URL. Searching the HTML for those words found nothing because JS builds them.
+3. **The "single page" conclusion was generalized from one profile** that happened to use the classic layout. AMayacrab was the reference profile for the whole project, and the modern layout — which broke the route with a 502 — only surfaced when sweeping different users.
 
-A lição prática: um perfil de referência não é amostra. Ao mexer em listas, teste ao menos um usuário de cada layout e confira a contagem contra o `totalEntries` do perfil.
+The practical lesson: a reference profile is not a sample. When touching lists, test at least one user of each layout and check the count against the profile's `totalEntries`.

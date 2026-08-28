@@ -1,30 +1,30 @@
-# P0 — progresso de endurecimento
+# P0 — hardening progress
 
-Data: 2026-07-19.
+Date: 2026-07-19.
 
-> **Correção posterior (2026-07-30).** A conclusão sobre listas registrada abaixo estava errada e virou bug em produção: os 273 links eram a lista **truncada** (o perfil declara 360), `offset` existe e funciona como query param, e a generalização de "snapshot inteiro em um fetch" veio de um único perfil que por acaso usava o layout clássico. O estado correto está em [`docs/sources/mal-list-delivery.md`](../sources/mal-list-delivery.md). O texto original segue abaixo como registro do que se sabia na data.
+> **Later correction (2026-07-30).** The conclusion about lists recorded below was wrong and turned into a production bug: the 273 links were the **truncated** list (the profile declares 360), `offset` does exist and works as a query param, and the generalization of "the whole snapshot in one fetch" came from a single profile that happened to use the classic layout. The correct state is in [`docs/sources/mal-list-delivery.md`](../sources/mal-list-delivery.md). The original text follows below as a record of what was known on that date.
 
-## Feito nesta etapa
+## Done in this stage
 
-- Lista pública de `AMayacrab` inspecionada diretamente: anime retornou 273 links em 595.422 bytes; manga, 227 links em 509.234 bytes. Em ambos os HTMLs não houve `offset`, `page`, `ajax` ou `xhr`. Para esse usuário, a lista é snapshot inteiro em um fetch por mídia.
-- Parser de lista já recusa IDs duplicados e itens que falhem validação, preservando o snapshot D1 anterior.
-- Cliente MAL usa redirects manuais, no máximo três, e valida HTTPS/host exato a cada salto. Redirect externo é rejeitado.
-- User-Agent agora referencia o endpoint real, sem `replace-me`.
-- Rate Limiting API nativa: 60 requisições/60 s por IP e rota. É local ao colo e permissiva/eventualmente consistente, conforme a API da Cloudflare; protege o upstream mas não serve como contabilidade global.
-- Métrica JSON `operation_metric` emitida por requisição, incluindo rota, status, duração e resultado de limitação.
-- Worker publicado na versão `6f4f4942-a00a-4e09-84e7-d03705afbab4`.
+- `AMayacrab`'s public list inspected directly: anime returned 273 links in 595,422 bytes; manga, 227 links in 509,234 bytes. Neither HTML contained `offset`, `page`, `ajax` or `xhr`. For that user, the list is a whole snapshot in one fetch per medium.
+- The list parser already refuses duplicate IDs and items that fail validation, preserving the previous D1 snapshot.
+- The MAL client uses manual redirects, at most three, and validates HTTPS and the exact host at every hop. An external redirect is rejected.
+- The User-Agent now references the real endpoint, with no `replace-me`.
+- Native Rate Limiting API: 60 requests/60 s per IP and route. It is colo-local and permissive/eventually consistent, as Cloudflare's API states; it protects upstream but does not serve as global accounting.
+- A JSON `operation_metric` is emitted per request, including route, status, duration and limiting outcome.
+- Worker published as version `6f4f4942-a00a-4e09-84e7-d03705afbab4`.
 
-## Ainda pendente no P0
+## Still pending in P0
 
-- Harness de integração com D1 que prove cache fresh/stale, fonte indisponível, resposta suspeita e leases concorrentes/abandonados.
-- Amostra confiável de usuários pequeno/médio/muito grande: duas tentativas adicionais de usuários públicos retornaram documentos sem cards, possivelmente bloqueio/estado de fonte, e não devem ser tratados como benchmark.
-- Investigação conclusiva de 1042/404. A documentação oficial define 1042 como fetch de Worker para Worker na mesma zona sem `global_fetch_strictly_public`; o Worker não faz fetch para sua própria zona. A ocorrência observada fica fora do código e requer traces/logs Cloudflare para correlação.
+- An integration harness with D1 that proves fresh/stale cache, an unavailable source, a suspicious response and concurrent/abandoned leases.
+- A reliable sample of small/medium/very large users: two further attempts at public users returned documents with no cards, possibly a block or source state, and should not be treated as a benchmark.
+- A conclusive investigation of 1042/404. The official documentation defines 1042 as a Worker-to-Worker fetch within the same zone without `global_fetch_strictly_public`; the Worker does not fetch its own zone. The observed occurrence falls outside the code and requires Cloudflare traces/logs for correlation.
 
-## Validação
+## Validation
 
-`typecheck`, 11 testes, dry-run, migração local e benchmark concluíram com sucesso. O benchmark segue sendo somente microbenchmark de parser.
+`typecheck`, 11 tests, a dry run, the local migration and the benchmark all completed successfully. The benchmark is still only a parser microbenchmark.
 
-## Fontes
+## Sources
 
 - [Cloudflare Rate Limiting API](https://developers.cloudflare.com/workers/runtime-apis/bindings/rate-limit/)
 - [Cloudflare error 1042](https://developers.cloudflare.com/workers/observability/errors/)

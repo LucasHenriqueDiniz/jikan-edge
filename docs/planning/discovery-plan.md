@@ -1,40 +1,40 @@
-# Plano de descoberta
+# Discovery plan
 
-## Objetivo
+## Goal
 
-Transformar a hipótese "Jikan Cloudflare-native no Free" em uma decisão de viabilidade baseada em medições. Este plano não autoriza construir o produto.
+Turn the hypothesis "a Cloudflare-native Jikan on Free" into a viability decision based on measurements. This plan does not authorize building the product.
 
-## Bloqueadores P0
+## P0 blockers
 
-| Pergunta | Por que bloqueia | Evidência necessária | Go/no-go |
+| Question | Why it blocks | Evidence required | Go/no-go |
 | --- | --- | --- | --- |
-| A fonte permite e atende fetches da Cloudflare? | Sem fonte estável não há ingestão sustentável. | amostra em dias e regiões, status, conteúdo, sinais de bloqueio e termos aplicáveis | bloquear scraping se houver bloqueio persistente ou vedação aplicável |
-| O parser mínimo cabe no Free? | Workers Free limita CPU por invocação a 10 ms. | p50/p95 e falhas em corpus representativo | avançar apenas com p95 abaixo de 8 ms e sem estouros no corpus |
-| O modelo D1 + R2 cabe no orçamento? | Escritas e busca podem esgotar franquias antes do tráfego. | custo por entidade, tamanho e consulta em corpus real | avançar apenas com projeção abaixo de 70% da franquia-alvo |
+| Does the source allow and serve fetches from Cloudflare? | Without a stable source there is no sustainable ingestion. | a sample across days and regions, status, content, block signals and the applicable terms | block scraping if there is a persistent block or an applicable prohibition |
+| Does the minimal parser fit on Free? | Workers Free caps CPU per invocation at 10 ms. | p50/p95 and failures across a representative corpus | proceed only with p95 below 8 ms and no overruns in the corpus |
+| Does the D1 + R2 model fit the budget? | Writes and search can exhaust the allowances before the traffic does. | cost per entity, size and query over a real corpus | proceed only with a projection below 70% of the target allowance |
 
-## Experimentos, quando liberados
+## Experiments, once released
 
-1. **Probe de fonte:** uma rota mínima e privada para casos pré-definidos; registrar somente metadados seguros (status, tamanho, tipo, marcadores, duração e região).
-2. **Parser vertical:** uma entidade anime por ID e campos mínimos; medir CPU em ao menos 50 páginas diversas.
-3. **Persistência:** documento versionado no R2 e metadados no D1; medir escrita, leitura e cache.
-4. **Busca:** corpus de pelo menos 30 mil títulos/aliases; avaliar inglês, romaji e japonês com FTS5.
-5. **Deduplicação:** simular alto volume de pedidos para o mesmo item expirado; validar um único refresh.
-6. **Mapa de rede:** documentar o que é HTML, XHR e endpoint autenticado, sem tornar endpoint interno uma dependência do MVP.
+1. **Source probe:** a minimal, private route for predefined cases; record only safe metadata (status, size, type, markers, duration and region).
+2. **Vertical parser:** one anime entity by ID with minimal fields; measure CPU across at least 50 diverse pages.
+3. **Persistence:** a versioned document in R2 and metadata in D1; measure write, read and cache.
+4. **Search:** a corpus of at least 30 thousand titles/aliases; evaluate English, romaji and Japanese with FTS5.
+5. **Deduplication:** simulate a high volume of requests for the same expired item; validate that only one refresh happens.
+6. **Network map:** document what is HTML, what is XHR and what is an authenticated endpoint, without making an internal endpoint an MVP dependency.
 
-## Artefatos esperados
+## Expected artifacts
 
 - `docs/results/cloudflare-source-probe.md`
 - `docs/results/parser-cpu.md`
 - `docs/results/storage-budget.md`
 - `docs/results/d1-search.md`
 - `docs/sources/mal-network-map.md`
-- uma decisão go/no-go em `docs/adr/`
+- a go/no-go decision in `docs/adr/`
 
-## Critérios de sucesso do futuro spike
+## Success criteria for the future spike
 
-- A fonte se mantém disponível e dentro das regras aplicáveis.
-- Nenhum resultado suspeito substitui um documento válido.
-- O parser principal mantém margem para o limite de CPU.
-- O cache reduz trabalho repetido e a API consegue responder com dados stale durante falha da fonte.
-- A busca encontra títulos em múltiplas grafias sem varreduras caras.
-- Há uma projeção clara do ponto em que o Free deixa de ser suficiente.
+- The source stays available and within the applicable rules.
+- No suspicious result replaces a valid document.
+- The main parser keeps headroom against the CPU limit.
+- The cache reduces repeated work and the API can answer with stale data during a source failure.
+- Search finds titles across multiple spellings without expensive sweeps.
+- There is a clear projection of the point at which Free stops being enough.

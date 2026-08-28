@@ -1,62 +1,62 @@
-# Auditoria técnica do vertical slice — jikan-edge
+# Technical audit of the vertical slice — jikan-edge
 
-Data: 2026-07-19. Escopo: código local, D1 remoto, binding R2, configuração Wrangler e Worker publicado. Não foram adicionadas rotas.
+Date: 2026-07-19. Scope: local code, remote D1, the R2 binding, the Wrangler configuration and the published Worker. No routes were added.
 
-## Resultado objetivo
+## Objective result
 
-**Não pronto para integrar ao WeebProfile em produção.** O fluxo básico funciona, mas faltam testes de integração para cache/leases, proteção de abuso, instrumentação, e a coleta de listas ainda depende de um único HTML e de parser regex frágil. Está apto apenas para continuação controlada de desenvolvimento.
+**Not ready to integrate into WeebProfile in production.** The basic flow works, but it lacks integration tests for cache/leases, abuse protection and instrumentation, and list collection still depends on a single HTML document and a fragile regex parser. It is fit only for controlled continued development.
 
-## Rotas e fluxo confirmado
+## Confirmed routes and flow
 
-| Rota | Upstream/fetches | Parser | D1 leitura/escrita | hit/miss/stale e falha |
+| Route | Upstream/fetches | Parser | D1 read/write | hit/miss/stale and failure |
 | --- | --- | --- | --- | --- |
-| `/health` | nenhum | nenhum | nenhum | 200 sempre que Worker responder |
-| `/v1/users/:username` | `/profile/:username`, 1 no miss | `parseUserProfile`; também estatísticas | lê `cache_entries`,`users`; escreve `users`,`user_statistics`,`cache_entries`,`refresh_leases` | hit fresh 200 cached; miss atualiza; stale retorna 200 com `stale:true`; sem cache e falha retorna 404/403/429/502/503/504 |
-| `/statistics` | delega ao perfil; 0 no hit, 1 no miss | `parseUserStatistics` | idem, depois lê `user_statistics` | mesmas regras do perfil |
-| `/animelist` | `/animelist/:username`, 1 no miss | `parseUserAnimeList` | lê `cache_entries`,`user_media_list_entries`; escreve lista, cache e lease | hit pagina D1; stale preserva lista; sem cache falha conforme acima |
-| `/mangalist` | `/mangalist/:username`, 1 no miss | `parseUserMangaList` | idem para manga | idem |
+| `/health` | none | none | none | 200 whenever the Worker answers |
+| `/v1/users/:username` | `/profile/:username`, 1 on a miss | `parseUserProfile`; statistics too | reads `cache_entries`,`users`; writes `users`,`user_statistics`,`cache_entries`,`refresh_leases` | a fresh hit is a cached 200; a miss refreshes; stale returns 200 with `stale:true`; with no cache and a failure it returns 404/403/429/502/503/504 |
+| `/statistics` | delegates to the profile; 0 on a hit, 1 on a miss | `parseUserStatistics` | the same, then reads `user_statistics` | the same rules as the profile |
+| `/animelist` | `/animelist/:username`, 1 on a miss | `parseUserAnimeList` | reads `cache_entries`,`user_media_list_entries`; writes the list, cache and lease | a hit paginates over D1; stale preserves the list; with no cache it fails as above |
+| `/mangalist` | `/mangalist/:username`, 1 on a miss | `parseUserMangaList` | the same for manga | the same |
 
-TTLs confirmados em `wrangler.jsonc`: perfil/estatísticas 21.600 s; listas 7.200 s. A resposta suspeita é rejeitada pelo cliente de fonte antes da persistência. A revisão corrigiu ainda o caso de IDs repetidos/item Zod inválido no parser: agora lança `ParserError`, e o stale existente é preservado.
+TTLs confirmed in `wrangler.jsonc`: profile/statistics 21,600 s; lists 7,200 s. A suspicious response is rejected by the source client before persistence. The review also fixed the case of repeated IDs / an invalid Zod item in the parser: it now throws `ParserError`, and the existing stale data is preserved.
 
-## Cache, leases e listas
+## Cache, leases and lists
 
-- **Cache fresh/upstream disponível ou indisponível:** confirmado por fluxo de código; não chama upstream.
-- **Stale/upstream disponível:** parcial; o código faz refresh síncrono e substitui o snapshot se o parser aceitar.
-- **Stale/upstream indisponível e HTML suspeito:** confirmado por fluxo; devolve stale e não chega em `replaceList`/`saveProfile`.
-- **Sem cache/upstream indisponível:** confirmado por fluxo; erro mapeado, não escreve cache.
-- **Leases:** a aquisição é um `INSERT ... ON CONFLICT ... WHERE expires_at < now`; é uma única instrução D1 e portanto atômica por chave. `release` é condicionado pelo owner. Leases de recursos diferentes não conflitam. Não há teste de integração concorrente/abandono; estado: **não testado**.
-- **Listas:** `D1Database.batch` é transacional; delete e inserts fazem rollback juntos se uma instrução falhar. Porém não há paginação upstream, limite de tamanho/quantidade, detecção de mudança de markup além da extração, nem teste com lista grande real. Estado: **parcial**. O novo bloqueio de snapshot incompleto evita a corrupção silenciosa por duplicatas/itens inválidos que coincidam com o seletor.
+- **Fresh cache, upstream available or unavailable:** confirmed by code flow; it does not call upstream.
+- **Stale, upstream available:** partial; the code does a synchronous refresh and replaces the snapshot if the parser accepts it.
+- **Stale, upstream unavailable and suspicious HTML:** confirmed by flow; it returns stale and never reaches `replaceList`/`saveProfile`.
+- **No cache, upstream unavailable:** confirmed by flow; the error is mapped and nothing is written to cache.
+- **Leases:** acquisition is an `INSERT ... ON CONFLICT ... WHERE expires_at < now`; it is a single D1 statement and therefore atomic per key. `release` is conditioned on the owner. Leases for different resources do not conflict. There is no concurrent/abandonment integration test; state: **not tested**.
+- **Lists:** `D1Database.batch` is transactional; the delete and the inserts roll back together if a statement fails. However there is no upstream pagination, no size/count limit, no markup-change detection beyond the extraction itself, and no test with a large real list. State: **partial**. The new incomplete-snapshot block prevents silent corruption from duplicates or invalid items that happen to match the selector.
 
-## Estatísticas e benchmark
+## Statistics and benchmark
 
-`/statistics` não consulta uma página própria e não deriva as listas: extrai Anime Stats e Manga Stats da mesma página de perfil. A execução anterior contra `AMayacrab` retornou anime completed 288 e manga reading 51/plan-to-read 10; não há corpus persistido nem segunda coleta independente para comparar, logo a comparação exigida é **não testada**.
+`/statistics` does not query a page of its own and does not derive from the lists: it extracts Anime Stats and Manga Stats from the same profile page. The earlier run against `AMayacrab` returned anime completed 288 and manga reading 51 / plan-to-read 10; there is no persisted corpus and no second independent collection to compare against, so the required comparison is **not tested**.
 
-O número anterior de aproximadamente 0,12 ms mede apenas 100 invocações em memória de `parseUserProfile` sobre `tests/fixtures/users/profile-valid.html`, após `readFileSync` fora do loop. Não inclui fetch, validação `classifyHtml`, D1, Worker, serialização nem warmup explícito; não é p95 de produção. Não há corpus de tamanhos variados nem p99/média por parser: **não implementado**.
+The earlier figure of approximately 0.12 ms measures only 100 in-memory invocations of `parseUserProfile` over `tests/fixtures/users/profile-valid.html`, after a `readFileSync` outside the loop. It does not include the fetch, `classifyHtml` validation, D1, the Worker, serialization or an explicit warmup; it is not a production p95. There is no corpus of varied sizes and no p99/mean per parser: **not implemented**.
 
-## R2, segurança e observabilidade
+## R2, security and observability
 
-`SNAPSHOTS_BUCKET` está configurado, mas não é referenciado em `src/`: nenhum objeto, retenção, limpeza ou custo existe. Estado: **não implementado**; o binding é dispensável até haver um desenho de privacidade/retenção.
+`SNAPSHOTS_BUCKET` is configured but is not referenced in `src/`: no object, retention, cleanup or cost exists. State: **not implemented**; the binding is dispensable until there is a privacy/retention design.
 
-SSRF: **confirmado** — `MalClient` aceita apenas HTTPS e hostname exato `myanimelist.net`; URLs são internas e não vêm do cliente. Há timeout de 8 s e teto de 2 MiB. Queries D1 são parametrizadas; stack traces não são devolvidos. Username ASCII impede Unicode/percent-encoded. Parcial: redirects seguem sem revalidar o destino final, não há retry/backoff, rate limiting, CORS explícito ou métrica efetiva (`logMetric` é importado mas não chamado). O User-Agent ainda contém URL placeholder e deve apontar para contato real antes de produção.
+SSRF: **confirmed** — `MalClient` accepts only HTTPS and the exact hostname `myanimelist.net`; URLs are internal and do not come from the client. There is an 8 s timeout and a 2 MiB ceiling. D1 queries are parameterized; stack traces are not returned. An ASCII-only username blocks Unicode/percent-encoded input. Partial: redirects are followed without revalidating the final destination, and there is no retry/backoff, rate limiting, explicit CORS or effective metric (`logMetric` is imported but never called). The User-Agent still contains a placeholder URL and must point at a real contact before production.
 
-## Worker publicado e configuração
+## Published Worker and configuration
 
-O projeto/Worker foi renomeado e publicado como `jikan-edge`: `https://jikan-edge.lucas-hdo.workers.dev` (versão `b77586ca-7124-48e4-a8eb-6124b291a46a`). D1 remoto novo: `jikan-edge` (`71f8a596-7855-47a5-906c-9a1cf46e12ee`) com as 9 tabelas de domínio mais tabelas internas; R2 novo: `jikan-edge-snapshots`. Os recursos antigos `jikanv2` foram preservados, sem exclusão.
+The project/Worker was renamed and published as `jikan-edge`: `https://jikan-edge.lucas-hdo.workers.dev` (version `b77586ca-7124-48e4-a8eb-6124b291a46a`). New remote D1: `jikan-edge` (`71f8a596-7855-47a5-906c-9a1cf46e12ee`) with the 9 domain tables plus internal tables; new R2: `jikan-edge-snapshots`. The old `jikanv2` resources were preserved, not deleted.
 
-Matriz executada após deploy: `/health` 200; perfil `AMayacrab` 200 (primeiro miss); username percent-encoded `a%2Fb` 400; `animelist?limit=999` 200 com limite aplicado a 300; manga list 200/cached. Houve respostas intermitentes Cloudflare `1042`/404 ao executar chamadas consecutivas muito rápidas, inclusive em `animelist?limit=3`; a mesma rota respondeu logo em seguida. Isso não é tratado pelo Worker e reforça o estado **não pronto**. `curl -i https://jikan-edge.lucas-hdo.workers.dev/health` e `curl -i "https://jikan-edge.lucas-hdo.workers.dev/v1/users/AMayacrab/animelist?limit=3"` são reproduzíveis.
+Matrix executed after the deploy: `/health` 200; `AMayacrab` profile 200 (the first miss); percent-encoded username `a%2Fb` 400; `animelist?limit=999` 200 with the limit clamped to 300; manga list 200/cached. There were intermittent Cloudflare `1042`/404 responses when running consecutive calls very quickly, including on `animelist?limit=3`; the same route answered again right afterwards. That is not handled by the Worker and reinforces the **not ready** state. `curl -i https://jikan-edge.lucas-hdo.workers.dev/health` and `curl -i "https://jikan-edge.lucas-hdo.workers.dev/v1/users/AMayacrab/animelist?limit=3"` are reproducible.
 
-## Tabela final
+## Final table
 
-| Área | Estado | Evidência | Risco | Correção |
+| Area | State | Evidence | Risk | Fix |
 | ---- | ------ | --------- | ----- | -------- |
-| Rotas básicas | confirmado | `src/app.ts`, serviço e deploy | baixo | manter contratos testados |
-| Fonte/SSRF | parcial | allowlist/timeout/limite no cliente | médio | validar destino de redirect; contato real no UA |
-| Cache stale | parcial | `withCache` e validação | médio | testes de integração com D1/fetch falso |
-| Leases | parcial | upsert atômico no D1 | médio | testes concorrentes e telemetria |
-| Integridade de lista | parcial | batch transacional; correção de parser | alto | parser estruturado, limite e corpus real |
-| Paginação upstream | não implementado | um fetch/lista | alto | definir fonte/paginação antes de listas enormes |
-| Estatísticas | parcial | parser de perfil | médio | comparação automatizada e fixtures reais |
-| Benchmark | incorreto | teste smoke de 100 loops | médio | corpus e métricas completas |
-| R2 | não implementado | binding sem uso | baixo | remover binding ou desenhar retenção |
-| Rate limit/CORS/métricas | não implementado | código | alto | implementar antes de exposição pública |
-| Testes de integração | não implementado | somente 9 testes unitários | alto | D1/leases/cache e matriz HTTP |
+| Basic routes | confirmed | `src/app.ts`, the service and the deploy | low | keep the contracts tested |
+| Source/SSRF | partial | allowlist/timeout/limit in the client | medium | validate the redirect destination; a real contact in the UA |
+| Stale cache | partial | `withCache` and validation | medium | integration tests with D1 and a fake fetch |
+| Leases | partial | atomic upsert in D1 | medium | concurrent tests and telemetry |
+| List integrity | partial | transactional batch; parser fix | high | a structured parser, a limit and a real corpus |
+| Upstream pagination | not implemented | one fetch per list | high | define the source/pagination before very large lists |
+| Statistics | partial | the profile parser | medium | automated comparison and real fixtures |
+| Benchmark | incorrect | a 100-loop smoke test | medium | a corpus and complete metrics |
+| R2 | not implemented | an unused binding | low | remove the binding or design retention |
+| Rate limit/CORS/metrics | not implemented | the code | high | implement before public exposure |
+| Integration tests | not implemented | only 9 unit tests | high | D1/leases/cache and an HTTP matrix |

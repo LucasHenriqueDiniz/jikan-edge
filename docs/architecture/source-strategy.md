@@ -1,35 +1,35 @@
-# Estratégia de fonte — scraping público
+# Source strategy — public scraping
 
-> Estado: decisão de descoberta. Sem implementação.
+> State: a discovery decision. No implementation.
 
-## Decisão
+## Decision
 
-O `jikan-edge` investigará uma API própria baseada em scraping de páginas HTML públicas do MyAnimeList. A API oficial do MyAnimeList não entra no escopo inicial.
+`jikan-edge` will investigate an API of its own based on scraping MyAnimeList's public HTML pages. MyAnimeList's official API is out of the initial scope.
 
-## Motivação
+## Motivation
 
-O objetivo é reproduzir o modelo de dados públicos e cacheados que tornou o Jikan útil, sem depender da cobertura, credenciais ou contrato da API oficial.
+The goal is to reproduce the public, cached data model that made Jikan useful, without depending on the official API's coverage, credentials or contract.
 
-## Regras inegociáveis
+## Non-negotiable rules
 
-- Coletar somente conteúdo acessível publicamente e sem sessão.
-- Não automatizar login, não guardar cookies de usuário e não expor dados privados.
-- Não resolver CAPTCHA, burlar desafios, falsificar identidade de navegador ou contornar rate limits/bloqueios.
-- Não coletar no caminho síncrono da requisição do consumidor.
-- Aplicar cache, stale-while-revalidate, deduplicação de refresh, baixa cadência e backoff.
-- Validar status, tipo, título, marcadores esperados e schema antes de persistir uma resposta.
-- Preservar a última versão válida quando a fonte falhar ou responder conteúdo suspeito.
+- Collect only content that is publicly accessible and needs no session.
+- Do not automate login, do not store user cookies and do not expose private data.
+- Do not solve CAPTCHAs, defeat challenges, forge a browser identity or work around rate limits/blocks.
+- Do not collect on the synchronous path of a consumer's request.
+- Apply caching, stale-while-revalidate, refresh deduplication, a low cadence and backoff.
+- Validate the status, type, title, expected markers and schema before persisting a response.
+- Preserve the last valid version when the source fails or answers with suspicious content.
 
-## Consequência para a pesquisa
+## Consequence for the research
 
-As perguntas prioritárias passam a ser:
+The priority questions become:
 
-1. O HTML entregue a Workers é estável e semanticamente válido?
-2. O parser mínimo cabe no orçamento de CPU do plano Free?
-3. Qual cadência mantém a fonte estável sem comportamento abusivo?
-4. Que campos são realmente possíveis de extrair e manter?
-5. Como detectar alteração estrutural e degradar para dados stale?
+1. Is the HTML delivered to Workers stable and semantically valid?
+2. Does the minimal parser fit the Free plan's CPU budget?
+3. What cadence keeps the source stable without abusive behavior?
+4. Which fields is it actually possible to extract and maintain?
+5. How do we detect a structural change and degrade to stale data?
 
-## O que permanece pendente
+## What remains open
 
-Esta decisão não declara que scraping é permitido ou sustentável. Antes de qualquer implementação, o projeto ainda precisa verificar termos vigentes, executar um probe controlado e decidir o critério de interrupção diante de bloqueios ou alterações da fonte.
+This decision does not declare that scraping is permitted or sustainable. Before any implementation, the project still needs to verify the terms in force, run a controlled probe and decide the stopping criterion in the face of blocks or source changes.

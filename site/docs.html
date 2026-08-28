@@ -75,8 +75,8 @@ header nav a:hover { color: var(--paper); background: var(--panel); }
 .sidebar h4:first-child { margin-top: 0; }
 .sidebar a { display: block; text-decoration: none; color: var(--paper-dim); font-size: 13.5px; padding: 4px 10px; border-left: 2px solid var(--line); }
 .sidebar a:hover { color: var(--vermillion); border-left-color: var(--vermillion); }
-/* Marca a seção que está sendo lida. O peso e a barra à esquerda carregam o estado juntos, para
-   não depender só de cor. */
+/* Marks the section being read. The weight and the bar on the left carry the state together, so it
+   does not depend on color alone. */
 .sidebar a.active { color: var(--paper); border-left-color: var(--vermillion); background: var(--vermillion-soft); font-weight: 600; }
 .sidebar a:focus-visible { outline: 2px solid var(--vermillion); outline-offset: -2px; }
 
@@ -95,7 +95,7 @@ section { margin-top: 56px; scroll-margin-top: 24px; }
 section > h2 { font-size: 26px; font-weight: 700; letter-spacing: -.02em; padding-bottom: 10px; border-bottom: 1px solid var(--line); }
 section > h2 .count { font-family: var(--mono); font-size: 12px; color: var(--vermillion); font-weight: 400; margin-left: 10px; }
 section > p.note { color: var(--paper-dim); font-size: 14.5px; margin-top: 12px; max-width: 78ch; }
-/* Passos numerados: a sequência de setup é uma ordem, e prosa corrida escondia isso. */
+/* Numbered steps: the setup sequence is an order, and running prose hid that. */
 .steps { list-style: none; counter-reset: step; margin: 20px 0 0; max-width: 78ch; }
 .steps > li { counter-increment: step; position: relative; padding-left: 38px; margin-top: 18px; }
 .steps > li::before {
@@ -106,10 +106,10 @@ section > p.note { color: var(--paper-dim); font-size: 14.5px; margin-top: 12px;
 .steps > li > b { display: block; font-size: 15px; font-weight: 600; }
 .steps > li > span { display: block; color: var(--paper-dim); font-size: 14px; margin-top: 3px; }
 .steps pre.block { margin-top: 10px; }
-/* Rótulo do bloco: separa o comando da resposta dele, que antes dividiam o mesmo <pre>. */
+/* Block label: separates the command from its response, which used to share the same <pre>. */
 .blk-label { font-family: var(--mono); font-size: 10.5px; letter-spacing: .14em; text-transform: uppercase;
   color: var(--paper-faint); margin: 14px 0 -4px; }
-/* Ressalva que muda a decisão de plano; merece peso, não uma frase no meio do parágrafo. */
+/* A caveat that changes the plan decision; it deserves weight, not a sentence buried in a paragraph. */
 .callout { display: flex; gap: 12px; margin-top: 24px; padding: 14px 16px; max-width: 78ch;
   border: 1px solid var(--line); border-left: 3px solid var(--gold); border-radius: 10px; background: var(--ink-2); }
 .callout .ico { color: var(--gold); font-size: 15px; line-height: 1.5; }
@@ -602,8 +602,8 @@ npm install</pre>
   });
 })();
 
-// Marca no índice a seção que está sendo lida. Os links de grupo de rota são injetados por JS
-// antes daqui, então a lista é montada agora e não no carregamento do documento.
+// Marks the section being read in the index. The route-group links are injected by JS
+// before this point, so the list is built now and not on document load.
 (function () {
   var links = [].slice.call(document.querySelectorAll('.sidebar a[href^="#"]'));
   if (!links.length || !('IntersectionObserver' in window)) return;
@@ -618,9 +618,9 @@ npm install</pre>
   });
   if (!targets.length) return;
 
-  // Posição em vez de IntersectionObserver: a seção atual é a última cujo topo já passou da linha
-  // de leitura. É uma regra que dá para conferir com getBoundingClientRect, enquanto o observer
-  // depende de callbacks que nem todo ambiente entrega.
+  // Position instead of IntersectionObserver: the current section is the last one whose top has
+  // already passed the reading line. It is a rule you can check with getBoundingClientRect, while
+  // the observer depends on callbacks not every environment delivers.
   var READING_LINE = 120;
   var current = null;
 
@@ -629,8 +629,8 @@ npm install</pre>
     for (var i = 0; i < targets.length; i++) {
       if (targets[i].getBoundingClientRect().top <= READING_LINE) found = targets[i];
     }
-    // Perto do fim da página a última seção pode nunca alcançar a linha; então quem estiver no
-    // fundo do scroll ganha a marcação.
+    // Near the end of the page the last section may never reach the line; so whoever is at the
+    // bottom of the scroll gets the marking.
     if (window.innerHeight + window.scrollY >= document.body.scrollHeight - 4) found = targets[targets.length - 1];
     if (found === current) return;
     current = found;

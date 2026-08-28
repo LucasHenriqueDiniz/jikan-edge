@@ -7,85 +7,85 @@ tags:
   - architecture
 ---
 
-# Pesquisa — Jikan e uma alternativa Cloudflare-native
+# Research — Jikan and a Cloudflare-native alternative
 
-> Data da pesquisa: 2026-07-19  
-> Status: base de decisão; não é especificação implementada.
+> Research date: 2026-07-19  
+> Status: a basis for decision; not an implemented specification.
 
-## Resumo executivo
+## Executive summary
 
-O Jikan é uma API não oficial e somente de leitura que obtém dados por scraping do MyAnimeList. A documentação pública declara cache de 24 horas e limites de 3 requisições/segundo e 60/minuto. Isto mostra que cache, controle de frequência e tolerância a falhas da fonte são propriedades centrais do problema — não otimizações opcionais.
+Jikan is an unofficial, read-only API that obtains its data by scraping MyAnimeList. The public documentation states a 24-hour cache and limits of 3 requests/second and 60/minute. That shows caching, frequency control and tolerance for source failures are central properties of the problem — not optional optimizations.
 
-Uma alternativa Cloudflare-native no plano Free pode ser viável para um MVP pequeno e de tráfego controlado, desde que seja orientada a dados armazenados, cache e atualização assíncrona. Não há evidência suficiente para prometer um substituto público completo do Jikan: Workers Free tem 100.000 requests/dia e 10 ms de CPU por invocação, e cada acesso a D1/R2/KV conta como subrequest.
+A Cloudflare-native alternative on the Free plan may be viable for a small MVP with controlled traffic, provided it is oriented around stored data, caching and asynchronous updates. There is not enough evidence to promise a complete public replacement for Jikan: Workers Free has 100,000 requests/day and 10 ms of CPU per invocation, and every access to D1/R2/KV counts as a subrequest.
 
-## Como o Jikan funciona
+## How Jikan works
 
-O próprio Jikan se apresenta como uma API não oficial do MyAnimeList que faz scraping do site para suprir lacunas da API oficial. A API pública é apenas GET, armazena dados extraídos temporariamente por 24 horas e oferece `ETag`/`304` para validação de cache.
+Jikan presents itself as an unofficial MyAnimeList API that scrapes the site to fill the gaps in the official API. The public API is GET-only, stores extracted data temporarily for 24 hours and offers `ETag`/`304` for cache validation.
 
-Na prática, o serviço precisa separar duas responsabilidades:
+In practice, the service has to separate two responsibilities:
 
-- obtenção e interpretação de dados da fonte, que falha e pode sofrer rate limit;
-- catálogo/cache consultável, que protege a fonte e dá desempenho previsível aos consumidores.
+- obtaining and interpreting data from the source, which fails and can be rate limited;
+- a queryable catalog/cache, which protects the source and gives consumers predictable performance.
 
-Isso explica por que a implantação histórica do Jikan REST envolve aplicação, banco, migrations e scheduler. Essa stack é referência de domínio, mas não deve ser portada diretamente para Workers.
+That explains why the historical Jikan REST deployment involves an application, a database, migrations and a scheduler. That stack is a domain reference, but it should not be ported directly to Workers.
 
-## Restrições Cloudflare verificadas
+## Verified Cloudflare constraints
 
-| Recurso Free | Limite relevante | Consequência de projeto |
+| Free resource | Relevant limit | Design consequence |
 | --- | ---: | --- |
-| Workers | 100.000 requests/dia | uma API pública precisa de rate limit, cache de CDN e plano de degradação |
-| CPU por invocação | 10 ms | parsing e normalização só podem ser aceitos após benchmark real |
-| Memória | 128 MB | respostas devem ser processadas em streaming; não assumir DOM completo grande |
-| Subrequests | 50/request | cada chamada a fonte, R2 ou D1 entra no orçamento por requisição |
-| D1 | 5 milhões de leituras/dia; 100 mil escritas/dia; 5 GB totais | usar como índice e consulta; medir amplificação de escrita |
-| KV | 1.000 escritas/dia | não usar como armazenamento canônico de itens atualizados em volume |
-| Queues | 10.000 operações/dia, 24 h de retenção | serve para atualização pequena e deduplicada; cada mensagem normalmente consome três operações |
+| Workers | 100,000 requests/day | a public API needs rate limiting, CDN caching and a degradation plan |
+| CPU per invocation | 10 ms | parsing and normalization can only be accepted after a real benchmark |
+| Memory | 128 MB | responses must be processed in a streaming fashion; do not assume a large complete DOM |
+| Subrequests | 50/request | every call to the source, R2 or D1 counts against the per-request budget |
+| D1 | 5 million reads/day; 100 thousand writes/day; 5 GB total | use it as index and query layer; measure write amplification |
+| KV | 1,000 writes/day | do not use it as canonical storage for items updated in volume |
+| Queues | 10,000 operations/day, 24 h retention | it serves small, deduplicated updates; each message normally consumes three operations |
 
-O tempo de espera de rede não entra no CPU do Worker, mas parsing, transformação e serialização entram. Portanto, `fetch` possível não prova que o parser cabe no Free.
+Time spent waiting on the network does not count against the Worker's CPU, but parsing, transformation and serialization do. So a `fetch` being possible does not prove the parser fits on Free.
 
-## Arquitetura candidata
+## Candidate architecture
 
 ```text
-Fonte permitida
-    -> ingestão assíncrona e limitada
-    -> normalização/versionamento
-    -> R2: payload por entidade
-    -> D1: aliases, filtros e relações mínimas
-    -> API Worker + cache: leitura, ETag e stale-while-revalidate
+Allowed source
+    -> asynchronous, rate-limited ingestion
+    -> normalization/versioning
+    -> R2: payload per entity
+    -> D1: aliases, filters and minimal relations
+    -> API Worker + cache: reads, ETag and stale-while-revalidate
 ```
 
-Esta é uma hipótese, não uma decisão final. R2 evita que consultas por ID dependam de tabelas normalizadas extensas; D1 permite pesquisa e filtros que um armazenamento chave-valor não resolve. Ambas as escolhas dependem dos experimentos de custo e qualidade de busca.
+This is a hypothesis, not a final decision. R2 keeps ID lookups from depending on extensive normalized tables; D1 allows search and filtering that a key-value store does not solve. Both choices depend on the cost and search-quality experiments.
 
-## Fontes e scraping: postura recomendada
+## Sources and scraping: recommended posture
 
-1. Priorizar uma API oficial quando ela oferecer os campos e o modelo de acesso necessários.
-2. Tratar HTML público como fonte a validar: termos, consistência por região, bloqueios, conteúdo alternativo e mudanças estruturais.
-3. Tratar endpoints internos observados na rede como investigação, nunca como dependência do MVP. Podem mudar, exigir sessão ou contrariar condições de uso.
-4. Não fazer scraping ao vivo para satisfazer uma requisição do usuário. Em cache miss, responder com estado conhecido/stale e solicitar atualização deduplicada.
-5. Manter canários, fixtures, validação de schema e proteção contra gravar uma página de bloqueio como dado válido.
+1. Prefer an official API when it offers the required fields and access model.
+2. Treat public HTML as a source to be validated: terms, consistency across regions, blocks, alternative content and structural changes.
+3. Treat internal endpoints observed on the network as investigation, never as an MVP dependency. They can change, require a session or contradict the terms of use.
+4. Do not scrape live to satisfy a user's request. On a cache miss, answer with the known/stale state and request a deduplicated update.
+5. Keep canaries, fixtures, schema validation and protection against storing a block page as valid data.
 
-## Escopo inicial recomendado
+## Recommended initial scope
 
-Se os bloqueadores forem aprovados, o primeiro recorte deve limitar-se a anime: detalhe por ID, busca por título, gêneros, temporada atual e ranking. Manga, personagens, pessoas, relações profundas, reviews, notícias e adapter Jikan devem ficar fora até que o fluxo básico tenha orçamento medido.
+If the blockers are cleared, the first slice should be limited to anime: detail by ID, title search, genres, current season and ranking. Manga, characters, people, deep relations, reviews, news and a Jikan adapter should stay out until the basic flow has a measured budget.
 
-## Riscos que permanecem abertos
+## Risks that remain open
 
-- Resposta inconsistente ou bloqueio da fonte para IPs Cloudflare.
-- Mudança de HTML e falso sucesso (página de CAPTCHA/erro com status 200).
-- CPU acima de 10 ms em páginas grandes ou durante normalização.
-- Baixa qualidade de FTS5 para japonês e aliases.
-- Amplificação de escrita por títulos, gêneros, relações e índices.
-- Esgotamento de request quota mesmo com cache, pois o Worker ainda é invocado.
-- Implicações de termos de uso e direitos sobre dados/imagens.
+- An inconsistent response or a block of the source for Cloudflare IPs.
+- HTML changes and false success (a CAPTCHA/error page with status 200).
+- CPU above 10 ms on large pages or during normalization.
+- Poor FTS5 quality for Japanese and aliases.
+- Write amplification across titles, genres, relations and indexes.
+- Exhausting the request quota even with caching, since the Worker is still invoked.
+- Terms-of-use and rights implications for data and images.
 
-## Conclusão
+## Conclusion
 
-O caminho responsável não é reescrever o Jikan inteiro nem declarar compatibilidade v4. É executar um spike que responda, primeiro, se há fonte sustentável, parser dentro da CPU, armazenamento dentro das franquias e busca aceitável. Até esses resultados, a arquitetura acima é uma direção de pesquisa e não um compromisso de implementação.
+The responsible path is neither to rewrite the whole of Jikan nor to declare v4 compatibility. It is to run a spike that answers, first, whether there is a sustainable source, a parser within the CPU budget, storage within the allowances and acceptable search. Until those results exist, the architecture above is a research direction and not an implementation commitment.
 
-## Fontes
+## Sources
 
-- [Jikan API v4 — documentação](https://docs.api.jikan.moe/)
-- [Jikan REST — instalação e operação](https://github.com/jikan-me/jikan-rest/wiki/Installation-%28feature-elasticsearch%29)
-- [Cloudflare Workers — limites](https://developers.cloudflare.com/workers/platform/limits/)
-- [Cloudflare Workers — preços, D1, KV e Queues](https://developers.cloudflare.com/workers/platform/pricing/)
-- [Cloudflare Queues no plano Free](https://developers.cloudflare.com/changelog/post/2026-02-04-queues-free-plan/)
+- [Jikan API v4 — documentation](https://docs.api.jikan.moe/)
+- [Jikan REST — installation and operation](https://github.com/jikan-me/jikan-rest/wiki/Installation-%28feature-elasticsearch%29)
+- [Cloudflare Workers — limits](https://developers.cloudflare.com/workers/platform/limits/)
+- [Cloudflare Workers — pricing, D1, KV and Queues](https://developers.cloudflare.com/workers/platform/pricing/)
+- [Cloudflare Queues on the Free plan](https://developers.cloudflare.com/changelog/post/2026-02-04-queues-free-plan/)

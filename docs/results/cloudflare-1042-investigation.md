@@ -1,9 +1,9 @@
-# Investigação Cloudflare 1042/404
+# Cloudflare 1042/404 investigation
 
-Estado: **not reproduced**.
+State: **not reproduced**.
 
-Após publicar `a4d5243b-38d3-4046-a3bf-1aeeeab9b678`, foram feitas cinco chamadas controladas, com um segundo entre elas, ao health, perfil, estatísticas, anime list e manga list de `AMayacrab`. Todas retornaram 200, request ID da aplicação, cache `hit` (exceto health) e CF-Ray no colo POA. Não houve 1042 nem 404.
+After publishing `a4d5243b-38d3-4046-a3bf-1aeeeab9b678`, five controlled calls were made, one second apart, to the health, profile, statistics, anime list and manga list of `AMayacrab`. All returned 200, the application's request ID, a `hit` cache status (except for health) and a CF-Ray in the POA colo. There was no 1042 and no 404.
 
-Os headers retornaram ainda `x-worker-version: 21d161a6-1a5e-400c-a823-7b4cbac00243`, apesar da nova configuração declarar `jikan-edge-2026-07-19`. Isso indica que a amostra ocorreu durante propagação/edge cache de release/configuração; não é evidência de execução do código novo. As respostas possuem request ID, portanto entraram na aplicação.
+The headers also returned `x-worker-version: 21d161a6-1a5e-400c-a823-7b4cbac00243`, even though the new configuration declares `jikan-edge-2026-07-19`. That indicates the sample was taken during release/configuration propagation or edge caching; it is not evidence that the new code ran. The responses do carry a request ID, so they did reach the application.
 
-O Worker não faz fetch para `workers.dev` nem Worker-to-Worker. A documentação da Cloudflare associa 1042 a fetch Worker-to-Worker sem a flag adequada, hipótese não confirmada pelo código ou pela amostra. Sem `wrangler tail`/trace correlacionado no instante de um erro, a origem é **não determinada**. Mitigação: manter chamadas espaçadas, request/version/cache headers e coletar Tail se o erro reaparecer; não há correção de código segura a aplicar sem reprodução.
+The Worker does not fetch `workers.dev` and does no Worker-to-Worker fetch. Cloudflare's documentation associates 1042 with a Worker-to-Worker fetch without the appropriate flag, a hypothesis neither the code nor the sample confirms. Without a correlated `wrangler tail`/trace at the moment of an error, the origin is **undetermined**. Mitigation: keep calls spaced out, keep the request/version/cache headers, and collect a Tail if the error reappears; there is no safe code fix to apply without a reproduction.

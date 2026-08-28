@@ -559,7 +559,7 @@ export default {
           parseElapsedMs: Number(parseElapsedMs.toFixed(3)),
         },
         profile,
-        note: 'parseElapsedMs mede somente o parser deste Worker; CPU faturada deve ser confirmada na observabilidade da Cloudflare.',
+        note: 'parseElapsedMs measures only this Worker\'s parser; billed CPU must be confirmed in Cloudflare observability.',
       },
       { headers: { 'Cache-Control': 'no-store' } },
     );

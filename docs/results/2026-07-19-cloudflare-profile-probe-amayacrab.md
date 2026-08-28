@@ -1,48 +1,48 @@
-# Resultado — probe de perfil MyAnimeList em Cloudflare Worker
+# Result — MyAnimeList profile probe on a Cloudflare Worker
 
-> Data: 2026-07-19  
-> Escopo: um perfil público fixo, sem persistência, sem autenticação e sem endpoint genérico.
+> Date: 2026-07-19  
+> Scope: one fixed public profile, with no persistence, no authentication and no generic endpoint.
 
-## Objetivo
+## Goal
 
-Verificar se um Worker Free consegue buscar e extrair campos básicos de `https://myanimelist.net/profile/amayacrab` sem exceder o orçamento de CPU de 10 ms.
+Verify whether a Free Worker can fetch and extract basic fields from `https://myanimelist.net/profile/amayacrab` without exceeding the 10 ms CPU budget.
 
-## Implementação do spike
+## Spike implementation
 
 - Worker: [`spikes/profile-probe`](../../spikes/profile-probe/)
-- URL do probe: `https://jikan-edge-profile-probe.lucas-hdo.workers.dev/probe`
-- Perfil é fixo no código; o Worker não aceita URL, usuário ou parâmetros de coleta.
-- Nenhuma resposta é armazenada.
-- Campos extraídos: usuário, avatar, último acesso, gênero, localização, dias e score médio de anime/manga.
+- Probe URL: `https://jikan-edge-profile-probe.lucas-hdo.workers.dev/probe`
+- The profile is hardcoded; the Worker accepts no URL, user or collection parameters.
+- No response is stored.
+- Fields extracted: user, avatar, last online, gender, location, days and mean score for anime/manga.
 
-## Resultados
+## Results
 
-| Etapa | Resultado |
+| Step | Result |
 | --- | --- |
-| Fetch local inicial | HTTP 200, HTML `text/html`, aproximadamente 92 KB |
-| Parser inicial com regex globais | falhou em parte das execuções com erro Cloudflare `1104` (limite de recursos) |
-| Parser otimizado por seções delimitadas | 5 de 5 respostas HTTP 200; sem conteúdo suspeito |
-| Execução observada pela Cloudflare | `cpuTime: 2 ms`, `wallTime: 393 ms`, `outcome: ok` |
-| Fetch observado no Worker | 391 ms; espera de rede não entra no orçamento de CPU |
+| Initial local fetch | HTTP 200, `text/html`, approximately 92 KB |
+| Initial parser with global regexes | failed on some runs with Cloudflare error `1104` (resource limit) |
+| Parser optimized with delimited sections | 5 of 5 responses HTTP 200; no suspicious content |
+| Run observed by Cloudflare | `cpuTime: 2 ms`, `wallTime: 393 ms`, `outcome: ok` |
+| Fetch observed in the Worker | 391 ms; network wait does not count against the CPU budget |
 
-A execução observada ocorreu no colo `POA`. O Worker conseguiu identificar o perfil e extrair as estatísticas públicas esperadas. O perfil fornecido contém dados públicos como localização e gênero; o spike não os persiste.
+The observed run happened in the `POA` colo. The Worker was able to identify the profile and extract the expected public statistics. The profile in question contains public data such as location and gender; the spike does not persist it.
 
-## Conclusão
+## Conclusion
 
-**Go parcial para parser de perfil básico.** Um parser deliberadamente pequeno, que evita regex globais repetidas no HTML completo, ficou abaixo do limite Free nesta amostra.
+**A partial go for a basic profile parser.** A deliberately small parser, one that avoids repeated global regexes over the complete HTML, stayed under the Free limit in this sample.
 
-O primeiro parser ter retornado `1104` é igualmente relevante: uma estratégia ingênua de varrer o documento inteiro com regex pode não ter margem confiável. A métrica a proteger é o `cpuTime` emitido pela observabilidade da Cloudflare, e não apenas a duração local do parser.
+That the first parser returned `1104` is just as relevant: a naive strategy of sweeping the whole document with regexes may not have reliable headroom. The metric to protect is the `cpuTime` emitted by Cloudflare's observability, not just the parser's local duration.
 
-## Limitações
+## Limitations
 
-- Uma página e uma única execução observada não representam perfis grandes, privados, removidos ou estruturados de modo diferente.
-- Um colo não representa todas as regiões de execução Cloudflare.
-- O teste não valida estabilidade por dias, limite de frequência, termos da fonte, páginas de bloqueio, canários ou estratégia de cache.
-- Este resultado não autoriza ainda endpoints genéricos nem scraping sob demanda para consumidores.
+- One page and a single observed run do not represent large, private, removed or differently structured profiles.
+- One colo does not represent every Cloudflare execution region.
+- The test does not validate stability over days, a frequency limit, the source's terms, block pages, canaries or a cache strategy.
+- This result does not yet authorize generic endpoints or on-demand scraping for consumers.
 
-## Próximos testes necessários
+## Next tests required
 
-1. Repetir em corpus pequeno de perfis públicos com estruturas variadas.
-2. Medir p50/p95 de `cpuTime`, não só sucesso HTTP.
-3. Testar respostas 404, perfil privado/removido e página de bloqueio.
-4. Converter o parser do spike em parser testável por fixtures antes de qualquer ingestão persistente.
+1. Repeat over a small corpus of public profiles with varied structures.
+2. Measure p50/p95 of `cpuTime`, not just HTTP success.
+3. Test 404 responses, a private/removed profile and a block page.
+4. Convert the spike's parser into one testable by fixtures before any persistent ingestion.

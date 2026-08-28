@@ -1,19 +1,19 @@
-# Documentação
+# Documentation
 
-| Área | Conteúdo | Estado |
+| Area | Content | State |
 | --- | --- | --- |
-| [`self-hosting.md`](self-hosting.md) | como rodar uma instância própria numa conta Cloudflare qualquer: setup, troubleshooting, limites de plano e política de uso | ativa |
-| [`routes.md`](routes.md) | contrato de cada rota servida, com fonte no MAL, TTL e as limitações verificadas | ativa |
-| `research/` | pesquisas externas, com fontes e data | iniciada |
-| `architecture/` | princípios e decisões de arquitetura | iniciada |
-| `planning/` | escopo, riscos, experimentos e marcos | iniciada |
-| `sources/` | como cada fonte do MAL entrega o dado, com as medições que sustentam isso — hoje [`mal-list-delivery.md`](sources/mal-list-delivery.md) | ativa |
-| `adr/` | decisões arquiteturais formais quando houver alternativas maduras | reservada |
+| [`self-hosting.md`](self-hosting.md) | how to run your own instance on any Cloudflare account: setup, troubleshooting, plan limits and usage policy | active |
+| [`routes.md`](routes.md) | the contract for every served route, with its MAL source, TTL and the verified limitations | active |
+| `research/` | external research, with sources and dates | started |
+| `architecture/` | architecture principles and decisions | started |
+| `planning/` | scope, risks, experiments and milestones | started |
+| `sources/` | how each MAL source delivers its data, with the measurements behind it — today [`mal-list-delivery.md`](sources/mal-list-delivery.md) | active |
+| `adr/` | formal architecture decisions once there are mature alternatives | reserved |
 
-## Fluxo documental
+## Documentation flow
 
 ```text
-Pesquisa verificável -> hipótese -> experimento -> decisão -> implementação
+Verifiable research -> hypothesis -> experiment -> decision -> implementation
 ```
 
-O projeto ainda está nas três primeiras etapas. Documentação não deve descrever uma solução como implementada quando ela for apenas proposta.
+The project is still in the first three stages. Documentation must not describe a solution as implemented when it is only proposed.

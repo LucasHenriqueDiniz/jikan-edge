@@ -1,16 +1,16 @@
-# Corpus real e p95 de produção — catálogo de anime
+# Real corpus and production p95 — anime catalog
 
-Data: 2026-07-26. Medição feita com `wrangler tail --format json` conectado ao Worker publicado (`jikan-edge`, versão `c429a5fd-46c3-4502-8f0e-c17cbaec4bd8`), capturando `cpuTime`/`wallTime` reais da Cloudflare por requisição — não o microbenchmark local de fixture sintética.
+Date: 2026-07-26. Measured with `wrangler tail --format json` connected to the published Worker (`jikan-edge`, version `c429a5fd-46c3-4502-8f0e-c17cbaec4bd8`), capturing Cloudflare's real per-request `cpuTime`/`wallTime` — not the local microbenchmark over a synthetic fixture.
 
-## Limite de referência
+## Reference limit
 
-Confirmado agora na documentação oficial (developers.cloudflare.com/workers/platform/limits): **plano Free tem teto de 10 ms de CPU por requisição**; plano pago vai a 30 s por padrão (configurável até 5 min). A margem de 8 ms já usada nos benchmarks locais deste projeto é, portanto, um buffer de ~2 ms abaixo do teto real — não uma margem arbitrária.
+Now confirmed in the official documentation (developers.cloudflare.com/workers/platform/limits): the **Free plan has a ceiling of 10 ms of CPU per request**; the paid plan goes to 30 s by default (configurable up to 5 min). The 8 ms margin already used in this project's local benchmarks is therefore a buffer of ~2 ms below the real ceiling — not an arbitrary margin.
 
-## Anime detalhe (`GET /v1/anime/:id`) — 8 IDs reais, todos cache miss
+## Anime detail (`GET /v1/anime/:id`) — 8 real IDs, all cache misses
 
-Corpus escolhido para diversidade de tamanho/popularidade: franquias muito longas, um filme e títulos de porte médio.
+The corpus was chosen for diversity of size and popularity: very long franchises, one film and mid-sized titles.
 
-| mal_id | Título | cpuTime (ms) | wallTime (ms) |
+| mal_id | Title | cpuTime (ms) | wallTime (ms) |
 | ---: | --- | ---: | ---: |
 | 21 | One Piece | **8** | **5314** |
 | 269 | Bleach | 6 | 1760 |
@@ -22,88 +22,88 @@ Corpus escolhido para diversidade de tamanho/popularidade: franquias muito longa
 | 199 | Sen to Chihiro no Kamikakushi (Spirited Away) | 6 | 1347 |
 
 - cpuTime: min 5 ms, p50 6 ms, **p95 8 ms**, max 8 ms.
-- wallTime: min 1347 ms, mediana ~1487 ms, **One Piece é outlier a 5314 ms** — 3 a 4× o restante do corpus.
+- wallTime: min 1347 ms, median ~1487 ms, **One Piece is an outlier at 5314 ms** — 3 to 4× the rest of the corpus.
 
-**Risco identificado:** o cpuTime de One Piece (8 ms) já encosta no teto real do Free plan (10 ms), não só na margem provisória de 8 ms. O parser (`parseAnimeDetail`) já limita sua própria leitura a `html.slice(0, 60_000)`, então o custo extra não vem da extração por regex — vem de `MalClient.getHtml` fazer `response.text()` do corpo **inteiro** antes de qualquer corte (até o teto de `maxUpstreamBytes`, 2 MiB). Páginas de franquias muito grandes parecem ser proporcionalmente mais pesadas para baixar/decodificar, não para parsear. Isso também explica o wallTime 3-4× maior — mais bytes trafegando e sendo decodificados, ainda bem dentro do timeout de 8 s (`sourceTimeoutMs`), mas sem folga generosa.
+**Risk identified:** One Piece's cpuTime (8 ms) is already brushing the Free plan's real ceiling (10 ms), not just the provisional 8 ms margin. The parser (`parseAnimeDetail`) already limits its own reading to `html.slice(0, 60_000)`, so the extra cost does not come from regex extraction — it comes from `MalClient.getHtml` doing `response.text()` over the **entire** body before any cut (up to the `maxUpstreamBytes` ceiling, 2 MiB). Pages of very large franchises appear to be proportionally heavier to download and decode, not to parse. That also explains the 3-4× larger wallTime — more bytes travelling and being decoded, still well inside the 8 s timeout (`sourceTimeoutMs`), but without generous headroom.
 
-Amostra pequena (n=8): serve como primeiro corpus real, não como p95 estatisticamente robusto. Recomendado ampliar para pelo menos ~20-30 IDs reais, incluindo mais casos de franquias com centenas/milhares de episódios, antes de tratar este número como definitivo.
+Small sample (n=8): it serves as a first real corpus, not as a statistically robust p95. It is recommended to expand to at least ~20-30 real IDs, including more franchises with hundreds or thousands of episodes, before treating this number as definitive.
 
-## Top anime (`GET /v1/top/anime?page=`) — 4 páginas reais, todas cache miss
+## Top anime (`GET /v1/top/anime?page=`) — 4 real pages, all cache misses
 
-| Página | cpuTime (ms) | wallTime (ms) |
+| Page | cpuTime (ms) | wallTime (ms) |
 | ---: | ---: | ---: |
 | 2 | 5 | 1369 |
 | 3 | 6 | 1365 |
 | 4 | 6 | 1364 |
 | 5 | 7 | 1344 |
 
-cpuTime: min 5 ms, p50 6 ms, p95 7 ms. wallTime extremamente estável (~1.34-1.37 s) — esperado, já que cada página do MAL tem exatamente 50 linhas de tamanho comparável. Risco baixo, boa margem em relação ao teto de 10 ms.
+cpuTime: min 5 ms, p50 6 ms, p95 7 ms. wallTime is extremely stable (~1.34-1.37 s) — expected, since each MAL page has exactly 50 rows of comparable size. Low risk, good headroom against the 10 ms ceiling.
 
-## Gêneros e temporada atual — limitação da medição
+## Genres and current season — a measurement limitation
 
-`GET /v1/genres/anime` e `GET /v1/seasons/now` só puderam ser medidos em **cache hit** nesta rodada (cpuTime 1 ms, wallTime 157–190 ms) — ambos já estavam com TTL de 6 h aquecido desde o deploy, e não há mecanismo de bypass de cache nesta API para forçar um novo miss sob demanda. O miss real de cada um ocorreu durante o smoke test pós-deploy, antes do `wrangler tail` estar conectado, então não temos o `cpuTime` real desse fetch+parse específico — só a confirmação qualitativa de que funcionou (payloads de 1.226 e 39.060 bytes, respectivamente).
+`GET /v1/genres/anime` and `GET /v1/seasons/now` could only be measured on a **cache hit** in this round (cpuTime 1 ms, wallTime 157–190 ms) — both already had a warm 6 h TTL from the deploy, and this API has no cache-bypass mechanism to force a new miss on demand. Each one's real miss happened during the post-deploy smoke test, before `wrangler tail` was connected, so we do not have the real `cpuTime` of that specific fetch+parse — only qualitative confirmation that it worked (payloads of 1,226 and 39,060 bytes respectively).
 
-Diferente de anime detalhe/top anime, estes dois recursos são **singleton** (existe só uma página "gêneros" e uma "temporada atual" no MAL a qualquer momento) — não há um corpus de variações para amostrar; a única forma de capturar o cpuTime real do miss é aguardar a próxima expiração natural do TTL (~6 h) com o tail já conectado.
+Unlike anime detail and top anime, these two resources are **singletons** (there is only one "genres" page and one "current season" page on MAL at any moment) — there is no corpus of variations to sample; the only way to capture the miss's real cpuTime is to wait for the next natural TTL expiry (~6 h) with the tail already connected.
 
-## Tentativa de otimização do `MalClient` (revertida)
+## `MalClient` optimization attempt (reverted)
 
-Depois desta medição inicial, tentei otimizar `MalClient.getHtml` para ler só um prefixo do corpo via stream (`response.body.getReader()`) em vez de `response.text()` completo, já que `parseAnimeDetail` só usa os primeiros ~55 KB de qualquer página real testada. A ideia era reduzir o custo de download/decodificação para franquias grandes como One Piece.
+After this initial measurement, I tried optimizing `MalClient.getHtml` to read only a prefix of the body via a stream (`response.body.getReader()`) instead of a complete `response.text()`, since `parseAnimeDetail` only uses the first ~55 KB of any real page tested. The idea was to reduce download/decoding cost for large franchises like One Piece.
 
-**Isso foi revertido.** Ao medir de novo em produção com um corpus novo (8 IDs distintos), dois títulos (Death Note, Violet Evergarden) mostraram `cpuTime` de 13-14 ms — pior que o pior caso anterior (8 ms), sem correlação com o tamanho real do documento (Hunter x Hunter, 250 KB, ficou em 5 ms). Tentei uma segunda versão (acumular os chunks brutos e decodificar uma única vez no fim, em vez de decodificar a cada chunk) — o mesmo padrão de picos continuou (15 ms em dois títulos diferentes).
+**This was reverted.** Measuring again in production with a fresh corpus (8 distinct IDs), two titles (Death Note, Violet Evergarden) showed a `cpuTime` of 13-14 ms — worse than the previous worst case (8 ms), with no correlation to the document's real size (Hunter x Hunter, 250 KB, came in at 5 ms). I tried a second version (accumulating the raw chunks and decoding once at the end, instead of decoding per chunk) — the same spike pattern continued (15 ms on two different titles).
 
-**Antes de aceitar "a leitura em stream piora as coisas" como conclusão, testei o código revertido (voltando a `response.text()` puro) com mais um corpus novo — e o mesmo tipo de pico (15 ms, Code Geass R2) apareceu ali também.** Ou seja: os picos de 13-15 ms não são causados pela tentativa de otimização — acontecem esporadicamente também na implementação original. Descartei a hipótese de que fosse o parser (`parseAnimeDetail` rodou em ~0,5 ms contra o HTML real de Code Geass R2 num teste local, muito abaixo dos 15 ms observados em produção). A causa mais provável está fora do código da aplicação — variância de cold start/isolamento do runtime da Cloudflare, ou como o `Transfer-Encoding: chunked` do MAL é entregue pela borda da Cloudflare para casos específicos — e não foi isolada nesta sessão.
+**Before accepting "stream reading makes things worse" as a conclusion, I tested the reverted code (back to plain `response.text()`) with one more fresh corpus — and the same kind of spike (15 ms, Code Geass R2) showed up there too.** In other words: the 13-15 ms spikes are not caused by the optimization attempt — they happen sporadically in the original implementation as well. I ruled out the parser (`parseAnimeDetail` ran in ~0.5 ms against Code Geass R2's real HTML in a local test, far below the 15 ms observed in production). The most likely cause is outside the application's code — cold-start/isolate variance in Cloudflare's runtime, or how MAL's `Transfer-Encoding: chunked` is delivered by Cloudflare's edge in specific cases — and it was not isolated in that session.
 
-**Estado final:** o código voltou ao `response.text()` original (sem leitura parcial). O único ganho real que ficou desta investigação foi um bug genuíno encontrado no caminho: algumas páginas do MAL usam o rótulo `Genre:`/`Studio:` no singular em vez de `Genres:`/`Studios:` (ex.: Violet Evergarden), o que quebrava tanto o marcador obrigatório quanto a extração — corrigido em `anime-detail.parser.ts` e `anime.service.ts`, com teste de regressão (`detail-singular-labels.html`).
+**Final state:** the code went back to the original `response.text()` (no partial reading). The only real gain left by this investigation was a genuine bug found along the way: some MAL pages use the singular label `Genre:`/`Studio:` instead of `Genres:`/`Studios:` (e.g. Violet Evergarden), which broke both the required marker and the extraction — fixed in `anime-detail.parser.ts` and `anime.service.ts`, with a regression test (`detail-singular-labels.html`).
 
-## Recomendações (da rodada inicial — parcialmente superadas pela remedição abaixo)
+## Recommendations (from the initial round — partly superseded by the remeasurement below)
 
-1. Tratar o corpus de anime detalhe como preliminar (agora n=24 entre as três rodadas, mas medido sob três versões de código diferentes) — expandir com um corpus único e estável antes de qualquer decisão de produto que dependa deste número.
-2. **Não vale a pena** truncar a leitura do corpo em `MalClient` — tentado e revertido nesta sessão (ver seção acima). Picos de 13-15 ms apareceram tanto na versão otimizada quanto na original; a causa não está no código da aplicação.
-3. ~~Reagendar uma medição de miss real para `genres/anime` e `seasons/now` na próxima janela de expiração de TTL~~ — feito na remedição abaixo (os singletons expiraram naturalmente e foram medidos como miss real).
-4. Os picos de 13-15 ms deixaram de ser um risco com o upgrade para o plano Workers Paid (feito em 2026-07-26; teto de CPU passou de 10 ms para 30 s).
+1. Treat the anime detail corpus as preliminary (now n=24 across the three rounds, but measured under three different code versions) — expand it with a single, stable corpus before any product decision that depends on this number.
+2. It is **not worth** truncating the body read in `MalClient` — attempted and reverted in that session (see the section above). Spikes of 13-15 ms appeared in both the optimized and the original version; the cause is not in the application's code.
+3. ~~Reschedule a real-miss measurement for `genres/anime` and `seasons/now` in the next TTL expiry window~~ — done in the remeasurement below (the singletons expired naturally and were measured as real misses).
+4. The 13-15 ms spikes stopped being a risk with the upgrade to the Workers Paid plan (done 2026-07-26; the CPU ceiling went from 10 ms to 30 s).
 
-## Remedição pós-paridade total (2026-07-26, ~20:50 UTC-3, plano Workers Paid)
+## Post-full-parity remeasurement (2026-07-26, ~20:50 UTC-3, Workers Paid plan)
 
-Mesma metodologia (`wrangler tail --format json` conectado antes do disparo), agora sobre a superfície completa de rotas (85 registradas) na versão `4e7e45f7`. Corpus de **49 cache-miss reais** cobrindo todas as famílias — IDs e queries deliberadamente novos, e os recursos singleton (watch, reviews, recommendations, magazines, schedules) pegos numa janela pós-expiração natural do TTL de 6 h, então também foram misses genuínos.
+The same methodology (`wrangler tail --format json` connected before firing), now over the complete route surface (85 registered) on version `4e7e45f7`. A corpus of **49 real cache misses** covering every family — IDs and queries deliberately new, and the singleton resources (watch, reviews, recommendations, magazines, schedules) caught in a window after the 6 h TTL expired naturally, so those were genuine misses too.
 
-### Agregado geral (49 misses)
+### Overall aggregate (49 misses)
 
-- cpuTime: **p50 7 ms, p95 27 ms, máx 48 ms**. wallTime: tipicamente 1,1–1,7 s (dominado pelo fetch upstream), máx 3,1 s (`manga?q=vagabond`).
-- No plano Free (teto 10 ms), **11 dos 49 misses teriam falhado ou ficado na zona de risco** — o upgrade não foi cosmético.
+- cpuTime: **p50 7 ms, p95 27 ms, max 48 ms**. wallTime: typically 1.1–1.7 s (dominated by the upstream fetch), max 3.1 s (`manga?q=vagabond`).
+- On the Free plan (10 ms ceiling), **11 of the 49 misses would have failed or landed in the danger zone** — the upgrade was not cosmetic.
 
-### Cauda pesada (tudo dentro do teto atual de 30 s, sem risco)
+### The heavy tail (all within the current 30 s ceiling, no risk)
 
-| Rota | cpuTime | Por quê |
+| Route | cpuTime | Why |
 | --- | ---: | --- |
-| `/v1/manga/13/characters` (One Piece) | 48 ms | lista de personagens gigante de série longa |
-| `/v1/people/1/full` (Tomokazu Seki) | 41 ms | página >1 MB de dublador prolífico + 4 parses no mesmo documento |
-| `/v1/magazines` | 27 ms | diretório de 1.445 revistas num documento só |
-| `/v1/seasons/2025/winter` | 27 ms | temporada completa (~200 cards) num documento só |
-| `/v1/anime/5/characters` | 19 ms | tabelas de personagens+staff+dubladores |
-| `/v1/schedules` | 18 ms | mesmo formato de temporada |
+| `/v1/manga/13/characters` (One Piece) | 48 ms | a huge character list from a long-running series |
+| `/v1/people/1/full` (Tomokazu Seki) | 41 ms | a >1 MB page for a prolific voice actor + 4 parses over the same document |
+| `/v1/magazines` | 27 ms | a directory of 1,445 magazines in a single document |
+| `/v1/seasons/2025/winter` | 27 ms | a complete season (~200 cards) in a single document |
+| `/v1/anime/5/characters` | 19 ms | characters + staff + voice actor tables |
+| `/v1/schedules` | 18 ms | the same season format |
 
-O padrão é consistente: o custo escala com o tamanho do documento e o número de itens extraídos, não há mais outliers inexplicados como na rodada do plano Free (os picos de 13-15 ms em páginas pequenas não reapareceram de forma anômala — 14-15 ms agora só aparecem onde o documento justifica).
+The pattern is consistent: the cost scales with document size and the number of items extracted, and there are no more unexplained outliers as there were in the Free plan round (the 13-15 ms spikes on small pages did not reappear anomalously — 14-15 ms now only shows up where the document justifies it).
 
-### Por família (cpuTime dos misses)
+### By family (cpuTime of the misses)
 
-| Família | n | p50 | máx |
+| Family | n | p50 | max |
 | --- | ---: | ---: | ---: |
-| Anime detalhe | 6 | 7 | 15 |
-| Sub-rotas de anime por título (full/characters/stats/pics/news/forum/reviews/recs/moreinfo) | 9 | 5 | 19 |
-| Manga detalhe + sub-rotas | 8 | 6,5 | 48 |
-| Personagens (detalhe/full/pictures/busca) | 5 | 5 | 6 |
-| Pessoas (detalhe/full) | 2 | — | 41 |
-| Produtores (detalhe/full) | 2 | — | 8 |
-| Clubes (members) | 1 | — | 5 |
-| Buscas (anime/manga/users) | 3 | 6 | 10 |
-| Usuário (perfil/friends/clubs/full/busca) | 5 | 8 | 12 |
-| Tops (anime/manga/people/characters, páginas novas) | 4 | 8 | 10 |
-| Listas globais (watch/reviews/recs/magazines/schedules/season) | 6 | 15,5 | 27 |
-| Random (local, sem fetch) | 1 | — | 0 |
+| Anime detail | 6 | 7 | 15 |
+| Anime per-title sub-routes (full/characters/stats/pics/news/forum/reviews/recs/moreinfo) | 9 | 5 | 19 |
+| Manga detail + sub-routes | 8 | 6.5 | 48 |
+| Characters (detail/full/pictures/search) | 5 | 5 | 6 |
+| People (detail/full) | 2 | — | 41 |
+| Producers (detail/full) | 2 | — | 8 |
+| Clubs (members) | 1 | — | 5 |
+| Searches (anime/manga/users) | 3 | 6 | 10 |
+| User (profile/friends/clubs/full/search) | 5 | 8 | 12 |
+| Tops (anime/manga/people/characters, new pages) | 4 | 8 | 10 |
+| Global lists (watch/reviews/recs/magazines/schedules/season) | 6 | 15.5 | 27 |
+| Random (local, no fetch) | 1 | — | 0 |
 
-### Observações da rodada
+### Observations from the round
 
-- `/v1/anime/5/episodes` retornou **404 real do MAL** — id 5 é um filme (Cowboy Bebop: Tengoku no Tobira), que não tem página de episódios. Comportamento correto, repassado fielmente.
-- `/v1/clubs/5` retornou 500 (`UPSTREAM_SUSPICIOUS`) — o clube de id 5 aparentemente não existe e o `clubs.php?cid=5` não responde com a estrutura esperada. Vale um follow-up para mapear "clube inexistente" para 404 em vez de 502/500, mas é tratamento de erro, não performance.
-- `/v1/random/anime` custou **0 ms de cpuTime / 152 ms de wallTime** — como esperado para sorteio puramente local no D1, sem fetch.
-- Cache hits continuam em ~1 ms de cpuTime (ex. `people?q=miyazaki`, hit da sessão de testes anterior).
+- `/v1/anime/5/episodes` returned a **real 404 from MAL** — id 5 is a film (Cowboy Bebop: Tengoku no Tobira), which has no episodes page. Correct behavior, passed through faithfully.
+- `/v1/clubs/5` returned 500 (`UPSTREAM_SUSPICIOUS`) — club id 5 apparently does not exist and `clubs.php?cid=5` does not answer with the expected structure. Worth a follow-up to map "nonexistent club" to a 404 instead of a 502/500, but that is error handling, not performance.
+- `/v1/random/anime` cost **0 ms of cpuTime / 152 ms of wallTime** — as expected for a purely local D1 draw with no fetch.
+- Cache hits remain at ~1 ms of cpuTime (e.g. `people?q=miyazaki`, a hit from the previous test session).

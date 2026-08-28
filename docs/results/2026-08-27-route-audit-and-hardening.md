@@ -1,141 +1,140 @@
-# Varredura das 124 chamadas e lote de endurecimento
+# Sweep of 124 calls and a hardening batch
 
-Data: 2026-08-27. Diferente das varreduras anteriores, esta não comparou rotas contra o
-`api.jikan.moe/v4` — capturou requisição e resposta de **cada rota desta API** numa pasta por rota e
-analisou o corpus inteiro em conjunto: forma do envelope, campos sempre nulos, coleções vazias,
-chaves em `snake_case`, cabeçalhos, tamanho e latência.
+Date: 2026-08-27. Unlike the earlier sweeps, this one did not compare routes against
+`api.jikan.moe/v4` — it captured the request and response of **every route in this API** into a folder
+per route and analyzed the whole corpus together: envelope shape, always-null fields, empty
+collections, `snake_case` keys, headers, size and latency.
 
-## Cobertura
+## Coverage
 
 | | |
 | --- | --- |
-| Chamadas capturadas | **124 de 124 (100%)** |
+| Calls captured | **124 of 124 (100%)** |
 | Status | **114× 200, 10× 400, zero 5xx** |
-| Rotas registradas | 97 em `/v1/*` mais `/health` (contagem autoritativa: `QUERY_CONTRACT`, que `tests/routes/query-contract.test.ts` obriga a cobrir toda rota GET) |
+| Registered routes | 97 under `/v1/*` plus `/health` (the authoritative count: `QUERY_CONTRACT`, which `tests/routes/query-contract.test.ts` forces to cover every GET route) |
 
-As 124 chamadas passam das 98 rotas porque variações de parâmetro (`?page=2`, `?filter=`, `?q=`)
-foram capturadas separadamente. Os dez `400` são todos `INVALID_QUERY` em rota de busca chamada sem
-`q` — comportamento correto, registrado como **F2** para não ser reaberto.
+The 124 calls exceed the 98 routes because parameter variations (`?page=2`, `?filter=`, `?q=`) were
+captured separately. The ten `400`s are all `INVALID_QUERY` on a search route called without
+`q` — correct behavior, recorded as **F2** so it does not get reopened.
 
-O que a varredura confirmou como já sadio: envelope `{data, meta}` universal, **zero** chaves em
-`snake_case` sobreviventes da correção de 2026-07-27, e `meta.pagination` presente em toda rota que
-aceita `page`.
+What the sweep confirmed as already healthy: a universal `{data, meta}` envelope, **zero** surviving
+`snake_case` keys from the 2026-07-27 fix, and `meta.pagination` present on every route that accepts
+`page`.
 
-## Achados e o que foi feito com cada um
+## Findings and what was done with each
 
-| | Achado | Estado | Version |
+| | Finding | State | Version |
 | --- | --- | --- | --- |
-| F1 | `?genres=` sozinho devolvia lista vazia, em anime e mangá, para todo id | corrigido | `0523faba` |
-| F2 | busca sem `q` responde 400 | não é defeito | — |
-| F3 | `type` nulo em toda entrada de temporada (1.021 no total) | corrigido | `f7d1a163` |
-| F4 | `avatarUrl` e `about` nulos em todo perfil | corrigido | `9679c755` |
-| F5 | nenhuma das 124 respostas trazia `Cache-Control` ou `ETag` | corrigido | `9679c755` |
-| F6 | `meta` divergente no grupo random, e `random/users` cacheável | corrigido | `aa5baaa9` |
+| F1 | `?genres=` on its own returned an empty list, for anime and manga, for every id | fixed | `0523faba` |
+| F2 | a search without `q` answers 400 | not a defect | — |
+| F3 | `type` null on every season entry (1,021 in total) | fixed | `f7d1a163` |
+| F4 | `avatarUrl` and `about` null on every profile | fixed | `9679c755` |
+| F5 | none of the 124 responses carried `Cache-Control` or `ETag` | fixed | `9679c755` |
+| F6 | divergent `meta` in the random group, and `random/users` cacheable | fixed | `aa5baaa9` |
 
-Detalhe técnico de cada um em [`docs/routes.md`](../routes.md); contrato para o consumidor no
+The technical detail for each is in [`docs/routes.md`](../routes.md); the consumer-facing contract in the
 [`CHANGELOG.md`](../../CHANGELOG.md).
 
-**A forma dos defeitos importa mais que a contagem.** Nenhuma das 124 chamadas falhou — os cinco
-defeitos reais eram todos **200 com dado errado ou ausente**, que é o modo de falha que este projeto
-já identificou como o seu mais caro. Dois deles (F1, F3) eram estruturais: o campo não podia estar
-certo para requisição nenhuma, e mesmo assim nada acusava.
+**The shape of the defects matters more than the count.** None of the 124 calls failed — the five real
+defects were all **200s with wrong or missing data**, which is the failure mode this project has
+already identified as its most expensive. Two of them (F1, F3) were structural: the field could not be
+right for any request, and even so nothing flagged it.
 
-## Medições novas
+## New measurements
 
-### Teto de tamanho de linha do D1 — documentação diverge do medido
+### D1 row size ceiling — the documentation diverges from the measurement
 
-Sondado contra o D1 remoto real, escrevendo por parâmetro vinculado exatamente como os repositórios
-fazem, num Worker descartável apontado para o mesmo banco:
+Probed against the real remote D1, writing through a bound parameter exactly as the repositories do, in
+a throwaway Worker pointed at the same database:
 
-| bytes na linha | resultado |
+| bytes in the row | result |
 | ---: | --- |
-| 4.194.256 | grava; a leitura volta byte a byte idêntica |
-| 4.194.257 | `D1_ERROR: string or blob too big: SQLITE_TOOBIG` |
+| 4,194,256 | writes; the read comes back byte for byte identical |
+| 4,194,257 | `D1_ERROR: string or blob too big: SQLITE_TOOBIG` |
 
-São 4 MiB (4.194.304) menos os 48 bytes das outras colunas. O teto é **da linha**, não do valor:
-enchendo a chave primária com 1.000 bytes a mais, a fronteira caiu na mesma medida. **Nada trunca**
-abaixo do teto.
+That is 4 MiB (4,194,304) minus the 48 bytes of the other columns. The ceiling is **the row's**, not the
+value's: padding the primary key with 1,000 more bytes dropped the boundary by the same amount. **Nothing
+truncates** below the ceiling.
 
-A [documentação oficial](https://developers.cloudflare.com/d1/platform/limits/) diz
-`Maximum string, BLOB or table row size: 2,000,000 bytes` — cerca de **metade** do medido.
+The [official documentation](https://developers.cloudflare.com/d1/platform/limits/) says
+`Maximum string, BLOB or table row size: 2,000,000 bytes` — about **half** the measured value.
 
-Nota de método: a primeira sonda usou SQL literal (`hex(zeroblob(...))`) e um valor de 2,2 MB
-entrou. Isso poderia ser um caminho especial do SQL, então foi refeita por parâmetro vinculado. Os
-dois caminhos concordam.
+A method note: the first probe used literal SQL (`hex(zeroblob(...))`) and a 2.2 MB value went in. That
+could have been a special SQL path, so it was redone through a bound parameter. The two paths agree.
 
-Maior linha de hoje: `catalog:anime:21:characters-staff` (One Piece), **1.207.652 bytes** — 28,8% do
-teto medido, **60,4% do documentado**. As cinco maiores são todas `characters-staff`, a mesma família
-que estourou o teto de fetch mais cedo hoje; é a mesma pressão de séries longas chegando na camada de
-armazenamento em vez da de rede. Por isso a folga não documentada **não** é para se construir em
-cima, e o caso virou `507 PAYLOAD_TOO_LARGE` (version `1f16e42c`) em vez de 500 mudo.
+Today's largest row: `catalog:anime:21:characters-staff` (One Piece), **1,207,652 bytes** — 28.8% of the
+measured ceiling, **60.4% of the documented one**. The five largest are all `characters-staff`, the same
+family that blew through the fetch ceiling earlier today; it is the same long-series pressure arriving at
+the storage layer instead of the network layer. That is why the undocumented headroom is **not** something
+to build on, and why the case became a `507 PAYLOAD_TOO_LARGE` (version `1f16e42c`) instead of a mute 500.
 
-### Stale-while-revalidate interno
+### Internal stale-while-revalidate
 
-`wrangler dev --remote` com TTL de 60 s, mesma rota e mesma página:
+`wrangler dev --remote` with a 60 s TTL, same route and same page:
 
-| | antes | agora |
+| | before | now |
 | --- | ---: | ---: |
-| miss frio | 1747 ms | 1747 ms (inalterado — não há o que servir) |
-| hit fresco | 512 ms | 512 ms |
-| **primeira requisição depois do TTL** | fazia o trabalho do miss frio | **686 ms**, `X-Cache-Status: stale` |
-| requisição seguinte | — | `hit`, `max-age=57` (linha reescrita pelo refresh de fundo) |
+| cold miss | 1747 ms | 1747 ms (unchanged — there is nothing to serve) |
+| fresh hit | 512 ms | 512 ms |
+| **first request after the TTL** | did the cold miss's work | **686 ms**, `X-Cache-Status: stale` |
+| next request | — | `hit`, `max-age=57` (the row rewritten by the background refresh) |
 
-Confirmado também em produção, onde linhas vencidas dentro da janela de 6 h existiam de fato:
-`stale` em 861 ms, depois `hit` com `max-age=21579` — TTL cheio, escrito pela tarefa de fundo, não
-pela requisição que respondeu.
+Also confirmed in production, where rows expired within the 6 h window genuinely existed:
+`stale` at 861 ms, then `hit` with `max-age=21579` — a full TTL, written by the background task and not
+by the request that answered.
 
-### Revalidação HTTP
+### HTTP revalidation
 
-`ETag` mais `If-None-Match` em `GET /v1/anime/21/characters`: **1.132.672 bytes → 0** num `304`.
+`ETag` plus `If-None-Match` on `GET /v1/anime/21/characters`: **1,132,672 bytes → 0** on a `304`.
 
-### Limites de fetch ao MAL
+### MAL fetch limits
 
-O teto de 2 MiB por documento reprovava sete títulos populares com `502`; nunca funcionaram, e não
-havia linha em D1 para nenhum deles. Resolvido em duas etapas: `MAX_UPSTREAM_BYTES` para 5 MiB
-(`629508ce`, cinco títulos recuperados) e um budget por chamada de 16 MiB / 20 s para páginas de
-personagens (`5b41891e`, os dois restantes). One Piece devolve 541 membros de staff e 1.482
-personagens; Detective Conan, 471 e 2.110.
+The 2 MiB per-document ceiling failed seven popular titles with a `502`; they never worked, and there was
+no D1 row for any of them. Resolved in two stages: `MAX_UPSTREAM_BYTES` to 5 MiB
+(`629508ce`, five titles recovered) and a per-call budget of 16 MiB / 20 s for character pages
+(`5b41891e`, the remaining two). One Piece returns 541 staff members and 1,482 characters; Detective
+Conan, 471 and 2,110.
 
-## Estado da suíte
+## Suite state
 
 | | |
 | --- | --- |
-| `vitest run` | 63 arquivos, **349 testes** |
-| `vitest run --config vitest.integration.config.ts` | 6 arquivos, **29 testes**, contra D1 real |
-| `tsc --noEmit` | limpo |
+| `vitest run` | 63 files, **349 tests** |
+| `vitest run --config vitest.integration.config.ts` | 6 files, **29 tests**, against a real D1 |
+| `tsc --noEmit` | clean |
 | `wrangler deploy --dry-run` | ok |
 
-**378 no total.** As duas suítes têm config separada — rodar só `vitest run` não exercita
+**378 in total.** The two suites have separate configs — running only `vitest run` does not exercise
 `tests/integration/**`.
 
-Cobertura que passou a existir hoje, em pontos que estavam em produção sem teste nenhum:
-`src/http/caching.ts`, `src/http/errors.ts` (todo status da união `ServiceErrorStatus` verificado
-até o cliente), `src/config/env.ts` (lendo o `wrangler.jsonc` real, para que o valor publicado e o
-default do código não possam divergir em silêncio) e `src/source/fetch-policy.ts`.
+Coverage that came into existence today, at points that were in production with no test at all:
+`src/http/caching.ts`, `src/http/errors.ts` (every status in the `ServiceErrorStatus` union verified all
+the way to the client), `src/config/env.ts` (reading the real `wrangler.jsonc`, so the published value and
+the code's default cannot diverge silently) and `src/source/fetch-policy.ts`.
 
-E uma fixture que era sintética virou real: `tests/fixtures/anime/season-now-real.html`, nove cards
-byte a byte da página do MAL, incluindo as variantes `kids` e `r18` e cabeçalhos que discordam de
-propósito do tipo dos cards. A fixture antiga não tinha `js-anime-type-all`, nem cabeçalho, nem essas
-variantes — um parser que lesse o cabeçalho passaria nela e falharia em produção.
+And a fixture that was synthetic became real: `tests/fixtures/anime/season-now-real.html`, nine cards
+byte for byte from MAL's page, including the `kids` and `r18` variants and headers that deliberately
+disagree with the cards' type. The old fixture had no `js-anime-type-all`, no header and none of those
+variants — a parser reading the header would pass it and fail in production.
 
-## Versões publicadas hoje
+## Versions published today
 
 `4ce71084`, `9d3445dd`, `a07e0742`, `629508ce`, `ebeba400`, `5b41891e`, `f2b389cd`, `086145f9`,
 `2139e894`, `9679c755`, `44d028aa`, `0523faba`, `b9cf7782`, `f7d1a163`, `feaf775d`, `aa5baaa9`,
 `dff313ec`, `61a0c56e`, `7f6b59d3`, `1f16e42c`, `cf954b67`, `6d099571`.
 
-Uma nota operacional que custou tempo: `1f16e42c` levou **~15 minutos** para aparecer, contra os
-~30-60 s habituais. Não havia nada errado com o build. `wrangler deployments list` e
-`wrangler versions list` mostram apenas o que teve sucesso, então **ausência de version não
-distingue "atrasado" de "quebrado"** — essa distinção só existe na aba Builds do painel.
+An operational note that cost time: `1f16e42c` took **~15 minutes** to appear, against the usual
+~30-60 s. There was nothing wrong with the build. `wrangler deployments list` and
+`wrangler versions list` show only what succeeded, so **the absence of a version does not distinguish
+"delayed" from "broken"** — that distinction only exists in the dashboard's Builds tab.
 
-## O que fica em aberto
+## What stays open
 
-- **O teto de linha do D1 continua se aproximando.** O `507` transforma o estouro em erro explicado,
-  não o evita. Se `characters-staff` continuar crescendo, a correção real é mudar como payloads
-  grandes são guardados (particionar por página, por exemplo), e isso não foi desenhado.
-- **A folga de 4 MiB não é documentada** e pode ser alinhada aos 2 MB documentados sem aviso. Contra
-  esse número, One Piece já está em 60%.
-- `anime/:id/episodes` segue lendo só a primeira página do MAL.
-- As rotas não implementadas continuam recusadas pelos motivos já registrados em
-  [`docs/routes.md`](../routes.md) — nenhuma foi reaberta por esta varredura.
+- **The D1 row ceiling keeps getting closer.** The `507` turns the overflow into an explained error, it
+  does not prevent it. If `characters-staff` keeps growing, the real fix is changing how large payloads
+  are stored (partitioning by page, for instance), and that has not been designed.
+- **The 4 MiB headroom is undocumented** and could be aligned with the documented 2 MB without warning.
+  Against that number, One Piece is already at 60%.
+- `anime/:id/episodes` still reads only MAL's first page.
+- The unimplemented routes remain refused for the reasons already recorded in
+  [`docs/routes.md`](../routes.md) — none was reopened by this sweep.
