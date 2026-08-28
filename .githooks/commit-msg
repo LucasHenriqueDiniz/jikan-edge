@@ -1,0 +1,74 @@
+#!/bin/sh
+# commit-msg — strip AI attribution trailers before the commit is written.
+#
+# Why a hook and not a written rule: a rule in a file applies only where that file
+# was copied, and the file is not the thing that runs. A hook runs.
+#
+# What the trailer costs: it creates no GitHub *contributor* (that list is computed
+# from author and committer, not from trailers), but the commit page renders the
+# co-author as a linked profile anyway. That is visible, permanent, and not undone
+# by rewriting history alone — rewritten commits stay reachable by SHA in cached
+# views until the host purges them.
+#
+# It STRIPS rather than rejects, on purpose. A hook that blocks makes you rewrite
+# the message by hand and teaches you to reach for --no-verify. A hook that fixes
+# the message is one you never think about again.
+#
+# A human co-author survives: only trailers naming Claude/Anthropic are removed.
+#
+# Install — git does not version hooks, so what gets versioned is the path:
+#     git config core.hooksPath .githooks
+# It also works machine-wide, which is usually what you want:
+#     git config --global core.hooksPath ~/.githooks
+set -eu
+
+msg="${1:-}"
+[ -n "$msg" ] && [ -f "$msg" ] || exit 0
+
+# A hook that cannot run must never block a commit.
+# 2>/dev/null: on an unwritable TMPDIR this fails open, which is right — but without the
+# redirect it also prints mktemp's own error, and a commit that succeeds while printing an
+# error reads as a commit that failed.
+tmp="$(mktemp "${TMPDIR:-/tmp}/commit-msg.XXXXXX" 2>/dev/null)" || exit 0
+trap 'rm -f "$tmp" "$tmp.out" "$tmp.in"' EXIT
+
+# LC_ALL=C and -a: without them, one stray byte makes grep call the message
+# "binary" and replace it with a diagnostic. Match the canonical trailers only,
+# so a body line that merely mentions them survives.
+# CR-only line endings (classic Mac, and some editors) make the whole message one grep "line",
+# so no pattern anchored to ^ or $ matches and every trailer survives. Normalise CR to LF first.
+# Git's own cleanup already strips the \r of CRLF before the hook runs, so this is only about
+# the lone-CR case.
+tr '\r' '\n' < "$msg" > "$tmp.in" 2>/dev/null || cp "$msg" "$tmp.in"
+
+{
+  LC_ALL=C grep -avi -E '^[[:space:]]*Co-authored-by:.*<(noreply|claude)@anthropic\.com>[[:space:]]*$' "$tmp.in" || true
+} | {
+  LC_ALL=C grep -avi -E '^[^A-Za-z]*Generated with \[Claude Code\]' || true
+} > "$tmp"
+
+# If the filter emptied a message that was not empty, something went wrong.
+# Leave the message alone rather than destroy it.
+if [ ! -s "$tmp" ] && [ -s "$msg" ]; then
+  grep -qiE 'anthropic\.com|Generated with \[Claude Code\]' "$msg" || exit 0
+fi
+
+# Drop the blank lines a removed trailer block leaves behind, then move into
+# place. Writing straight to "$msg" would truncate it before awk even runs.
+# Trailing blanks go, and so does any run of blank lines left mid-message where a trailer used
+# to sit — removing a trailer from the middle otherwise leaves a double gap that looks deliberate.
+awk '
+  { line[NR] = $0 }
+  END {
+    last = NR
+    while (last > 0 && line[last] ~ /^[[:space:]]*$/) last--
+    blank = 0
+    for (i = 1; i <= last; i++) {
+      if (line[i] ~ /^[[:space:]]*$/) { blank++; if (blank > 1) continue }
+      else blank = 0
+      print line[i]
+    }
+  }
+' "$tmp" > "$tmp.out" && mv "$tmp.out" "$msg"
+
+exit 0
