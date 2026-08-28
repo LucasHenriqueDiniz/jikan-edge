@@ -1,5 +1,22 @@
 # Viabilidade inicial
 
+Data: 2026-07-19.
+
+> **Correção posterior (2026-08-27).** O bloco "Ambiente publicado" abaixo está desatualizado em três
+> pontos, e um deles descreve algo que não existe mais:
+>
+> - O Worker é `jikan-edge`, servido em `https://jikan.lucashdo.com` (e
+>   `https://jikan-edge.lucas-hdo.workers.dev`), não `jikanv2.lucas-hdo.workers.dev`.
+> - O D1 se chama `jikan-edge` e está na migração `0012`, não só na `0001`.
+> - **O bucket R2 foi removido em 2026-07-30.** Nunca foi referenciado em `src/` e obrigava quem
+>   clonasse o projeto a criar um bucket — com checkout de assinatura R2 — para nada. D1 é o único
+>   armazenamento. Se snapshots voltarem à pauta, o binding volta junto com o desenho de retenção.
+>
+> As medições de evidência abaixo continuam válidas como registro do que se sabia na data, mas foram
+> superadas: os números de CPU de produção estão em
+> [`2026-07-26-catalog-corpus-benchmark.md`](2026-07-26-catalog-corpus-benchmark.md) e o estado atual
+> em [`production-readiness.md`](production-readiness.md). O texto original segue abaixo intacto.
+
 ## Ambiente publicado
 
 - Worker: `https://jikanv2.lucas-hdo.workers.dev`
