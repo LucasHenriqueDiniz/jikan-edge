@@ -1,0 +1,42 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+# A action de pnpm não recebe 'version' — ela lê o campo packageManager do
+# package.json, que é o que mantém o CI e as máquinas locais na mesma versão.
+# O pnpm 11 exige Node >= 22.13, e o .nvmrc deste repo satisfaz isso.
+
+jobs:
+  check:
+    name: Typecheck & Tests
+    runs-on: ubuntu-latest
+    env:
+      # O wrangler tenta reportar métricas na primeira execução e, sem TTY,
+      # isso vira um prompt que trava o job.
+      WRANGLER_SEND_METRICS: false
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: 'pnpm'
+      - run: pnpm install --frozen-lockfile
+
+      - name: Typecheck
+        run: pnpm run typecheck
+
+      # 64 arquivos, 351 testes, via @cloudflare/vitest-pool-workers — roda o
+      # workerd de verdade, e é por isso que esbuild e workerd estão aprovados
+      # em allowBuilds no pnpm-workspace.yaml.
+      - name: Tests
+        run: pnpm test
+
+      # --dry-run: valida que o Worker compila e cabe no limite, sem publicar
+      # nada nem precisar de credencial da Cloudflare.
+      - name: Build check
+        run: pnpm run build
