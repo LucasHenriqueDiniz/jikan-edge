@@ -1,0 +1,6 @@
+# Build scripts are opt-in. Both of these ship their real binaries as platform
+# optionalDependencies; the postinstall is the fallback for when that resolution
+# fails, so approving them costs nothing and covers that case.
+allowBuilds:
+  esbuild: true
+  workerd: true
