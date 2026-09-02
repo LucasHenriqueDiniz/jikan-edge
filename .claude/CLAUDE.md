@@ -153,3 +153,16 @@ Known limitations in served routes: `anime/:id/episodes` covers only MAL's first
 The slice is published and the point measurements are recorded. Before widening the product, add sanitized fixtures, a corpus benchmark (p50/p95), stale/lease tests and a contract for the new route.
 
 The real production corpus was measured in two rounds on 2026-07-26 via `wrangler tail` — see `docs/results/2026-07-26-catalog-corpus-benchmark.md`. The post-parity remeasurement (49 misses covering every family, Workers Paid plan) landed at **p50 7ms / p95 27ms / max 48ms** of cpuTime; the heavy tail is explained by document size (One Piece manga characters 48ms, a prolific person's full 41ms, magazines 27ms) and sits comfortably under the paid plan's 30s ceiling. An earlier attempt to optimize `MalClient` to read only a prefix of the body was reverted (the spikes appeared just as much in the original version; the cause is external to the code and irrelevant after the plan upgrade). Known follow-up: a nonexistent club (an invalid `clubs.php?cid=`) currently becomes a 500 `UPSTREAM_SUSPICIOUS` — it should map to 404.
+
+## Commit hook
+
+`.githooks/commit-msg` strips AI attribution trailers from commit messages. Git does not version
+`.git/hooks`, so what makes the hook run is one line of local config — and a fresh clone does not
+have it. The root `prepare` script sets it on `pnpm install`, and only when nothing else claims it:
+
+```
+git config --get core.hooksPath >/dev/null 2>&1 || git config core.hooksPath .githooks
+```
+
+If you already point `core.hooksPath` somewhere else, the script leaves your value alone and this
+repo's hook stays inert — wire it by hand, or move the file into whatever directory you do use.
