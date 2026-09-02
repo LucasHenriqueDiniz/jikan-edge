@@ -1,6 +1,14 @@
 # Initial architecture decisions
 
 > Status: initial proposals — not implemented.
+>
+> **Partly superseded, 2026-09-02.** Item 2 of "Accepted principles" below names R2 as a candidate
+> for the canonical document, and the diagram under "Conceptual design to test" draws
+> `R2 (payload) + D1 (index)`. Neither holds: the `SNAPSHOTS_BUCKET` binding was removed on
+> 2026-07-30 and D1 is the only storage. What actually shipped is recorded in
+> [`../architecture.md`](../architecture.md) and in [`ARCHITECTURE.md`](ARCHITECTURE.md) (decision
+> D2). Everything else here stayed a proposal or was decided elsewhere — read it as the record of
+> what was considered, not as the current design.
 
 ## Product direction
 

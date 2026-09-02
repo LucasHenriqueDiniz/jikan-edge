@@ -17,7 +17,8 @@
     "build": "wrangler deploy --dry-run",
     "db:migrate:local": "wrangler d1 migrations apply jikan-edge --local",
     "db:migrate:remote": "wrangler d1 migrations apply jikan-edge --remote",
-    "benchmark": "vitest run tests/benchmarks"
+    "benchmark": "vitest run tests/benchmarks",
+    "prepare": "git config --get core.hooksPath >/dev/null 2>&1 || git config core.hooksPath .githooks 2>/dev/null || true"
   },
   "dependencies": {
     "hono": "^4.7.7",

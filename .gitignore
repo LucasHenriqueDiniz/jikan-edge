@@ -9,3 +9,9 @@ node_modules/
 .dev.vars
 *.log
 *.jsonl
+
+# A local allow-rule can carry a token; the file is per-machine and stays out of the repo.
+**/.claude/settings.local.json
+
+# macOS directory metadata
+.DS_Store

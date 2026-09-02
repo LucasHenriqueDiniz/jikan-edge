@@ -5,7 +5,7 @@
 | [`self-hosting.md`](self-hosting.md) | how to run your own instance on any Cloudflare account: setup, troubleshooting, plan limits and usage policy | active |
 | [`routes.md`](routes.md) | the contract for every served route, with its MAL source, TTL and the verified limitations | active |
 | `research/` | external research, with sources and dates | started |
-| `architecture/` | architecture principles and decisions | started |
+| `architecture/` | architecture principles and decisions — [`ARCHITECTURE.md`](architecture/ARCHITECTURE.md) is the record of what actually holds in the code, with the dated decisions and the known gaps | active |
 | `planning/` | scope, risks, experiments and milestones | started |
 | `sources/` | how each MAL source delivers its data, with the measurements behind it — today [`mal-list-delivery.md`](sources/mal-list-delivery.md) | active |
 | `adr/` | formal architecture decisions once there are mature alternatives | reserved |
