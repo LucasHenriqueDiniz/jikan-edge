@@ -10,6 +10,10 @@ on:
 # package.json, que é o que mantém o CI e as máquinas locais na mesma versão.
 # O pnpm 11 exige Node >= 22.13, e o .nvmrc deste repo satisfaz isso.
 
+# Sem passo de build: o Workers Builds constrói e publica a cada push, e
+# reporta como check no commit. `wrangler deploy --dry-run` aqui só repetiria
+# a mesma compilação sem publicar.
+
 jobs:
   check:
     name: Typecheck & Tests
@@ -36,7 +40,3 @@ jobs:
       - name: Tests
         run: pnpm test
 
-      # --dry-run: valida que o Worker compila e cabe no limite, sem publicar
-      # nada nem precisar de credencial da Cloudflare.
-      - name: Build check
-        run: pnpm run build
