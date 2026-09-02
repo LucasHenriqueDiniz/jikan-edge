@@ -166,3 +166,19 @@ git config --get core.hooksPath >/dev/null 2>&1 || git config core.hooksPath .gi
 
 If you already point `core.hooksPath` somewhere else, the script leaves your value alone and this
 repo's hook stays inert — wire it by hand, or move the file into whatever directory you do use.
+
+## House style comes from the `hexagram` plugin, not from this repo
+
+**There is no `.claude/rules/` directory, and that is on purpose.** Nothing in this repo carries a
+copy of the house style. It lives in the `hexagram` plugin, installed once per machine at the
+version of whoever cloned it, and it is read from there:
+
+`architecture`, `naming`, `git`, `language`, `testing`, `clean-code`, `diagrams`, `workflow`,
+`terraform`, `setup-machine`, `research`, `postmortem`, `lint` — one skill of the plugin each. The
+same plugin also ships `board`, `pitch` and `init-project`, which are workflow tooling rather than
+rules.
+
+Two consequences to know before you go looking for a local rule file. A rule can change with no
+commit in this repo, because it is versioned where the plugin is, not here. And a machine without
+the plugin has no house style at all — the rules are not vendored, so there is nothing to fall back
+on.
