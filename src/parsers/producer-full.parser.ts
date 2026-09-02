@@ -10,9 +10,9 @@ const extraSchema = z.object({
 });
 
 function extractAbout(html: string): string | null {
-  const idx = html.indexOf('Member Favorites');
-  if (idx === -1) return null;
-  const match = html.slice(idx).match(/<div class="spaceit_pad">\s*<span>([\s\S]*?)<\/span>\s*<\/div>/i);
+  const index = html.indexOf('Member Favorites');
+  if (index === -1) return null;
+  const match = html.slice(index).match(/<div class="spaceit_pad">\s*<span>([\s\S]*?)<\/span>\s*<\/div>/i);
   const text = match ? decodeHtml(match[1]) : '';
   return text || null;
 }

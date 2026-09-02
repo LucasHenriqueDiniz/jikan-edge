@@ -6,21 +6,21 @@ on:
   pull_request:
     branches: [main]
 
-# A action de pnpm não recebe 'version' — ela lê o campo packageManager do
-# package.json, que é o que mantém o CI e as máquinas locais na mesma versão.
-# O pnpm 11 exige Node >= 22.13, e o .nvmrc deste repo satisfaz isso.
+# The pnpm action takes no 'version' — it reads the packageManager field from
+# package.json, which is what keeps CI and local machines on the same version.
+# pnpm 11 requires Node >= 22.13, and this repo's .nvmrc satisfies that.
 
-# Sem passo de build: o Workers Builds constrói e publica a cada push, e
-# reporta como check no commit. `wrangler deploy --dry-run` aqui só repetiria
-# a mesma compilação sem publicar.
+# No build step: Workers Builds compiles and publishes on every push and
+# reports back as a check on the commit. `wrangler deploy --dry-run` here would
+# only repeat the same compilation without publishing.
 
 jobs:
   check:
     name: Typecheck & Tests
     runs-on: ubuntu-latest
     env:
-      # O wrangler tenta reportar métricas na primeira execução e, sem TTY,
-      # isso vira um prompt que trava o job.
+      # wrangler tries to report metrics on its first run and, with no TTY,
+      # that turns into a prompt which hangs the job.
       WRANGLER_SEND_METRICS: false
     steps:
       - uses: actions/checkout@v4
@@ -34,9 +34,8 @@ jobs:
       - name: Typecheck
         run: pnpm run typecheck
 
-      # 64 arquivos, 351 testes, via @cloudflare/vitest-pool-workers — roda o
-      # workerd de verdade, e é por isso que esbuild e workerd estão aprovados
-      # em allowBuilds no pnpm-workspace.yaml.
+      # The unit suite only: vitest's default config excludes
+      # tests/integration/**, the one suite that needs a real workerd.
       - name: Tests
         run: pnpm test
 
