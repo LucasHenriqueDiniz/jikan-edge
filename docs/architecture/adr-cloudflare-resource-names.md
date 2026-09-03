@@ -25,7 +25,10 @@ database — so both are past the point where renaming is a config edit.
 
 ## What is actually deployed
 
-Measured on 2026-09-03 with `wrangler d1 list` against the production account:
+Measured on 2026-09-03 with `wrangler d1 list` against the production account, then filtered
+to the resources this repository owns. The account holds ten D1 databases and nine R2 buckets
+in total, belonging to other projects; the claim below about naming conventions is about these
+resources, not an audit of the account:
 
 | D1 database | uuid | created | file size |
 | --- | --- | --- | --- |
