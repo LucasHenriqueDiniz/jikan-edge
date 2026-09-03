@@ -1,4 +1,5 @@
 import { beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import type { CatalogSource } from '../../src/ports/driven/catalog-source.port';
 import { applyD1Migrations, env } from 'cloudflare:test';
 import { AnimeService } from '../../src/services/anime.service';
 import type { RuntimeConfig } from '../../src/config/env';
@@ -58,7 +59,7 @@ const html = `<!doctype html><html><head><title>Cowboy Bebop - MyAnimeList.net</
 <br /><h2>Available At</h2><div class="external_links"><a href="http://www.cowboy-bebop.net/" target="_blank" class="link ga-click" data-ga-click-type="external-links-anime-pc-official-site"><i class="link_icon fas fa-link"></i><div class="caption">Official Site</div></a></div>
 </body></html>`;
 
-function stubSource(calls: { count: number }) {
+function stubSource(calls: { count: number }): CatalogSource {
   return {
     getHtml: async (url: string): Promise<SourceResult<string>> => {
       calls.count += 1;
@@ -76,7 +77,7 @@ beforeEach(async () => { for (const table of ['anime', 'catalog_lists', 'cache_e
 describe('AnimeService: detail() and full() share one upstream fetch on a cold cache', () => {
   it('detail() priming the cache lets a following full() call skip its own fetch', async () => {
     const calls = { count: 0 };
-    const service = new AnimeService(bindings.DB, config, stubSource(calls) as never);
+    const service = new AnimeService(bindings.DB, config, stubSource(calls));
 
     const detailResult = await service.detail('1', 'req-1');
     expect(calls.count).toBe(1);
@@ -90,7 +91,7 @@ describe('AnimeService: detail() and full() share one upstream fetch on a cold c
 
   it('full() priming the cache lets a following detail() call skip its own fetch, without leaking themeSongs', async () => {
     const calls = { count: 0 };
-    const service = new AnimeService(bindings.DB, config, stubSource(calls) as never);
+    const service = new AnimeService(bindings.DB, config, stubSource(calls));
 
     const fullResult = await service.full('1', 'req-1');
     expect(calls.count).toBe(1);

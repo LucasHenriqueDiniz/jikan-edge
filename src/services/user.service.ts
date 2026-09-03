@@ -11,6 +11,7 @@ import { FAVORITES_PARSER_VERSION, parseUserFavorites, type Favorites } from '..
 import { parseUserUpdates, type UserUpdates } from '../parsers/user-updates.parser';
 import { UpdatesRepository } from '../repositories/updates.repository';
 import { animeListUrl, mangaListUrl, profileUrl, userSubPageUrl } from '../source/mal-urls';
+import type { CatalogSource } from '../ports/driven/catalog-source.port';
 import { MalClient } from '../source/mal-client';
 import { CatalogListRepository } from '../repositories/catalog-list.repository';
 import { USER_SOCIAL_PARSER_VERSION, type UserClub, type UserFriend } from '../domain/user-social';
@@ -46,11 +47,11 @@ export class UserService {
   private readonly locks: RefreshLockRepository;
   private readonly deps: CacheDeps;
   private readonly users: UserRepository;
-  private readonly source: MalClient;
+  private readonly source: CatalogSource;
   private readonly favorites: FavoritesRepository;
   private readonly updates: UpdatesRepository;
   private readonly catalog: CatalogListRepository;
-  constructor(private readonly db: D1Database, private readonly config: RuntimeConfig, source?: MalClient, waitUntil?: WaitUntil) {
+  constructor(private readonly db: D1Database, private readonly config: RuntimeConfig, source?: CatalogSource, waitUntil?: WaitUntil) {
     this.cache = new CacheRepository(db); this.locks = new RefreshLockRepository(db); this.deps = { cache: this.cache, locks: this.locks, waitUntil }; this.users = new UserRepository(db); this.favorites = new FavoritesRepository(db); this.updates = new UpdatesRepository(db); this.catalog = new CatalogListRepository(db); this.source = source ?? new MalClient(config);
   }
 

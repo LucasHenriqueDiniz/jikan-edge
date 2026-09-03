@@ -31,6 +31,7 @@ import { CacheRepository } from '../repositories/cache.repository';
 import { CatalogListRepository } from '../repositories/catalog-list.repository';
 import { MangaRepository } from '../repositories/manga.repository';
 import { RefreshLockRepository } from '../repositories/refresh-lock.repository';
+import type { CatalogSource } from '../ports/driven/catalog-source.port';
 import { MalClient } from '../source/mal-client';
 import {
   charactersUrl,
@@ -59,8 +60,8 @@ export class MangaService {
   private readonly deps: CacheDeps;
   private readonly manga: MangaRepository;
   private readonly catalog: CatalogListRepository;
-  private readonly source: MalClient;
-  constructor(private readonly db: D1Database, private readonly config: RuntimeConfig, source?: MalClient, waitUntil?: WaitUntil) {
+  private readonly source: CatalogSource;
+  constructor(private readonly db: D1Database, private readonly config: RuntimeConfig, source?: CatalogSource, waitUntil?: WaitUntil) {
     this.cache = new CacheRepository(db); this.locks = new RefreshLockRepository(db); this.deps = { cache: this.cache, locks: this.locks, waitUntil }; this.manga = new MangaRepository(db); this.catalog = new CatalogListRepository(db); this.source = source ?? new MalClient(config);
   }
 

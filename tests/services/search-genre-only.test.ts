@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import type { CatalogSource } from '../../src/ports/driven/catalog-source.port';
 import { SearchService } from '../../src/services/search.service';
 import { classifyHtml } from '../../src/source/response-validator';
 import { searchUrl } from '../../src/source/mal-urls';
@@ -41,7 +42,7 @@ describe('the URL keeps a genre-only search on the search page', () => {
 
 // A stub that runs the real classifier, so the marker is exercised the way MalClient exercises it
 // rather than asserted against a copy of the rule.
-function sourceServing(body: string) {
+function sourceServing(body: string): CatalogSource {
   return {
     getHtml: async (url: string, requiredMarkers: string[] = []) =>
       classifyHtml(body, { url, status: 200, contentType: 'text/html', durationMs: 1, sizeBytes: body.length }, requiredMarkers),
@@ -58,7 +59,7 @@ const GENRE_BROWSE_PAGE = `<html><head><title>Action - Anime - MyAnimeList.net</
 const EMPTY_SEARCH_PAGE = `<html><head><title>Search Anime - MyAnimeList.net</title></head><body><div id="filterByType"></div>No titles that matched your query were found.${PADDING}</body></html>`;
 
 describe('a page that is not the search page is refused instead of parsed as empty', () => {
-  const service = (body: string) => new SearchService(stubDb(), { catalogTtlSeconds: 1 } as never, sourceServing(body) as never);
+  const service = (body: string) => new SearchService(stubDb(), { catalogTtlSeconds: 1 } as never, sourceServing(body));
 
   // The old marker was `filterByType`, which the genre-browse page also carries — it has a
   // type-filter widget of its own — so the wrong page passed the guard and the empty parse became

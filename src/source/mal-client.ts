@@ -1,4 +1,5 @@
 import type { RuntimeConfig } from '../config/env';
+import type { CatalogSource } from '../ports/driven/catalog-source.port';
 import type { FetchBudget } from './fetch-policy';
 import { classifyHtml } from './response-validator';
 import type { SourceResult } from './source-types';
@@ -14,7 +15,7 @@ function delay(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-export class MalClient {
+export class MalClient implements CatalogSource {
   constructor(private readonly config: RuntimeConfig, private readonly fetcher: typeof fetch = (input, init) => globalThis.fetch(input, init)) {}
 
   async getHtml(url: string, requiredMarkers: string[] = [], budget?: Partial<FetchBudget>): Promise<SourceResult<string>> {

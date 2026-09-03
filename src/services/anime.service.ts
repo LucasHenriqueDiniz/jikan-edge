@@ -38,6 +38,7 @@ import { AnimeRepository } from '../repositories/anime.repository';
 import { CacheRepository } from '../repositories/cache.repository';
 import { CatalogListRepository } from '../repositories/catalog-list.repository';
 import { RefreshLockRepository } from '../repositories/refresh-lock.repository';
+import type { CatalogSource } from '../ports/driven/catalog-source.port';
 import { MalClient } from '../source/mal-client';
 import { animeDetailUrl, charactersUrl, episodeDetailUrl, episodesUrl, forumUrl, genreTaxonomyUrl, moreInfoUrl, newsUrl, picturesUrl, scheduleUrl, seasonArchiveUrl, seasonByYearUrl, seasonNowUrl, seasonUpcomingUrl, statisticsUrl, titleRecommendationsUrl, titleReviewsUrl, TOP_ANIME_FILTERS, topAnimeUrl, videosUrl } from '../source/mal-urls';
 import { parseTopFilter } from './top-filter';
@@ -55,8 +56,8 @@ export class AnimeService {
   private readonly deps: CacheDeps;
   private readonly anime: AnimeRepository;
   private readonly catalog: CatalogListRepository;
-  private readonly source: MalClient;
-  constructor(private readonly db: D1Database, private readonly config: RuntimeConfig, source?: MalClient, waitUntil?: WaitUntil) {
+  private readonly source: CatalogSource;
+  constructor(private readonly db: D1Database, private readonly config: RuntimeConfig, source?: CatalogSource, waitUntil?: WaitUntil) {
     this.cache = new CacheRepository(db); this.locks = new RefreshLockRepository(db); this.deps = { cache: this.cache, locks: this.locks, waitUntil }; this.anime = new AnimeRepository(db); this.catalog = new CatalogListRepository(db); this.source = source ?? new MalClient(config);
   }
 

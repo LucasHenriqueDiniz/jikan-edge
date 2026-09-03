@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import type { CatalogSource } from '../../src/ports/driven/catalog-source.port';
 import { SearchService } from '../../src/services/search.service';
 
 // The filter-to-URL mapping is private, so it is observed where it becomes visible: the URL handed
@@ -7,12 +8,12 @@ import { SearchService } from '../../src/services/search.service';
 // which is what lets the same helper assert both mappings and refusals.
 async function params(filters: Record<string, string>): Promise<URLSearchParams> {
   let seen: string | null = null;
-  const source = {
+  const source: CatalogSource = {
     getHtml: async (url: string) => { seen = url; throw new Error('stop after recording the URL'); },
   };
   const row = { first: async () => null, run: async () => ({ meta: { changes: 1 }, success: true }) };
   const db = { prepare: () => ({ bind: () => row, ...row }) };
-  const service = new SearchService(db as never, { catalogTtlSeconds: 1 } as never, source as never);
+  const service = new SearchService(db as never, { catalogTtlSeconds: 1 } as never, source);
 
   try {
     await service.anime('naruto', 1, filters, 'req');
