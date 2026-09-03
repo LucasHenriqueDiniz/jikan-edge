@@ -13,7 +13,7 @@ const entrySchema = z.object({
 
 // Same card markup as the global reviews list (reviews.parser.ts), except the per-title page
 // never links back to the anime/manga being reviewed (that's implicit from the URL), so there's
-// no malId/title to extract here â€” everything else (reviewer, date, tag, score, text) is shared.
+// no malId/title to extract here — everything else (reviewer, date, tag, score, text) is shared.
 function parseCard(chunk: string): TitleReview | null {
   const imageUrl = originalImage(chunk.match(/data-ga-click-type="review-\w+-reviewer-pic"[\s\S]{0,300}?data-src="([^"]+)"/i)?.[1] ?? null);
   const username = decodeHtml(chunk.match(/data-ga-click-type="review-\w+-reviewer">([^<]+)<\/a>/i)?.[1] ?? '') || null;

@@ -11,7 +11,7 @@ describe('character detail parser', () => {
     expect(detail.nameKanji).toBe('スパイク・スピーゲル');
     expect(detail.url).toBe('https://myanimelist.net/character/1/Spike_Spiegel');
     expect(detail.imageUrl).toContain('cdn.myanimelist.net');
-    // A character has no `l` variant on the CDN â€” deriving one would publish a 404.
+    // A character has no `l` variant on the CDN — deriving one would publish a 404.
     expect(detail.images.small).toBe(detail.imageUrl?.replace(/\.jpg$/, 't.jpg'));
     expect(detail.images.medium).toBe(detail.imageUrl);
     expect(detail.images.large).toBeNull();

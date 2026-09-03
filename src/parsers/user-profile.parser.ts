@@ -73,8 +73,8 @@ export function parseUserProfile(html: string, requestedUsername: string, fetche
   return validated.data;
 }
 
-// The profile renders Anime Stats and then Manga Stats. The two headings sit ~2 KB apart â€” well inside the
-// 8 KB window this used to take â€” so an anime bucket missing a label silently fell through to the manga
+// The profile renders Anime Stats and then Manga Stats. The two headings sit ~2 KB apart — well inside the
+// 8 KB window this used to take — so an anime bucket missing a label silently fell through to the manga
 // number below it. Cut the anime bucket at the next heading instead.
 function statsSection(html: string, marker: 'Anime Stats' | 'Manga Stats'): string {
   const start = html.indexOf(marker);
@@ -85,8 +85,8 @@ function statsSection(html: string, marker: 'Anime Stats' | 'Manga Stats'): stri
 }
 
 // Each bucket holds two lists (`stats-status`, `stats-data`) followed by the "Last * Updates" feed, which
-// repeats the same status words. Narrowing to the right `<ul>` keeps generic labels â€” "Completed",
-// "Episodes" â€” from reaching that feed.
+// repeats the same status words. Narrowing to the right `<ul>` keeps generic labels — "Completed",
+// "Episodes" — from reaching that feed.
 function statsList(section: string, className: 'stats-status' | 'stats-data'): string {
   const start = section.indexOf(className);
   if (start === -1) return '';
@@ -102,7 +102,7 @@ function statusCount(html: string, label: string): number {
 }
 
 // Totals live in `<span class="...">Label</span><span class="...">1,234</span>` (labels are
-// "Total Entries", "Episodes", "Chapters", "Volumes" â€” not "Episodes Watched"/"Chapters Read").
+// "Total Entries", "Episodes", "Chapters", "Volumes" — not "Episodes Watched"/"Chapters Read").
 function dataValue(html: string, label: string): number | null {
   const escaped = label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   return numeric(capture(html, new RegExp(`>${escaped}<\\/span>\\s*<span[^>]*>\\s*([\\d,]+)`, 'i')));
@@ -110,7 +110,7 @@ function dataValue(html: string, label: string): number | null {
 
 // Unlike every other stat, the "Days" value sits *outside* a span (`<span ...>Days: </span>12.5`),
 // so neither `dataValue` nor the `Mean Score:` pattern (whose value is wrapped in `<span
-// class="score-label">`) reaches it â€” hence a third shape. Fractional, so `[\d.,]` not `[\d,]`.
+// class="score-label">`) reaches it — hence a third shape. Fractional, so `[\d.,]` not `[\d,]`.
 function daysValue(html: string): number | null {
   return numeric(capture(html, /Days:\s*<\/span>\s*([\d.,]+)/i));
 }

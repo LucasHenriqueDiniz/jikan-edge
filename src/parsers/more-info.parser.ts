@@ -3,7 +3,7 @@ import { richText } from './html';
 
 const HEADER = '<h2 class="mb8">More Info</h2>';
 
-// Free-form curator notes (viewing order, prototype/related trivia, etc.) â€” most titles don't
+// Free-form curator notes (viewing order, prototype/related trivia, etc.) — most titles don't
 // have any, so absence of the header is a normal, valid result, not a parse failure.
 export function parseMoreInfo(html: string): MoreInfo {
   const start = html.indexOf(HEADER);
