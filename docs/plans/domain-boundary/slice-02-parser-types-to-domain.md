@@ -7,8 +7,14 @@ kanban: c7eddaac-cbad-4503-964f-1f9ec736c7b1
 
 ## Delivers
 
-`src/repositories/` stops importing from `src/parsers/` entirely, and the six type names that cross
-that boundary today are declared under `src/domain/` like the other 44.
+`src/repositories/` stops importing from `src/parsers/` entirely, and the type names that cross out
+of `src/parsers/` today are declared under `src/domain/` alongside the 72 exported interfaces
+already there (46 files, measured on this tree).
+
+Two of them cross into `src/repositories/` — `Favorites` in `favorites.repository.ts:1` and
+`UserUpdates` in `updates.repository.ts:1`. The other four cross into `src/services/`, which is a
+legal direction; they move with the first two because leaving half the parser's public vocabulary
+behind is what makes the next audit raise this again.
 
 Moving: `Favorites` and `Favorite` (`src/parsers/user-favorites.parser.ts:4-5`), `UserUpdates` and
 `UserUpdate` (`src/parsers/user-updates.parser.ts:3-4`), `ClubRelations`
@@ -40,11 +46,20 @@ parser-internal vocabulary and belong where they are.
 ## Done when
 
 ```bash
-! grep -rq "parsers/" src/repositories/ && grep -rlE "^export (interface|type) (Favorites|UserUpdates|ClubRelations|SeasonArchiveEntry|ScheduleByDay|ScheduleDay)\b" src/domain src/parsers && pnpm test
+NAMES='(Favorites|Favorite|UserUpdates|UserUpdate|ClubRelations|SeasonArchiveEntry|ScheduleByDay|ScheduleDay)'
+! grep -rqE "from '\.\./parsers/" src/repositories/ && ! grep -rqE "^export (interface|type) $NAMES\b" src/parsers/ && grep -rlE "^export (interface|type) $NAMES\b" src/domain/ && pnpm test
 ```
 
-Every path the grep lists starts with `src/domain/` and none starts with `src/parsers/`, and the run
-ends with `Tests  351 passed (351)`.
+The first two greps find nothing, the third lists the files under `src/domain/` that now declare the
+moved names, and the run ends with `Tests  351 passed (351)`.
+
+Asserting the absence from `src/parsers/` separately is what makes this a gate: the earlier form
+listed `src/domain src/parsers` in one `grep -rl` and left the reader to notice that no path started
+with `src/parsers/`. The re-exports this slice leaves behind
+(`export type { Favorites } from '../domain/user-favorites'`) do not match a declaration pattern, so
+they neither satisfy nor break it. Today the first grep matches
+`src/repositories/favorites.repository.ts:1` and `src/repositories/updates.repository.ts:1`, and the
+block prints nothing.
 
 ## If stuck
 

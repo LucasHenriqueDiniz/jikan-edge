@@ -40,11 +40,17 @@ The three facts that make this the `naming` skill's asymmetric case, all verifia
 ## Done when
 
 ```bash
-grep -rl "workers.dev" docs/architecture/ && grep -rc "database_name" docs/architecture/
+for f in docs/architecture/*.md; do grep -q "workers.dev" "$f" && grep -q "database_name" "$f" && echo "both costs named in $f"; done
 ```
 
-At least one file under `docs/architecture/` is listed and its `database_name` count is at least 1 —
-that is, the note names both the hostname cost and the database cost.
+One line prints, naming the file that carries the exception — whether that is a new dated note
+or a section in `initial-decisions.md`, both of which this folder's glob covers.
+
+Both strings have to be in the *same* file, which the two independent `grep -r` calls did not
+require: one file naming the hostname and a different one naming the database would have satisfied
+them, and `grep -rc` printed a `:0` line for every file mentioning neither, so the output looked
+like an answer either way. Today nothing prints — no file under `docs/architecture/` contains
+`workers.dev`.
 
 ## If stuck
 

@@ -34,11 +34,18 @@ nothing else.
 ## Done when
 
 ```bash
-pnpm lint ; echo "exit=$?" && git diff --stat -- src/ | tail -1
+node -e "process.exit(require('./package.json').scripts.lint ? 0 : 1)" && echo "lint script: present"
+pnpm lint ; echo "exit=$?"
+git diff --stat -- src/ | tail -1
 ```
 
-`pnpm lint` runs and reports findings, `exit=` is non-zero, and `git diff --stat -- src/` prints
-nothing — no source file changed.
+`lint script: present` prints, `pnpm lint` runs and reports findings with a non-zero `exit=`, and
+`git diff --stat -- src/` prints nothing — no source file changed.
+
+The first line is the whole point: a missing script and a linter with findings both exit 1, so the
+exit code alone proves nothing. Run today, the block prints no `lint script: present`, then
+`[ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL] Command "lint" not found`, `exit=1` and an empty diff —
+exactly what the earlier one-liner accepted as done.
 
 ## If stuck
 

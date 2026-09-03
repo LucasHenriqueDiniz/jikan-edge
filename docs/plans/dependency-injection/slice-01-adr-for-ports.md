@@ -8,15 +8,20 @@ kanban: 88a59431-9505-4d3b-a473-57f75ec684a2
 ## Delivers
 
 `docs/architecture/adr-ports-for-driven-dependencies.md`, status `Proposed`, costing both options
-against numbers taken from this repo rather than from the skill. Nothing under `src/` changes.
+against numbers taken from this repo rather than from the skill. Nothing under `src/` changes. If
+the Needs section's alternative is taken the file is `docs/adr/adr-ports-for-driven-dependencies.md`
+instead — the gate accepts either folder under that filename, so the choice does not change it.
 
 The ADR has to answer three things the audit could not:
 
 1. **What the change actually costs.** 15 files in `src/services/`, 12 in `src/repositories/`, and
-   10 factory functions at `src/app.ts:111-120` that today hand each service a raw `c.env.DB`.
-2. **What it buys that is not already banked.** Every service constructor already takes an optional
-   `source?: MalClient` so tests can pass a fake (`src/services/anime.service.ts:56`). Ports would
-   make that uniform, not newly possible — say so plainly instead of claiming testability.
+   11 factory functions at `src/app.ts:111-121` that today hand each service a raw `c.env.DB` —
+   plus two more callsites the factories miss, `new RandomService(c.env.DB)` at `src/app.ts:530`
+   and `:540`.
+2. **What it buys that is not already banked.** Eleven of the twelve services that take a
+   `D1Database` already take an optional `source?: MalClient` too, so tests can pass a fake
+   (`src/services/anime.service.ts:59`); `RandomService` is the one that does not. Ports would make
+   that uniform, not newly possible — say so plainly instead of claiming testability.
 3. **Whether a second adapter is plausible.** On Workers the alternative to D1 is another D1. If the
    port exists only to satisfy the rule, the ADR should say that and let the owner decide anyway.
 
@@ -36,10 +41,17 @@ The ADR has to answer three things the audit could not:
 ## Done when
 
 ```bash
-grep -cE "^## (Context|Options|Decision|Consequences)" docs/architecture/adr-ports-for-driven-dependencies.md && grep -c "src/services/anime.service.ts" docs/architecture/adr-ports-for-driven-dependencies.md
+ADR=$(ls docs/architecture/adr-ports-for-driven-dependencies.md docs/adr/adr-ports-for-driven-dependencies.md 2>/dev/null | head -1) ; echo "adr=$ADR"
+test -n "$ADR" && test "$(grep -cE '^## (Context|Options|Decision|Consequences)' "$ADR")" = 4 && grep -c "src/services/anime.service.ts" "$ADR" && echo "ADR costed against this repo"
 ```
 
-Prints `4` then a count of at least `1`.
+`adr=` names the file, the citation count prints at least `1`, and `ADR costed against this repo`
+closes the chain.
+
+The section count is asserted at exactly `4` rather than printed: `grep -c` exits zero on `3` too,
+so a draft missing `Consequences` used to pass by inspection. Looking the file up in both allowed
+folders is the other half — the old command hard-coded `docs/architecture/`, which the Needs
+section's own `docs/adr/` option would have failed. Today `adr=` is empty and nothing else runs.
 
 ## If stuck
 

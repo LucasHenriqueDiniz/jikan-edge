@@ -31,11 +31,17 @@ the whole tree.
 ## Done when
 
 ```bash
-! grep -rq "\.\./services/" src/domain/ && pnpm typecheck && pnpm test
+! grep -rqE "from '\.\./services/" src/domain/ && echo "src/domain imports nothing from src/services" && pnpm typecheck && pnpm test
 ```
 
-The grep prints nothing and does not short-circuit the chain, `tsc --noEmit` prints nothing, and the
-run ends with `Tests  351 passed (351)`.
+The grep finds nothing, the marker line prints, `tsc --noEmit` prints nothing, and the run ends with
+`Tests  351 passed (351)`.
+
+The pattern is anchored to the `from '../services/` import form deliberately. A bare `services/`
+also matches prose, and the re-export this slice leaves in `src/services/cacheable.ts` is exactly
+the sort of thing a comment in the moved file would name — which would make the gate unsatisfiable
+by the work that satisfies the slice. Today it matches `src/domain/pagination.ts:1` and the block
+prints nothing.
 
 ## If stuck
 

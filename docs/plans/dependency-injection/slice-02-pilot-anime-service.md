@@ -14,7 +14,7 @@ this reason — it is here because a blocked card keeps its column and says noth
 
 `AnimeService` receives its collaborators instead of building them. `src/app.ts` builds them.
 
-Today `src/services/anime.service.ts:56` constructs five adapters — `CacheRepository`,
+Today `src/services/anime.service.ts:60` constructs five adapters — `CacheRepository`,
 `RefreshLockRepository`, `AnimeRepository`, `CatalogListRepository`, `MalClient` — from a raw
 `D1Database` and a `RuntimeConfig`. After this slice the constructor takes ports and
 `src/app.ts:112` (`animeService()`) does the constructing.
@@ -41,11 +41,16 @@ Today `src/services/anime.service.ts:56` constructs five adapters — `CacheRepo
 ## Done when
 
 ```bash
-! grep -qE "new (CacheRepository|RefreshLockRepository|AnimeRepository|CatalogListRepository|MalClient)" src/services/anime.service.ts && grep -c "D1Database" src/services/anime.service.ts ; pnpm typecheck && pnpm test
+! grep -qE "new (CacheRepository|RefreshLockRepository|AnimeRepository|CatalogListRepository|MalClient)\(" src/services/anime.service.ts && ! grep -q "D1Database" src/services/anime.service.ts && echo "anime.service.ts: no adapter construction, no D1Database" && pnpm typecheck && pnpm test
 ```
 
-The grep chain prints `0` for `D1Database`, `tsc --noEmit` prints nothing, and the run ends with at
-least `Tests  351 passed`.
+The marker line prints, `tsc --noEmit` prints nothing, and the run ends with at least
+`Tests  351 passed`.
+
+The `;` in the earlier form was the defect: the grep chain short-circuits on
+`src/services/anime.service.ts:60`, and `pnpm typecheck && pnpm test` then ran anyway and ended on
+`Tests  351 passed (351)` — an untouched repo printing the same last line as a finished one. Run
+today, the whole block prints nothing.
 
 ## If stuck
 

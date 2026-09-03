@@ -33,11 +33,16 @@ at all in behaviour.
 ## Done when
 
 ```bash
-pnpm lint && git status --porcelain && pnpm test
+pnpm lint && test -z "$(git status --porcelain)" && echo "tree clean" && pnpm test
 ```
 
-`pnpm lint` exits zero with no findings, `git status --porcelain` prints nothing, and the run ends
-with `Tests  351 passed (351)`.
+`pnpm lint` exits zero with no findings, `tree clean` prints, and the run ends with
+`Tests  351 passed (351)`.
+
+`git status --porcelain` exits zero whether or not it lists anything, so the chain has to test its
+output rather than its status — otherwise a dirty tree still reaches `pnpm test` and the block
+ends green. Today the chain stops at `pnpm lint`, which cannot exit zero while the script is
+missing.
 
 ## If stuck
 

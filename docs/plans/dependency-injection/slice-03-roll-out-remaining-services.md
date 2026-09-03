@@ -7,10 +7,18 @@ kanban: 1287c82e-42b1-4d1e-a261-50ca5fed4c18
 
 ## Delivers
 
-No service constructs an adapter. All construction happens in the ten factory functions at
-`src/app.ts:111-120`, and no service constructor mentions `D1Database`.
+No service constructs an adapter. All construction happens in the eleven factory functions at
+`src/app.ts:111-121`, and no service constructor mentions `D1Database`.
 
-14 remaining files in `src/services/` follow the shape slice 2 settled.
+11 files in `src/services/` still name `D1Database` once slice 2 has converted
+`anime.service.ts`, and all of them follow the shape it settled: ten that build their own
+repositories and `MalClient`, plus `random.service.ts`, which builds nothing but takes a raw
+`D1Database` straight into `this.db.prepare(...)`.
+
+`RandomService` is also the one service with no factory — `src/app.ts:530` and `:540` do
+`new RandomService(c.env.DB)` inline inside the two random route handlers. Giving it a factory
+alongside the other eleven is part of this slice, not a detail: without that, `src/services/`
+cannot stop naming `D1Database`.
 
 ## Needs
 
@@ -31,11 +39,16 @@ No service constructs an adapter. All construction happens in the ten factory fu
 ## Done when
 
 ```bash
-! grep -rqE "new [A-Za-z]*Repository\(|new MalClient\(" src/services/ && ! grep -rq "D1Database" src/services/ && pnpm typecheck && pnpm test
+! grep -rqE "new [A-Za-z]*Repository\(|new MalClient\(" src/services/ && ! grep -rq "D1Database" src/services/ && ! grep -qE "new [A-Za-z]+Service\(c\.env\.DB" src/app.ts && echo "no service builds an adapter; none is handed a raw D1" && pnpm typecheck && pnpm test
 ```
 
-Both greps print nothing and do not short-circuit, `tsc --noEmit` prints nothing, and the run ends
-with at least `Tests  351 passed`.
+All three greps find nothing, the marker line prints, `tsc --noEmit` prints nothing, and the run
+ends with at least `Tests  351 passed`.
+
+The third grep is what keeps the composition root in scope. It matches 13 sites today — the eleven
+factories and the two inline `new RandomService(c.env.DB)` calls — so it cannot be satisfied by
+rewriting the factories and leaving the random routes alone, which is the state the first two greps
+would happily accept. Today the block stops at the first grep and prints nothing.
 
 ## If stuck
 
