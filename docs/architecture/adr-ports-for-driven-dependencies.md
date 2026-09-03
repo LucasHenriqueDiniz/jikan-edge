@@ -1,16 +1,17 @@
 ---
 tags:
   - architecture
-  - status/proposed
+  - status/accepted
 ---
 
 # ADR — ports for the driven dependencies
 
-**Status:** Proposed.
+**Status:** Accepted. Option A, sequenced with the source port first.
 **Date:** 2026-09-03.
 **Supersedes:** nothing. **Amends:** the two `no ports/` / `wiring` rows in
 [`ARCHITECTURE.md`](ARCHITECTURE.md#divergences-from-the-house-style) and the second bullet of its
-[known gaps](ARCHITECTURE.md#known-gaps), which record the divergence but do not decide it.
+[known gaps](ARCHITECTURE.md#known-gaps), which recorded the divergence without deciding it. This
+acceptance removes all three and rewrites that file's Ports section around the ports that now exist.
 
 **Why this file lives in `docs/architecture/` and not `docs/adr/`.** [`../README.md`](../README.md)
 reserves `adr/` for "formal architecture decisions once there are mature alternatives", and this
@@ -201,11 +202,10 @@ port shape on `AnimeService` before the rollout, and its own stop condition stan
 carrying a D1 type is not a port, and finding one is evidence against the change rather than
 something to ship.
 
-This is **Proposed**, not accepted. It is a call about how much rewrite a one-person project absorbs
-for a rule it can otherwise document its way out of, and Option B remains a defensible answer —
-which is why it is costed here rather than dismissed. If the owner takes B, this file flips to
-`Rejected`, slices 2 and 3 close with a pointer to it, and the two `ARCHITECTURE.md` divergence rows
-stop being provisional.
+**Accepted by the owner on 2026-09-03.** It was a call about how much rewrite a one-person project
+absorbs for a rule it can otherwise document its way out of, and Option B remained a defensible
+answer — which is why it is costed above rather than dismissed. B was not taken. Slices 2 and 3 are
+unblocked, and the two `ARCHITECTURE.md` divergence rows are removed rather than left provisional.
 
 ## Consequences
 
