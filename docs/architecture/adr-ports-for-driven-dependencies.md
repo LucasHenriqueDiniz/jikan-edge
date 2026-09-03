@@ -54,7 +54,7 @@ The surface this decision covers, counted:
 | files in `src/services/` | 15 (12 `*.service.ts`, plus `cacheable.ts`, `genre-filter.ts`, `top-filter.ts`) |
 | files in `src/repositories/` | 12 |
 | lines of code, `src/services/` + `src/repositories/` | 1,857 + 194 |
-| public methods across the 12 repositories | 35 |
+| public methods across the 12 repositories | 28 (27 `async`, plus `CacheRepository.isFresh`) |
 | factory functions handing over a raw `c.env.DB` | 11, at `src/app.ts:111-121` |
 | service constructions outside those factories | 2, at `src/app.ts:530` and `:540` |
 | adapter constructions inside `src/services/` | 53 |
@@ -119,12 +119,12 @@ on optionality, and the honest cost of that bet is below.
 themselves implementations, services receive ports, and `src/app.ts` does all construction.
 
 *How many ports.* Grouped by conversation, as the rule demands, this is **2**: a catalog source and
-a store. The store variant is one interface carrying the **35** public methods currently spread
+a store. The store variant is one interface carrying the **28** public methods currently spread
 over 12 classes. One interface per repository would be **12**, which the spec names by hand as the
 failure mode ("port explosion […] one trait per struct, one mock per trait"). A middle shape — the
 3 shared repositories (`cache`, `refresh-lock`, `catalog-list`) as their own ports plus one per
 resource — is **12** by another route. Slice 2 of the plan settles this by doing it once; this ADR
-records that 2 is the rule-compliant answer and 35 methods is its price.
+records that 2 is the rule-compliant answer and 28 methods is its price.
 
 *What changes.* Under `src/`: 12 `*.service.ts` constructors, `CacheDeps` at
 `src/services/cacheable.ts:62` (shared by every service, so it changes once and the rest follow),
@@ -136,7 +136,7 @@ move out of `src/services/` and into the root, where the 11 one-line factories a
 *What it costs that is not a file count.* `src/app.ts` is 550 lines today, already past the
 `clean-code` 500-line soft limit that `ARCHITECTURE.md` lists as a known gap. Absorbing 53
 constructions makes that number worse in the same change. The extraction itself is mechanical:
-0 of the 35 repository method signatures mention a D1 driver type, so the store interface is a copy
+0 of the 28 repository method signatures mention a D1 driver type, so the store interface is a copy
 of signatures that already speak domain types.
 
 *Tests.* 19 constructions in 7 files rewritten. 13 `as never` casts on the source argument
@@ -192,7 +192,7 @@ Sequencing, because the two halves are not equally justified:
 1. **The source port first** — the Option C work. 1 interface, 11 service signatures, 13 casts
    removed, `src/app.ts` untouched. This is the half with a measured benefit, and shipping it first
    means the rollout is worth something even if it stalls.
-2. **The store port second** — 35 signatures, 53 constructions relocated, a 12th factory for
+2. **The store port second** — 28 signatures, 53 constructions relocated, a 12th factory for
    `RandomService`. This half is rule-compliance. It buys no swap and no new test. That is recorded
    in Context above and is not to be re-argued as a benefit later.
 
@@ -223,7 +223,7 @@ stop being provisional.
 - `RandomService` gets a factory and stops being constructed inline, which is a prerequisite rather
   than a tidy-up: without it `src/services/` cannot stop naming `D1Database`.
 - The store port is carried at a maintenance cost with no swap behind it. Every new repository
-  method becomes two edits instead of one, 35 signatures becoming 36 and so on. This is the price
+  method becomes two edits instead of one, 28 signatures becoming 29 and so on. This is the price
   of the rule and it is being paid deliberately.
 
 **If B is accepted.** The three consequences to accept in writing: 13 unchecked test seams, 53
