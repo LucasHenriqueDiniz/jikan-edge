@@ -123,3 +123,7 @@ and `ALL` rows). The dump was checked non-empty first, after the lesson from sli
 `random.routes.ts` is now the only module that builds a service instead of receiving a factory —
 `new RandomService(c.env.DB)`, twice. It is the one service with no factory in `app.ts`, and the
 split made that visible instead of leaving it buried at line 538 of a 1,782-line file.
+
+---
+
+Closed by [[linter-formatter-and-app-ts]] (`docs/postmortem/`).

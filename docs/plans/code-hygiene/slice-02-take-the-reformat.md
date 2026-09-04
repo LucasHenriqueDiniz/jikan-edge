@@ -136,3 +136,7 @@ The frontmatter flip on this very file was done with `sed -i.bak` — which
 UTF-8 locale passed the bytes through. **That is luck, not a counter-example.** The rule exists
 because the same command under a different locale, or GNU `sed`, mangles them, and nothing in the
 suite or the typecheck would have reported it. Use the editing tool or Node with explicit `'utf8'`.
+
+---
+
+Closed by [[linter-formatter-and-app-ts]] (`docs/postmortem/`).

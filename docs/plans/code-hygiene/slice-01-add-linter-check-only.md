@@ -140,3 +140,7 @@ pitch said this epic exists to close, now with a count.
 
 `.github/` still runs only the suite. Wiring `lint` in while 139 files are unformatted would teach
 everyone to ignore a red CI; it belongs after slice 2.
+
+---
+
+Closed by [[linter-formatter-and-app-ts]] (`docs/postmortem/`).
