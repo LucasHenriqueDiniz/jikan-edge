@@ -1,4 +1,4 @@
-import type { UserUpdates } from '../parsers/user-updates.parser';
+import type { UserUpdates } from '../domain/user-updates';
 export class UpdatesRepository {
   constructor(private readonly db: D1Database) {}
   async get(key: string): Promise<UserUpdates | null> {

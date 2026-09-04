@@ -1,21 +1,9 @@
 import { PARSER_VERSION } from '../domain/user';
+import type { Favorite, Favorites } from '../domain/user-favorites';
 import { imageFrom } from './html';
 
-export interface Favorite {
-  malId: number;
-  title?: string;
-  name?: string;
-  url: string;
-  type?: string;
-  startYear?: number | null;
-  imageUrl: string | null;
-}
-export interface Favorites {
-  anime: Favorite[];
-  manga: Favorite[];
-  characters: Favorite[];
-  people: Favorite[];
-}
+// Declared in the domain; re-exported so callers that import them from this parser keep resolving.
+export type { Favorite, Favorites };
 
 function section(html: string, id: string): string {
   const start = html.indexOf(`id="${id}"`);

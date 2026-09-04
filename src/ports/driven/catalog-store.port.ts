@@ -7,11 +7,8 @@ import type { PersonDetail } from '../../domain/person';
 import type { ProducerDetail } from '../../domain/producer';
 import type { RandomKind } from '../../domain/random';
 import type { UserProfile, UserStatistics } from '../../domain/user';
-// `Favorites` and `UserUpdates` are domain shapes that still live in `src/parsers/` — one of the
-// known gaps in ARCHITECTURE.md, and the domain-boundary pitch is what moves them. The port points
-// at where they are today rather than pretending otherwise.
-import type { Favorites } from '../../parsers/user-favorites.parser';
-import type { UserUpdates } from '../../parsers/user-updates.parser';
+import type { Favorites } from '../../domain/user-favorites';
+import type { UserUpdates } from '../../domain/user-updates';
 
 /**
  * Six of the resources store one payload per MyAnimeList id and nothing else, so they are one

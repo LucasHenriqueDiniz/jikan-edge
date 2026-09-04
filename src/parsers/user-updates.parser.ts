@@ -1,17 +1,8 @@
+import type { UserUpdate, UserUpdates } from '../domain/user-updates';
 import { originalImage } from './html';
 
-export interface UserUpdate {
-  entry: { malId: number; title: string; imageUrl: string | null };
-  score: number | null;
-  status: string;
-  progress: number | null;
-  total: number | null;
-  date: string;
-}
-export interface UserUpdates {
-  anime: UserUpdate[];
-  manga: UserUpdate[];
-}
+export type { UserUpdate, UserUpdates };
+
 function part(html: string, marker: string, end: string): string {
   const i = html.indexOf(marker);
   const j = html.indexOf(end, i + marker.length);

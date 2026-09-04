@@ -1,4 +1,4 @@
-import type { Favorites } from '../parsers/user-favorites.parser';
+import type { Favorites } from '../domain/user-favorites';
 export class FavoritesRepository {
   constructor(private readonly db: D1Database) {}
   async get(key: string): Promise<Favorites | null> {

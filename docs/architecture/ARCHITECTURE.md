@@ -228,7 +228,13 @@ own `/v1`.
       them from there, so the port points outward at its own adapter's directory. `CacheEntry` was
       moved into `catalog-store.port.ts` for exactly this reason; these two were left because
       `fetch-policy.ts` holds real policy alongside the type and splitting it is its own change.
-- [ ] **Seven domain-shaped types are exported from `src/parsers/`** instead of `src/domain/`.
+- [x] ~~**Seven domain-shaped types are exported from `src/parsers/`.**~~ Closed 2026-09-04 by
+      [domain-boundary slice 2](../plans/domain-boundary/slice-02-parser-types-to-domain.md). Eight
+      names in five new domain files; the parsers re-export every one, so the services that read them
+      from there — a legal direction — did not change. `src/repositories/` imports nothing from
+      `src/parsers/` any more. The five genuinely parser-internal types (`ListLayout`,
+      `ListParseResult`, `SeasonParseResult`, and the two completeness-evidence shapes) stayed, and
+      that was re-measured rather than assumed: nothing outside `src/parsers/` names them.
 - [x] ~~**`src/app.ts` is 558 lines.**~~ Closed 2026-09-04 by
       [code-hygiene slice 3](../plans/code-hygiene/slice-03-split-app-ts.md). 197 lines, and the 93
       route registrations live in twelve modules under `src/http/routes/`, none over 426 lines. The

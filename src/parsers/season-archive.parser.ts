@@ -1,10 +1,9 @@
 import { z } from 'zod';
+import type { SeasonArchiveEntry } from '../domain/season-archive';
 import { ParserError } from './html';
 
-export interface SeasonArchiveEntry {
-  year: number;
-  seasons: string[];
-}
+export type { SeasonArchiveEntry };
+
 export const SEASON_ARCHIVE_PARSER_VERSION = 'season-archive-html-v2';
 
 const SEASON_ORDER = ['winter', 'spring', 'summer', 'fall'];

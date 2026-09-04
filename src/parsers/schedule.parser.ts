@@ -1,20 +1,10 @@
-import type { AnimeListEntry } from '../domain/anime';
+import { SCHEDULE_DAYS, type ScheduleByDay, type ScheduleDay } from '../domain/schedule';
+
+export { SCHEDULE_DAYS, type ScheduleByDay, type ScheduleDay };
+
 import { ParserError } from './html';
 import { parseSeasonalEntries } from './season-now.parser';
 
-export const SCHEDULE_DAYS = [
-  'monday',
-  'tuesday',
-  'wednesday',
-  'thursday',
-  'friday',
-  'saturday',
-  'sunday',
-  'other',
-  'unknown',
-] as const;
-export type ScheduleDay = (typeof SCHEDULE_DAYS)[number];
-export type ScheduleByDay = Record<ScheduleDay, AnimeListEntry[]>;
 // v4: the shared seasonal card parser started emitting `type`, which was null on every entry here
 // too — the schedule reuses the same cards, one day heading at a time.
 export const SCHEDULE_PARSER_VERSION = 'schedule-html-v4';

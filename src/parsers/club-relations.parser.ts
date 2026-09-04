@@ -1,11 +1,9 @@
 import { z } from 'zod';
+import type { ClubRelations } from '../domain/club-relations';
 import { decodeHtml } from './html';
 
-export interface ClubRelations {
-  anime: { malId: number; title: string }[];
-  manga: { malId: number; title: string }[];
-  characters: { malId: number; name: string }[];
-}
+export type { ClubRelations };
+
 export const CLUB_RELATIONS_PARSER_VERSION = 'club-relations-html-v2';
 
 const titleSchema = z.object({ malId: z.number().int().positive(), title: z.string().min(1) });

@@ -1,5 +1,5 @@
 ---
-status: todo
+status: done
 kanban: c7eddaac-cbad-4503-964f-1f9ec736c7b1
 ---
 
@@ -66,3 +66,47 @@ block prints nothing.
 If a moved type drags a chain of parser-internal helper types behind it into `src/domain/`, stop and
 move only the ones that cross. A domain that has absorbed the parser's private vocabulary is a worse
 outcome than the boundary violation this slice was fixing.
+
+## Outcome
+
+Shipped 2026-09-04. Eight names in five new files under `src/domain/`; `src/repositories/` imports
+nothing from `src/parsers/`.
+
+`Done when` block, verbatim: the first two greps print nothing, the third lists
+`user-favorites.ts`, `user-updates.ts`, `club-relations.ts`, `season-archive.ts` and `schedule.ts`,
+and the run ends `Tests  355 passed (355)` (the same stale 351 in the plan as everywhere else on
+this board). `pnpm test:integration` 29 passed, `pnpm lint` and `pnpm typecheck` clean.
+
+### `SCHEDULE_DAYS` moved with its type
+
+The `Needs` section left this open: move the const, or spell the union out in the domain. **The const
+moved.** Spelling it out would have broken the link that keeps the two honest — the parser iterates
+`SCHEDULE_DAYS` to build the object and `query-contract.ts` validates `?filter=` against it, so a day
+added to one and not the other would have compiled. It is the smaller change *and* the safer one,
+which is not the trade-off the plan expected to find.
+
+### The re-exports are the reason this is a small diff
+
+Every parser re-exports what it used to declare, so the services that read these types from the
+parser layer — a legal direction, unlike the repositories — did not change. Same reasoning as slice
+1's re-export in `cacheable.ts`: the defect was that `src/repositories/` reached *into* `src/parsers/`,
+not that every caller was importing from the wrong place.
+
+`schedule.parser.ts` re-exports a **value** as well as types (`export { SCHEDULE_DAYS, type … }`),
+because `SCHEDULE_DAYS` is a runtime const the parser itself iterates.
+
+### The "staying put" list was re-measured, not trusted
+
+The plan named five parser-internal types to leave alone, on a measurement taken when it was written.
+Re-checked on the finished tree: nothing outside `src/parsers/` names `ListLayout`,
+`ListParseResult`, `SeasonParseResult`, `ListCompletenessEvidence` or `SeasonCompletenessEvidence`.
+The `If stuck` branch — a moved type dragging parser-internal helpers into the domain — never had a
+chance to fire, because none of the eight carries one.
+
+### One stale comment, caught by moving the thing it described
+
+`catalog-store.port.ts` opened with a comment saying `Favorites` and `UserUpdates` "still live in
+`src/parsers/` — the domain-boundary pitch is what moves them". Written three commits earlier by this
+same board's DI slice, and false the moment this one landed. Deleted with the move rather than left
+for an audit. It is the fourth time this session that shipping a change falsified prose written
+beside it.
