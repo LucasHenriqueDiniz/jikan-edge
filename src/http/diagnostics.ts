@@ -26,6 +26,7 @@ export async function probeDatabase(db: D1Database | undefined): Promise<Databas
 }
 
 export const SETUP_HINT: Record<'not_configured' | 'not_migrated', string> = {
-  not_configured: 'No D1 database is bound to this Worker. Set d1_databases[0].database_id in wrangler.jsonc — run "npm run setup", or see docs/self-hosting.md.',
+  not_configured:
+    'No D1 database is bound to this Worker. Set d1_databases[0].database_id in wrangler.jsonc — run "npm run setup", or see docs/self-hosting.md.',
   not_migrated: 'The bound D1 database has no schema. Run "npm run db:migrate:remote" — see docs/self-hosting.md.',
 };

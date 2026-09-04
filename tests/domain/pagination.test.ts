@@ -45,7 +45,13 @@ describe('paginationMeta', () => {
   });
 
   it('uses the real total where one exists, as on the user lists', () => {
-    expect(paginationMeta(1, 100, 100, 399)).toEqual({ page: 1, limit: 100, count: 100, total: 399, hasNextPage: true });
+    expect(paginationMeta(1, 100, 100, 399)).toEqual({
+      page: 1,
+      limit: 100,
+      count: 100,
+      total: 399,
+      hasNextPage: true,
+    });
     expect(paginationMeta(4, 100, 99, 399)).toMatchObject({ hasNextPage: false });
   });
 });

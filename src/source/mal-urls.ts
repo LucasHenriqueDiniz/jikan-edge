@@ -195,7 +195,12 @@ export function episodesUrl(malId: number): string {
   return `${BASE}/anime/${malId}/x/episode`;
 }
 
-export function searchUrl(type: 'anime' | 'manga' | 'character' | 'people', query: string, page: number, extra: [string, string][] = []): string {
+export function searchUrl(
+  type: 'anime' | 'manga' | 'character' | 'people',
+  query: string,
+  page: number,
+  extra: [string, string][] = [],
+): string {
   const show = (page - 1) * 50;
   const params = new URLSearchParams({ q: query });
   // MAL's own search form posts a hidden `cat` field, and leaving it out is not neutral. With a

@@ -16,7 +16,8 @@ export function queryGuard(allowed: readonly string[]): MiddlewareHandler {
       for (const name of new URL(c.req.url).searchParams.keys()) {
         if (permitted.has(name)) continue;
         const reason = UNSUPPORTED_PARAMS[name];
-        if (reason) throw new ServiceError('UNSUPPORTED_PARAMETER', 400, `"${name}" is not supported on this route. ${reason}`);
+        if (reason)
+          throw new ServiceError('UNSUPPORTED_PARAMETER', 400, `"${name}" is not supported on this route. ${reason}`);
         throw new ServiceError(
           'UNKNOWN_PARAMETER',
           400,

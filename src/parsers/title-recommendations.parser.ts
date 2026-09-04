@@ -3,7 +3,10 @@ import type { TitleRecommendation } from '../domain/title-recommendation';
 import { decodeHtml, imageFrom, ParserError } from './html';
 
 const entrySchema = z.object({
-  malId: z.number().int().positive(), title: z.string().min(1), imageUrl: z.string().url().nullable(), votes: z.number().int().positive(),
+  malId: z.number().int().positive(),
+  title: z.string().min(1),
+  imageUrl: z.string().url().nullable(),
+  votes: z.number().int().positive(),
 });
 
 // Unlike the global "recent recommendations" feed (recommendations.parser.ts), the per-title
@@ -24,7 +27,11 @@ function parseCard(chunk: string): TitleRecommendation | null {
 
 export function parseTitleRecommendations(html: string, type: 'anime' | 'manga'): TitleRecommendation[] {
   const marker = `class="picSurround"><a href="https://myanimelist.net/${type}/`;
-  const entries = html.split(marker).slice(1).map(parseCard).filter((entry): entry is TitleRecommendation => entry !== null);
+  const entries = html
+    .split(marker)
+    .slice(1)
+    .map(parseCard)
+    .filter((entry): entry is TitleRecommendation => entry !== null);
   if (entries.length === 0) throw new ParserError('empty_title_recommendations_page');
   return entries;
 }

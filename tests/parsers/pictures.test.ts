@@ -8,8 +8,14 @@ describe('pictures parser', () => {
   it('extracts full-size and thumbnail image pairs', () => {
     const pictures = parsePictures(html);
     expect(pictures).toEqual([
-      { imageUrl: 'https://cdn.myanimelist.net/images/anime/7/3791l.jpg', thumbnailUrl: 'https://cdn.myanimelist.net/images/anime/7/3791.jpg' },
-      { imageUrl: 'https://cdn.myanimelist.net/images/anime/12/19609l.jpg', thumbnailUrl: 'https://cdn.myanimelist.net/images/anime/12/19609.jpg' },
+      {
+        imageUrl: 'https://cdn.myanimelist.net/images/anime/7/3791l.jpg',
+        thumbnailUrl: 'https://cdn.myanimelist.net/images/anime/7/3791.jpg',
+      },
+      {
+        imageUrl: 'https://cdn.myanimelist.net/images/anime/12/19609l.jpg',
+        thumbnailUrl: 'https://cdn.myanimelist.net/images/anime/12/19609.jpg',
+      },
     ]);
   });
 });

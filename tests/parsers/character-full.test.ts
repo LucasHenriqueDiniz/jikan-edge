@@ -11,13 +11,28 @@ describe('character full parser', () => {
     expect(full.name).toBe('Spike Spiegel');
     expect(full.favorites).toBe(49189);
     expect(full.anime).toEqual([
-      { malId: 1, title: 'Cowboy Bebop', imageUrl: 'https://cdn.myanimelist.net/images/anime/4/19644.jpg', role: 'Main' },
+      {
+        malId: 1,
+        title: 'Cowboy Bebop',
+        imageUrl: 'https://cdn.myanimelist.net/images/anime/4/19644.jpg',
+        role: 'Main',
+      },
     ]);
     expect(full.manga).toEqual([
-      { malId: 173, title: 'Cowboy Bebop', imageUrl: 'https://cdn.myanimelist.net/images/manga/3/166652.jpg', role: 'Main' },
+      {
+        malId: 173,
+        title: 'Cowboy Bebop',
+        imageUrl: 'https://cdn.myanimelist.net/images/manga/3/166652.jpg',
+        role: 'Main',
+      },
     ]);
     expect(full.voices).toEqual([
-      { malId: 11, name: 'Yamadera, Kouichi', imageUrl: 'https://cdn.myanimelist.net/images/voiceactors/1/23960.jpg', language: 'Japanese' },
+      {
+        malId: 11,
+        name: 'Yamadera, Kouichi',
+        imageUrl: 'https://cdn.myanimelist.net/images/voiceactors/1/23960.jpg',
+        language: 'Japanese',
+      },
     ]);
   });
 });

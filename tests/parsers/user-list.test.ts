@@ -26,16 +26,36 @@ describe('modern list layout', () => {
   it('maps every field the classic table never carried', () => {
     const entries = parseUserAnimeList(modernAnime, 'Xinil', '2026-07-30T00:00:00.000Z');
     expect(entries[0]).toMatchObject({
-      malId: 21, title: 'One Piece', status: 'watching', score: 9, progress: 623,
-      total: null, startedAt: '2003-09-21', updatedAt: '2021-04-19T21:44:42.000Z',
+      malId: 21,
+      title: 'One Piece',
+      status: 'watching',
+      score: 9,
+      progress: 623,
+      total: null,
+      startedAt: '2003-09-21',
+      updatedAt: '2021-04-19T21:44:42.000Z',
     });
-    expect(entries[1]).toMatchObject({ malId: 48, title: '.hack//Sign', status: 'completed', total: 26, updatedAt: '2007-03-07T17:49:39.000Z' });
+    expect(entries[1]).toMatchObject({
+      malId: 48,
+      title: '.hack//Sign',
+      status: 'completed',
+      total: 26,
+      updatedAt: '2007-03-07T17:49:39.000Z',
+    });
     expect(entries[0]?.imageUrl).toContain('cdn.myanimelist.net');
   });
 
   it('uses the reading vocabulary for manga and drops MAL zero-as-unset', () => {
     const entries = parseUserMangaList(modernManga, 'Xinil', '2026-07-30T00:00:00.000Z');
-    expect(entries[0]).toMatchObject({ malId: 14090, title: 'All Rounder Meguru', status: 'reading', score: 8, progress: 28, total: 178, startedAt: '2010-06-01' });
+    expect(entries[0]).toMatchObject({
+      malId: 14090,
+      title: 'All Rounder Meguru',
+      status: 'reading',
+      score: 8,
+      progress: 28,
+      total: 178,
+      startedAt: '2010-06-01',
+    });
     expect(entries[2]).toMatchObject({ malId: 1096, startedAt: null, finishedAt: null });
   });
 
@@ -43,11 +63,20 @@ describe('modern list layout', () => {
   // would drop anything shaped like a tag, collapse double spaces and decode `&amp;` ahead of `&quot;` —
   // each one corrupting a title without raising anything.
   it('keeps titles with angle brackets, ampersands and repeated spaces intact', () => {
-    const items = [{
-      status: 2, score: 8, num_watched_episodes: 12, anime_num_episodes: 12,
-      anime_id: 9253, anime_title: 'Fate&amp;Stay &lt;Night&gt;  Extra', anime_image_path: 'https://cdn.myanimelist.net/images/anime/5/73199.jpg',
-      start_date_string: '04-06-11', finish_date_string: '', updated_at: 0,
-    }];
+    const items = [
+      {
+        status: 2,
+        score: 8,
+        num_watched_episodes: 12,
+        anime_num_episodes: 12,
+        anime_id: 9253,
+        anime_title: 'Fate&amp;Stay &lt;Night&gt;  Extra',
+        anime_image_path: 'https://cdn.myanimelist.net/images/anime/5/73199.jpg',
+        start_date_string: '04-06-11',
+        finish_date_string: '',
+        updated_at: 0,
+      },
+    ];
     const attribute = JSON.stringify(items).replace(/"/g, '&quot;');
     const html = `<!doctype html><html><body><table data-items="${attribute}"></table></body></html>`;
     const entries = parseUserAnimeList(html, 'tester', '2026-07-30T00:00:00.000Z');
@@ -59,8 +88,30 @@ describe('modern list layout', () => {
   // "86 Eighty-Six" was enough to 502 an entire list.
   it('accepts a title MAL encoded as a number', () => {
     const items = [
-      { status: 2, score: 9, num_watched_episodes: 11, anime_num_episodes: 11, anime_id: 41457, anime_title: 86, anime_image_path: 'https://cdn.myanimelist.net/images/anime/1987/117507.jpg', start_date_string: null, finish_date_string: null, updated_at: 0 },
-      { status: 2, score: 1, num_watched_episodes: 1, anime_num_episodes: 1, anime_id: 29978, anime_title: 1, anime_image_path: 'https://cdn.myanimelist.net/images/anime/12/81163.jpg', start_date_string: null, finish_date_string: null, updated_at: 0 },
+      {
+        status: 2,
+        score: 9,
+        num_watched_episodes: 11,
+        anime_num_episodes: 11,
+        anime_id: 41457,
+        anime_title: 86,
+        anime_image_path: 'https://cdn.myanimelist.net/images/anime/1987/117507.jpg',
+        start_date_string: null,
+        finish_date_string: null,
+        updated_at: 0,
+      },
+      {
+        status: 2,
+        score: 1,
+        num_watched_episodes: 1,
+        anime_num_episodes: 1,
+        anime_id: 29978,
+        anime_title: 1,
+        anime_image_path: 'https://cdn.myanimelist.net/images/anime/12/81163.jpg',
+        start_date_string: null,
+        finish_date_string: null,
+        updated_at: 0,
+      },
     ];
     const html = `<!doctype html><html><body><table data-items="${JSON.stringify(items).replace(/"/g, '&quot;')}"></table></body></html>`;
     const result = parseUserMediaListSnapshot(html, 'tester', 'anime', '2026-07-30T00:00:00.000Z');
@@ -103,13 +154,13 @@ describe('classic list layout', () => {
 
   it('keeps a row from reading its neighbour: every entry gets its own numbers', () => {
     expect(classicAnimeEntries.map((entry) => [entry.malId, entry.progress, entry.total])).toEqual([
-      [918, 101, 201],     // Watching   — 101/201
-      [12291, 12, 12],     // Completed  — bare `12`, and the anime has 12 episodes
-      [25015, 1, 1],       // Completed  — a movie
-      [20787, 3, 13],      // On-Hold    — 3/13
-      [11759, 16, 24],     // Dropped    — 16/24
-      [57892, 7, 12],      // Dropped    — 7/12
-      [34636, null, 24],   // Plan to Watch — `-/24`, nothing watched yet
+      [918, 101, 201], // Watching   — 101/201
+      [12291, 12, 12], // Completed  — bare `12`, and the anime has 12 episodes
+      [25015, 1, 1], // Completed  — a movie
+      [20787, 3, 13], // On-Hold    — 3/13
+      [11759, 16, 24], // Dropped    — 16/24
+      [57892, 7, 12], // Dropped    — 7/12
+      [34636, null, 24], // Plan to Watch — `-/24`, nothing watched yet
     ]);
   });
 
@@ -121,11 +172,15 @@ describe('classic list layout', () => {
 
   // The classic path used to decode `&amp;` and nothing else, so quotes and apostrophes reached the API raw.
   it('decodes entities in the title like the modern layout already did', () => {
-    expect(classicMangaEntries.find((entry) => entry.malId === 166182)?.title)
-      .toBe('"Ano Toki Tasukete Itadaita Monster Musume desu.": Isekai Ossan Kyoushi Totsuzen no Moteki ni Konwaku suru');
-    expect(classicMangaEntries.find((entry) => entry.malId === 132247)?.title).toBe("A Returner's Magic Should Be Special");
-    expect(classicAnimeEntries.find((entry) => entry.malId === 57892)?.title)
-      .toBe('Hazurewaku no "Joutai Ijou Skill" de Saikyou ni Natta Ore ga Subete wo Juurin suru made');
+    expect(classicMangaEntries.find((entry) => entry.malId === 166182)?.title).toBe(
+      '"Ano Toki Tasukete Itadaita Monster Musume desu.": Isekai Ossan Kyoushi Totsuzen no Moteki ni Konwaku suru',
+    );
+    expect(classicMangaEntries.find((entry) => entry.malId === 132247)?.title).toBe(
+      "A Returner's Magic Should Be Special",
+    );
+    expect(classicAnimeEntries.find((entry) => entry.malId === 57892)?.title).toBe(
+      'Hazurewaku no "Joutai Ijou Skill" de Saikyou ni Natta Ore ga Subete wo Juurin suru made',
+    );
   });
 
   // An unscored entry renders `score-na`, not a number — it must not inherit the score of the row above.

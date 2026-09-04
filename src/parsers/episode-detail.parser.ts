@@ -23,7 +23,9 @@ function extractSynopsis(html: string): string | null {
 }
 
 export function parseEpisodeDetail(html: string, malId: number, episode: number): EpisodeDetail {
-  const headingMatch = html.match(/<h2 class="fs18 lh11"[^>]*>\s*<span class="fw-n">#\d+\s*-\s*<\/span>([\s\S]*?)<\/h2>/i);
+  const headingMatch = html.match(
+    /<h2 class="fs18 lh11"[^>]*>\s*<span class="fw-n">#\d+\s*-\s*<\/span>([\s\S]*?)<\/h2>/i,
+  );
   const detail: EpisodeDetail = {
     malId,
     episode,

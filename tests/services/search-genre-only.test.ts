@@ -19,7 +19,7 @@ describe('the URL keeps a genre-only search on the search page', () => {
 
   // MAL only redirects when a single genre is the whole request. `cat` is a hidden field in its own
   // search form, so sending it is not a trick — it is what a browser submits.
-  it('sends the form\'s own cat field for anime and manga', () => {
+  it("sends the form's own cat field for anime and manga", () => {
     expect(paramsFor('anime', 1, [['genre[]', '1']]).get('cat')).toBe('anime');
     expect(paramsFor('manga', 1, [['genre[]', '1']]).get('cat')).toBe('manga');
   });
@@ -45,7 +45,11 @@ describe('the URL keeps a genre-only search on the search page', () => {
 function sourceServing(body: string): CatalogSource {
   return {
     getHtml: async (url: string, requiredMarkers: string[] = []) =>
-      classifyHtml(body, { url, status: 200, contentType: 'text/html', durationMs: 1, sizeBytes: body.length }, requiredMarkers),
+      classifyHtml(
+        body,
+        { url, status: 200, contentType: 'text/html', durationMs: 1, sizeBytes: body.length },
+        requiredMarkers,
+      ),
   };
 }
 

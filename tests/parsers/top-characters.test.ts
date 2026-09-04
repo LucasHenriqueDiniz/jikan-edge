@@ -9,7 +9,9 @@ describe('top characters parser', () => {
     const entries = parseTopCharacters(html);
     expect(entries).toEqual([
       {
-        malId: 417, name: 'Lamperouge, Lelouch', nameKanji: 'ルルーシュ・ランペルージ',
+        malId: 417,
+        name: 'Lamperouge, Lelouch',
+        nameKanji: 'ルルーシュ・ランペルージ',
         imageUrl: 'https://cdn.myanimelist.net/images/characters/8/406163.jpg',
         animeography: [
           { malId: 1575, title: 'Code Geass: Hangyaku no Lelouch' },
@@ -19,7 +21,9 @@ describe('top characters parser', () => {
         favorites: 180332,
       },
       {
-        malId: 40, name: 'Monkey D., Luffy', nameKanji: 'モンキー・D・ルフィ',
+        malId: 40,
+        name: 'Monkey D., Luffy',
+        nameKanji: 'モンキー・D・ルフィ',
         imageUrl: 'https://cdn.myanimelist.net/images/characters/9/310307.jpg',
         animeography: [{ malId: 21, title: 'One Piece' }],
         mangaography: [{ malId: 13, title: 'One Piece' }],

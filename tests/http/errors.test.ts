@@ -23,10 +23,16 @@ describe('errorResponse', () => {
   });
 
   it('answers 507 PAYLOAD_TOO_LARGE with the code and request id in the body', async () => {
-    const response = await respond(new ServiceError('PAYLOAD_TOO_LARGE', 507, 'This resource is larger than this deployment can store.'));
+    const response = await respond(
+      new ServiceError('PAYLOAD_TOO_LARGE', 507, 'This resource is larger than this deployment can store.'),
+    );
     expect(response.status).toBe(507);
     expect(await response.json()).toEqual({
-      error: { code: 'PAYLOAD_TOO_LARGE', message: 'This resource is larger than this deployment can store.', requestId: 'req-1' },
+      error: {
+        code: 'PAYLOAD_TOO_LARGE',
+        message: 'This resource is larger than this deployment can store.',
+        requestId: 'req-1',
+      },
     });
   });
 
@@ -42,7 +48,7 @@ describe('errorResponse', () => {
     const logged = vi.spyOn(console, 'error').mockImplementation(() => {});
     const response = await respond(new Error('D1_ERROR: no such column: x'));
     expect(response.status).toBe(500);
-    expect((await response.json() as { error: { code: string } }).error.code).toBe('INTERNAL_ERROR');
+    expect(((await response.json()) as { error: { code: string } }).error.code).toBe('INTERNAL_ERROR');
     logged.mockRestore();
   });
 });

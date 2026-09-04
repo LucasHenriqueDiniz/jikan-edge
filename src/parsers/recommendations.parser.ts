@@ -30,16 +30,25 @@ function parseCard(chunk: string): RecommendationEntry | null {
   const content = decodeHtml(chunk.match(/recommendations-user-recs-text[^>]*>([\s\S]*?)<\/div>/i)?.[1] ?? '') || null;
   const username = chunk.match(/rec by <a href="\/profile\/[^"]*">([^<]+)<\/a>/i)?.[1] ?? null;
   const candidate = {
-    malId: first.malId, title: first.title, imageUrl: first.imageUrl,
-    recommendedMalId: second.malId, recommendedTitle: second.title, recommendedImageUrl: second.imageUrl,
-    content, username: username ? decodeHtml(username) : null,
+    malId: first.malId,
+    title: first.title,
+    imageUrl: first.imageUrl,
+    recommendedMalId: second.malId,
+    recommendedTitle: second.title,
+    recommendedImageUrl: second.imageUrl,
+    content,
+    username: username ? decodeHtml(username) : null,
   };
   const parsed = entrySchema.safeParse(candidate);
   return parsed.success ? parsed.data : null;
 }
 
 export function parseRecommendations(html: string, allowEmpty = false): RecommendationEntry[] {
-  const entries = html.split('class="spaceit borderClass"').slice(1).map(parseCard).filter((entry): entry is RecommendationEntry => entry !== null);
+  const entries = html
+    .split('class="spaceit borderClass"')
+    .slice(1)
+    .map(parseCard)
+    .filter((entry): entry is RecommendationEntry => entry !== null);
   if (entries.length === 0 && !allowEmpty) throw new ParserError('empty_recommendations_page');
   return entries;
 }

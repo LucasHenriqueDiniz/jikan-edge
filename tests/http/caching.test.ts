@@ -13,14 +13,16 @@ describe('cacheControlFor', () => {
     // Fetched five hours into a six-hour TTL: one hour left. Advertising the full TTL would let a
     // shared cache serve this for five hours after this API already considers it stale.
     const fetchedAt = new Date(NOW - 5 * 3_600 * 1_000).toISOString();
-    expect(cacheControlFor({ stale: false, fetchedAt, ttlSeconds: SIX_HOURS }, NOW))
-      .toBe(`public, max-age=3600, stale-while-revalidate=${SIX_HOURS}`);
+    expect(cacheControlFor({ stale: false, fetchedAt, ttlSeconds: SIX_HOURS }, NOW)).toBe(
+      `public, max-age=3600, stale-while-revalidate=${SIX_HOURS}`,
+    );
   });
 
   it('gives a freshly fetched resource the full TTL', () => {
     const fetchedAt = new Date(NOW).toISOString();
-    expect(cacheControlFor({ stale: false, fetchedAt, ttlSeconds: SIX_HOURS }, NOW))
-      .toBe(`public, max-age=${SIX_HOURS}, stale-while-revalidate=${SIX_HOURS}`);
+    expect(cacheControlFor({ stale: false, fetchedAt, ttlSeconds: SIX_HOURS }, NOW)).toBe(
+      `public, max-age=${SIX_HOURS}, stale-while-revalidate=${SIX_HOURS}`,
+    );
   });
 
   it('tells a stale body to revalidate rather than compounding staleness downstream', () => {
@@ -40,9 +42,13 @@ describe('cacheControlFor', () => {
 
   // A clock skew or a corrupt row must not be able to extend a resource's advertised life.
   it('does not grant extra life for an unparseable or future timestamp', () => {
-    expect(cacheControlFor({ stale: false, fetchedAt: 'not a date', ttlSeconds: SIX_HOURS }, NOW)).toContain(`max-age=${SIX_HOURS}`);
+    expect(cacheControlFor({ stale: false, fetchedAt: 'not a date', ttlSeconds: SIX_HOURS }, NOW)).toContain(
+      `max-age=${SIX_HOURS}`,
+    );
     const future = new Date(NOW + 10 * 3_600 * 1_000).toISOString();
-    expect(cacheControlFor({ stale: false, fetchedAt: future, ttlSeconds: SIX_HOURS }, NOW)).toContain(`max-age=${SIX_HOURS}`);
+    expect(cacheControlFor({ stale: false, fetchedAt: future, ttlSeconds: SIX_HOURS }, NOW)).toContain(
+      `max-age=${SIX_HOURS}`,
+    );
   });
 });
 

@@ -5,7 +5,10 @@ import { stubDatabase } from '../helpers/stub-database';
 
 async function health(env?: Partial<Env>) {
   const response = await app.request('http://localhost/health', undefined, env);
-  return { status: response.status, body: (await response.json()) as { data: { status: string; checks: { database: string } } } };
+  return {
+    status: response.status,
+    body: (await response.json()) as { data: { status: string; checks: { database: string } } },
+  };
 }
 
 describe('health route', () => {

@@ -2,7 +2,12 @@ import { z } from 'zod';
 import type { CharacterSearchResult } from '../domain/character-search';
 import { decodeHtml, imageFrom, ParserError } from './html';
 
-const entrySchema = z.object({ malId: z.number().int().positive(), name: z.string().min(1), url: z.string().url(), imageUrl: z.string().url().nullable() });
+const entrySchema = z.object({
+  malId: z.number().int().positive(),
+  name: z.string().min(1),
+  url: z.string().url(),
+  imageUrl: z.string().url().nullable(),
+});
 
 export function parseCharacterSearch(html: string): CharacterSearchResult[] {
   const results: CharacterSearchResult[] = [];

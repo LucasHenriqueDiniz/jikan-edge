@@ -24,7 +24,21 @@ export const QUERY_CONTRACT: Record<string, readonly string[]> = {
   '/v1/users/:username/mangalist': ['page', 'limit'],
 
   // Anime
-  '/v1/anime': ['q', 'page', 'type', 'status', 'rating', 'score', 'min_score', 'genres', 'order_by', 'sort', 'letter', 'start_date', 'end_date'],
+  '/v1/anime': [
+    'q',
+    'page',
+    'type',
+    'status',
+    'rating',
+    'score',
+    'min_score',
+    'genres',
+    'order_by',
+    'sort',
+    'letter',
+    'start_date',
+    'end_date',
+  ],
   '/v1/anime/:id': [],
   '/v1/anime/:id/full': [],
   '/v1/anime/:id/relations': [],
@@ -47,7 +61,21 @@ export const QUERY_CONTRACT: Record<string, readonly string[]> = {
   '/v1/anime/:id/moreinfo': [],
 
   // Manga
-  '/v1/manga': ['q', 'page', 'type', 'status', 'score', 'min_score', 'genres', 'magazines', 'order_by', 'sort', 'letter', 'start_date', 'end_date'],
+  '/v1/manga': [
+    'q',
+    'page',
+    'type',
+    'status',
+    'score',
+    'min_score',
+    'genres',
+    'magazines',
+    'order_by',
+    'sort',
+    'letter',
+    'start_date',
+    'end_date',
+  ],
   '/v1/manga/:id': [],
   '/v1/manga/:id/full': [],
   '/v1/manga/:id/relations': [],
@@ -127,7 +155,8 @@ export const QUERY_CONTRACT: Record<string, readonly string[]> = {
 // *why*, because someone porting from Jikan needs to tell "I typo'd the name" apart from "that
 // feature is not here" — and a bare UNKNOWN_PARAMETER cannot say which.
 export const UNSUPPORTED_PARAMS: Record<string, string> = {
-  limit: 'Not supported outside the user list routes: this API serves one MyAnimeList page per request, so a limit would either slice that page (a different result from Jikan\'s) or require crawling several pages upstream.',
+  limit:
+    "Not supported outside the user list routes: this API serves one MyAnimeList page per request, so a limit would either slice that page (a different result from Jikan's) or require crawling several pages upstream.",
   // The substitute named here has to be one that works: this message used to send the caller to
   // `genres_exclude`, which is refused a few lines below — one 400 pointing at the next.
   sfw: 'Not supported: MyAnimeList has no server-side safe-for-work switch, and approximating one by excluding a few genre ids would be a guess wearing the name of a guarantee. Use "rating", which maps to MyAnimeList\'s own classification dropdown — anime search only, since the manga search page carries no equivalent field.',
@@ -137,11 +166,14 @@ export const UNSUPPORTED_PARAMS: Record<string, string> = {
   // `hasNextPage` is derived from — the filter would arrive at the cost of a lying paginator.
   // Filling the page back up means fetching several pages per request, which is the sweeping this
   // project's source policy avoids.
-  max_score: 'Not supported: MyAnimeList\'s search form offers a single minimum-score dropdown, which is what "score" and "min_score" map to. An upper bound could only be applied after the fact, which would make this route\'s page size and "hasNextPage" wrong.',
+  max_score:
+    'Not supported: MyAnimeList\'s search form offers a single minimum-score dropdown, which is what "score" and "min_score" map to. An upper bound could only be applied after the fact, which would make this route\'s page size and "hasNextPage" wrong.',
   // Jikan supports these against its own database. This API reads MyAnimeList's search page, and
   // each of the three was measured against it rather than assumed.
-  producers: 'Not supported: MyAnimeList\'s search page has a producer field, but it no longer filters — searching "gundam" with and without it returns the same results. Producer catalogues live at /v1/producers/:id.',
-  genres_exclude: 'Not supported: MyAnimeList\'s exclude flag no longer inverts a genre filter — with it set, 16 of 18 results are the same entries the un-inverted filter returns. Excluding a genre reliably would mean filtering after the fetch, which would break the page size this route reports.',
+  producers:
+    'Not supported: MyAnimeList\'s search page has a producer field, but it no longer filters — searching "gundam" with and without it returns the same results. Producer catalogues live at /v1/producers/:id.',
+  genres_exclude:
+    "Not supported: MyAnimeList's exclude flag no longer inverts a genre filter — with it set, 16 of 18 results are the same entries the un-inverted filter returns. Excluding a genre reliably would mean filtering after the fetch, which would break the page size this route reports.",
   unapproved: 'Not supported: this API reads the public pages, which list approved entries only.',
   preliminary: 'Not supported: MyAnimeList does not separate preliminary reviews on the public pages.',
   spoilers: 'Not supported: MyAnimeList does not separate spoiler reviews on the public pages.',

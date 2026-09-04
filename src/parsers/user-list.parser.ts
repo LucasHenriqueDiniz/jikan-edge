@@ -3,9 +3,19 @@ import type { MediaType, UserMediaListEntry } from '../domain/list-entry';
 import { capture, numeric, ParserError } from './html';
 
 const entrySchema = z.object({
-  username: z.string().min(1), mediaType: z.enum(['anime', 'manga']), malId: z.number().int().positive(), title: z.string().min(1),
-  imageUrl: z.string().url().nullable(), status: z.string().nullable(), score: z.number().nullable(), progress: z.number().nullable(), total: z.number().nullable(),
-  startedAt: z.string().nullable(), finishedAt: z.string().nullable(), updatedAt: z.string().nullable(), fetchedAt: z.string().datetime(),
+  username: z.string().min(1),
+  mediaType: z.enum(['anime', 'manga']),
+  malId: z.number().int().positive(),
+  title: z.string().min(1),
+  imageUrl: z.string().url().nullable(),
+  status: z.string().nullable(),
+  score: z.number().nullable(),
+  progress: z.number().nullable(),
+  total: z.number().nullable(),
+  startedAt: z.string().nullable(),
+  finishedAt: z.string().nullable(),
+  updatedAt: z.string().nullable(),
+  fetchedAt: z.string().datetime(),
 });
 
 /** MAL serves the modern list in blocks of 300; a full block means another page may follow. */
@@ -25,7 +35,14 @@ export type ListLayout = 'classic' | 'modern';
  * ever be null and read as if completeness had been checked. The real cross-check lives in the service,
  * which compares the assembled list against the profile's own counter.
  */
-export interface ListCompletenessEvidence { extractedTotal: number; uniqueTotal: number; sourceBytes: number; pageCount: number; terminalMarkerFound: boolean; duplicateIds: number[]; }
+export interface ListCompletenessEvidence {
+  extractedTotal: number;
+  uniqueTotal: number;
+  sourceBytes: number;
+  pageCount: number;
+  terminalMarkerFound: boolean;
+  duplicateIds: number[];
+}
 export type ListParseResult =
   | { kind: 'complete'; items: UserMediaListEntry[]; evidence: ListCompletenessEvidence }
   | { kind: 'empty'; items: []; evidence: ListCompletenessEvidence }
@@ -42,8 +59,14 @@ export function listLayout(html: string): ListLayout {
  *  the other entities. The classic path used to decode `&amp;` alone, so titles reached the API still holding
  *  `&quot;` and `&#039;` — 16 of AMayacrab's 227 manga titles. */
 function decodeEntities(value: string): string {
-  return value.replace(/&quot;/g, '"').replace(/&#0?39;/g, "'").replace(/&apos;/g, "'")
-    .replace(/&nbsp;/g, ' ').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&');
+  return value
+    .replace(/&quot;/g, '"')
+    .replace(/&#0?39;/g, "'")
+    .replace(/&apos;/g, "'")
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&amp;/g, '&');
 }
 
 /** MAL prints list dates as `MM-DD-YY` with no century. Pivot on the current year: `10` is 2010, `98` is 1998. */
@@ -74,18 +97,30 @@ function positive(value: unknown): number | null {
 }
 
 const STATUS_NAMES: Record<number, [anime: string, manga: string]> = {
-  1: ['watching', 'reading'], 2: ['completed', 'completed'], 3: ['on hold', 'on hold'],
-  4: ['dropped', 'dropped'], 6: ['plan to watch', 'plan to read'],
+  1: ['watching', 'reading'],
+  2: ['completed', 'completed'],
+  3: ['on hold', 'on hold'],
+  4: ['dropped', 'dropped'],
+  6: ['plan to watch', 'plan to read'],
 };
 
-function modernEntries(html: string, username: string, mediaType: MediaType, fetchedAt: string): UserMediaListEntry[] | null {
+function modernEntries(
+  html: string,
+  username: string,
+  mediaType: MediaType,
+  fetchedAt: string,
+): UserMediaListEntry[] | null {
   // Deliberately not `capture()`: it runs `decodeHtml`, which decodes `&amp;` before `&quot;`, strips anything
   // shaped like a tag and collapses runs of whitespace — all three would silently corrupt a JSON payload
   // (a title containing `<` would simply lose part of itself). The attribute has to arrive raw.
   const raw = /data-items="([^"]*)"/i.exec(html)?.[1];
   if (raw === undefined) return null;
   let items: unknown;
-  try { items = JSON.parse(raw.replace(/&quot;/g, '"')); } catch { return null; }
+  try {
+    items = JSON.parse(raw.replace(/&quot;/g, '"'));
+  } catch {
+    return null;
+  }
   if (!Array.isArray(items)) return null;
   const prefix = mediaType === 'anime' ? 'anime' : 'manga';
   return items.map((item) => {
@@ -94,7 +129,8 @@ function modernEntries(html: string, username: string, mediaType: MediaType, fet
     const image = row[`${prefix}_image_path`];
     const statusPair = STATUS_NAMES[Number(row.status)];
     return {
-      username, mediaType,
+      username,
+      mediaType,
       malId: Number(row[`${prefix}_id`]),
       title: text(title),
       imageUrl: typeof image === 'string' && image.length > 0 ? decodeEntities(image) : null,
@@ -104,7 +140,8 @@ function modernEntries(html: string, username: string, mediaType: MediaType, fet
       total: mediaType === 'anime' ? positive(row.anime_num_episodes) : positive(row.manga_num_chapters),
       startedAt: listDate(row.start_date_string),
       finishedAt: listDate(row.finish_date_string),
-      updatedAt: typeof row.updated_at === 'number' && row.updated_at > 0 ? new Date(row.updated_at * 1000).toISOString() : null,
+      updatedAt:
+        typeof row.updated_at === 'number' && row.updated_at > 0 ? new Date(row.updated_at * 1000).toISOString() : null,
       fetchedAt,
     };
   });
@@ -152,7 +189,12 @@ function dash(value: string | undefined): number | null {
   return value === undefined || value === '-' || value === '' ? null : numeric(value);
 }
 
-export function parseUserMediaListSnapshot(html: string, username: string, mediaType: MediaType, fetchedAt = new Date().toISOString()): ListParseResult {
+export function parseUserMediaListSnapshot(
+  html: string,
+  username: string,
+  mediaType: MediaType,
+  fetchedAt = new Date().toISOString(),
+): ListParseResult {
   const route = mediaType === 'anime' ? 'anime' : 'manga';
   const entries = new Map<number, UserMediaListEntry>();
   let matchedItems = 0;
@@ -162,13 +204,17 @@ export function parseUserMediaListSnapshot(html: string, username: string, media
     for (const candidate of modern) {
       matchedItems += 1;
       const parsed = entrySchema.safeParse(candidate);
-      if (!parsed.success) return { kind: 'invalid', reason: 'invalid_list_item', evidence: evidence(html, matchedItems, entries, []) };
+      if (!parsed.success)
+        return { kind: 'invalid', reason: 'invalid_list_item', evidence: evidence(html, matchedItems, entries, []) };
       entries.set(candidate.malId, parsed.data);
     }
     return finalize(html, matchedItems, entries);
   }
 
-  const expression = new RegExp(`<a\\s+href="/${route}/(\\d+)/[^\"]*"[^>]*class="animetitle"[^>]*>[\\s\\S]{0,300}?<span>([\\s\\S]*?)<\\/span>`, 'gi');
+  const expression = new RegExp(
+    `<a\\s+href="/${route}/(\\d+)/[^\"]*"[^>]*class="animetitle"[^>]*>[\\s\\S]{0,300}?<span>([\\s\\S]*?)<\\/span>`,
+    'gi',
+  );
   const anchors = [...html.matchAll(expression)];
   for (const [index, match] of anchors.entries()) {
     matchedItems += 1;
@@ -178,9 +224,24 @@ export function parseUserMediaListSnapshot(html: string, username: string, media
     const imageUrl = capture(row, /<img[^>]+(?:data-src|src)="([^"]+)"/i);
     const score = numeric(capture(row, /score-label[^>]*>\s*([\d.]+)\s*</i));
     const { progress, total } = classicProgress(row);
-    const candidate: UserMediaListEntry = { username, mediaType, malId, title, imageUrl, status: null, score, progress, total, startedAt: null, finishedAt: null, updatedAt: null, fetchedAt };
+    const candidate: UserMediaListEntry = {
+      username,
+      mediaType,
+      malId,
+      title,
+      imageUrl,
+      status: null,
+      score,
+      progress,
+      total,
+      startedAt: null,
+      finishedAt: null,
+      updatedAt: null,
+      fetchedAt,
+    };
     const parsed = entrySchema.safeParse(candidate);
-    if (!parsed.success) return { kind: 'invalid', reason: 'invalid_list_item', evidence: evidence(html, matchedItems, entries, []) };
+    if (!parsed.success)
+      return { kind: 'invalid', reason: 'invalid_list_item', evidence: evidence(html, matchedItems, entries, []) };
     entries.set(malId, parsed.data);
   }
   return finalize(html, matchedItems, entries);
@@ -190,17 +251,42 @@ function finalize(html: string, matchedItems: number, entries: Map<number, UserM
   const duplicateIds = matchedItems === entries.size ? [] : [...entries.keys()];
   const resultEvidence = evidence(html, matchedItems, entries, duplicateIds);
   if (matchedItems !== entries.size) return { kind: 'invalid', reason: 'duplicate_ids', evidence: resultEvidence };
-  if (entries.size === 0) return { kind: 'partial', items: [], reason: 'empty_list_without_explicit_empty_marker', evidence: resultEvidence };
-  if (!resultEvidence.terminalMarkerFound) return { kind: 'partial', items: [...entries.values()], reason: 'terminal_marker_missing', evidence: resultEvidence };
+  if (entries.size === 0)
+    return { kind: 'partial', items: [], reason: 'empty_list_without_explicit_empty_marker', evidence: resultEvidence };
+  if (!resultEvidence.terminalMarkerFound)
+    return {
+      kind: 'partial',
+      items: [...entries.values()],
+      reason: 'terminal_marker_missing',
+      evidence: resultEvidence,
+    };
   return { kind: 'complete', items: [...entries.values()], evidence: resultEvidence };
 }
 
-function evidence(html: string, extractedTotal: number, entries: Map<number, UserMediaListEntry>, duplicateIds: number[]): ListCompletenessEvidence {
-  return { extractedTotal, uniqueTotal: entries.size, sourceBytes: new TextEncoder().encode(html).byteLength, pageCount: 1, terminalMarkerFound: /<\/html>\s*$/i.test(html), duplicateIds };
+function evidence(
+  html: string,
+  extractedTotal: number,
+  entries: Map<number, UserMediaListEntry>,
+  duplicateIds: number[],
+): ListCompletenessEvidence {
+  return {
+    extractedTotal,
+    uniqueTotal: entries.size,
+    sourceBytes: new TextEncoder().encode(html).byteLength,
+    pageCount: 1,
+    terminalMarkerFound: /<\/html>\s*$/i.test(html),
+    duplicateIds,
+  };
 }
 
-export function parseUserMediaList(html: string, username: string, mediaType: MediaType, fetchedAt = new Date().toISOString()): UserMediaListEntry[] {
+export function parseUserMediaList(
+  html: string,
+  username: string,
+  mediaType: MediaType,
+  fetchedAt = new Date().toISOString(),
+): UserMediaListEntry[] {
   const result = parseUserMediaListSnapshot(html, username, mediaType, fetchedAt);
-  if (result.kind !== 'complete') throw new ParserError(result.kind === 'empty' ? 'empty_list_without_explicit_empty_marker' : result.reason);
+  if (result.kind !== 'complete')
+    throw new ParserError(result.kind === 'empty' ? 'empty_list_without_explicit_empty_marker' : result.reason);
   return result.items;
 }

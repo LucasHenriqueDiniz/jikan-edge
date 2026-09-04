@@ -11,14 +11,24 @@ describe('characters and staff parser', () => {
     expect(characters).toHaveLength(1);
     expect(characters[0]).toMatchObject({ malId: 1, name: 'Spiegel, Spike', role: 'Main', favorites: 49_190 });
     expect(characters[0].voiceActors).toEqual([
-      { malId: 357, name: 'Ishizuka, Unshou', language: 'Japanese', imageUrl: 'https://cdn.myanimelist.net/images/voiceactors/2/17135.jpg' },
+      {
+        malId: 357,
+        name: 'Ishizuka, Unshou',
+        language: 'Japanese',
+        imageUrl: 'https://cdn.myanimelist.net/images/voiceactors/2/17135.jpg',
+      },
     ]);
   });
 
   it('extracts anime staff', () => {
     const staff = parseStaff(animeHtml);
     expect(staff).toEqual([
-      { malId: 77978, name: 'Ikeguchi, Kazuhiko', imageUrl: 'https://cdn.myanimelist.net/images/questionmark_23.gif', role: 'Producer' },
+      {
+        malId: 77978,
+        name: 'Ikeguchi, Kazuhiko',
+        imageUrl: 'https://cdn.myanimelist.net/images/questionmark_23.gif',
+        role: 'Producer',
+      },
     ]);
   });
 
@@ -52,7 +62,8 @@ describe('characters and staff parser', () => {
   });
 
   it('stops the staff section at the next heading instead of running past it', () => {
-    const row = '<tr><td><a href="https://myanimelist.net/people/1/Someone">Someone</a><div class="spaceit_pad"><small>Producer</small></div></td></tr>';
+    const row =
+      '<tr><td><a href="https://myanimelist.net/people/1/Someone">Someone</a><div class="spaceit_pad"><small>Producer</small></div></td></tr>';
     const html = `<h2 class="h2_overwrite">Staff</h2><table>${row}</table><h2>Some Other Section</h2><table><tr><td><a href="https://myanimelist.net/people/2/Other">Other</a></td></tr></table>`;
     expect(parseStaff(html)).toEqual([{ malId: 1, name: 'Someone', imageUrl: null, role: 'Producer' }]);
   });

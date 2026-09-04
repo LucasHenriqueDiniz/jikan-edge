@@ -3,8 +3,13 @@ import type { NewsItem } from '../domain/news';
 import { decodeHtml, imageFrom, ParserError } from './html';
 
 const newsSchema = z.object({
-  malId: z.number().int().positive(), title: z.string().min(1), url: z.string().url(),
-  imageUrl: z.string().url().nullable(), excerpt: z.string().nullable(), date: z.string().nullable(), author: z.string().nullable(),
+  malId: z.number().int().positive(),
+  title: z.string().min(1),
+  url: z.string().url(),
+  imageUrl: z.string().url().nullable(),
+  excerpt: z.string().nullable(),
+  date: z.string().nullable(),
+  author: z.string().nullable(),
 });
 
 export function parseNews(html: string): NewsItem[] {
@@ -15,7 +20,8 @@ export function parseNews(html: string): NewsItem[] {
     const malId = Number(idMatch[1]);
     const imageUrl = imageFrom(block);
     const title = decodeHtml(block.match(/<strong>([^<]+)<\/strong>/i)?.[1] ?? '');
-    const excerpt = decodeHtml(block.match(/<p>([\s\S]*?)<a href="\/news\/\d+">read more<\/a><\/p>/i)?.[1] ?? '') || null;
+    const excerpt =
+      decodeHtml(block.match(/<p>([\s\S]*?)<a href="\/news\/\d+">read more<\/a><\/p>/i)?.[1] ?? '') || null;
     const dateBlock = block.match(/class="lightLink spaceit">([\s\S]*?)<\/p>/i)?.[1] ?? '';
     const date = decodeHtml(dateBlock.split(' by ')[0] ?? '') || null;
     const author = decodeHtml(dateBlock.match(/href="\/profile\/[^"]*">([^<]+)<\/a>/i)?.[1] ?? '') || null;

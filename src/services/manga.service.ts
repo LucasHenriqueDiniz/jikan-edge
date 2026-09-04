@@ -48,7 +48,14 @@ import {
   topMangaUrl,
 } from '../source/mal-urls';
 import { CHARACTER_PAGE_BUDGET, refreshLeaseSecondsFor } from '../source/fetch-policy';
-import { type CacheDeps, ServiceError, type ServiceResponse, sourceError, type WaitUntil, withCache } from './cacheable';
+import {
+  type CacheDeps,
+  ServiceError,
+  type ServiceResponse,
+  sourceError,
+  type WaitUntil,
+  withCache,
+} from './cacheable';
 import { parseGenreFilter } from './genre-filter';
 
 const GENRES_CACHE_KEY = 'catalog:genres:manga';
@@ -61,26 +68,45 @@ export class MangaService {
   private readonly manga: MangaRepository;
   private readonly catalog: CatalogListRepository;
   private readonly source: CatalogSource;
-  constructor(private readonly db: D1Database, private readonly config: RuntimeConfig, source?: CatalogSource, waitUntil?: WaitUntil) {
-    this.cache = new CacheRepository(db); this.locks = new RefreshLockRepository(db); this.deps = { cache: this.cache, locks: this.locks, waitUntil }; this.manga = new MangaRepository(db); this.catalog = new CatalogListRepository(db); this.source = source ?? new MalClient(config);
+  constructor(
+    private readonly db: D1Database,
+    private readonly config: RuntimeConfig,
+    source?: CatalogSource,
+    waitUntil?: WaitUntil,
+  ) {
+    this.cache = new CacheRepository(db);
+    this.locks = new RefreshLockRepository(db);
+    this.deps = { cache: this.cache, locks: this.locks, waitUntil };
+    this.manga = new MangaRepository(db);
+    this.catalog = new CatalogListRepository(db);
+    this.source = source ?? new MalClient(config);
   }
 
   private validateMalId(rawId: string): number {
     const malId = Number.parseInt(rawId, 10);
-    if (!Number.isInteger(malId) || malId <= 0 || String(malId) !== rawId) throw new ServiceError('INVALID_MANGA_ID', 400, 'Manga id is invalid.');
+    if (!Number.isInteger(malId) || malId <= 0 || String(malId) !== rawId)
+      throw new ServiceError('INVALID_MANGA_ID', 400, 'Manga id is invalid.');
     return malId;
   }
 
   async detail(rawId: string, requestId: string): Promise<ServiceResponse<MangaDetail>> {
     const malId = this.validateMalId(rawId);
-    return withCache(this.deps, `manga:${malId}:detail`, this.config.animeTtlSeconds, MANGA_PARSER_VERSION, () => this.manga.get(malId), async () => {
-      const source = await this.source.getHtml(mangaDetailUrl(malId), ['Score:', 'Genre']);
-      if (source.kind !== 'success') throw sourceError(source);
-      const fetchedAt = new Date().toISOString();
-      const detail = parseMangaDetail(source.value, malId, fetchedAt);
-      await this.manga.put(detail, fetchedAt, MANGA_PARSER_VERSION);
-      return detail;
-    }, requestId);
+    return withCache(
+      this.deps,
+      `manga:${malId}:detail`,
+      this.config.animeTtlSeconds,
+      MANGA_PARSER_VERSION,
+      () => this.manga.get(malId),
+      async () => {
+        const source = await this.source.getHtml(mangaDetailUrl(malId), ['Score:', 'Genre']);
+        if (source.kind !== 'success') throw sourceError(source);
+        const fetchedAt = new Date().toISOString();
+        const detail = parseMangaDetail(source.value, malId, fetchedAt);
+        await this.manga.put(detail, fetchedAt, MANGA_PARSER_VERSION);
+        return detail;
+      },
+      requestId,
+    );
   }
 
   // The MAL manga detail page already carries everything Jikan's "full" schema would add
@@ -103,53 +129,96 @@ export class MangaService {
   async characters(rawId: string, requestId: string): Promise<ServiceResponse<CharacterRole[]>> {
     const malId = this.validateMalId(rawId);
     const cacheKey = `catalog:manga:${malId}:characters`;
-    return withCache(this.deps, cacheKey, this.config.animeTtlSeconds, CHARACTERS_STAFF_PARSER_VERSION, () => this.catalog.get<CharacterRole[]>(cacheKey), async () => {
-      const source = await this.source.getHtml(charactersUrl('manga', malId), ['js-manga-character-table'], CHARACTER_PAGE_BUDGET);
-      if (source.kind !== 'success') throw sourceError(source);
-      const value = parseCharacters(source.value, 'manga');
-      const fetchedAt = new Date().toISOString();
-      await this.catalog.put(cacheKey, value, fetchedAt, CHARACTERS_STAFF_PARSER_VERSION);
-      return value;
-    }, requestId, refreshLeaseSecondsFor(CHARACTER_PAGE_BUDGET));
+    return withCache(
+      this.deps,
+      cacheKey,
+      this.config.animeTtlSeconds,
+      CHARACTERS_STAFF_PARSER_VERSION,
+      () => this.catalog.get<CharacterRole[]>(cacheKey),
+      async () => {
+        const source = await this.source.getHtml(
+          charactersUrl('manga', malId),
+          ['js-manga-character-table'],
+          CHARACTER_PAGE_BUDGET,
+        );
+        if (source.kind !== 'success') throw sourceError(source);
+        const value = parseCharacters(source.value, 'manga');
+        const fetchedAt = new Date().toISOString();
+        await this.catalog.put(cacheKey, value, fetchedAt, CHARACTERS_STAFF_PARSER_VERSION);
+        return value;
+      },
+      requestId,
+      refreshLeaseSecondsFor(CHARACTER_PAGE_BUDGET),
+    );
   }
 
   async genres(rawFilter: string | undefined, requestId: string): Promise<ServiceResponse<GenreTaxonomyEntry[]>> {
     const filter = parseGenreFilter(rawFilter);
-    const result = await withCache(this.deps, GENRES_CACHE_KEY, this.config.catalogTtlSeconds, GENRE_PARSER_VERSION, () => this.catalog.get<GenreTaxonomyEntry[]>(GENRES_CACHE_KEY), async () => {
-      const source = await this.source.getHtml(genreTaxonomyUrl('manga'), ['category-type', 'name="genre[]"']);
-      if (source.kind !== 'success') throw sourceError(source);
-      const value = parseGenreTaxonomy(source.value, 'manga');
-      const fetchedAt = new Date().toISOString();
-      await this.catalog.put(GENRES_CACHE_KEY, value, fetchedAt, GENRE_PARSER_VERSION);
-      return value;
-    }, requestId);
+    const result = await withCache(
+      this.deps,
+      GENRES_CACHE_KEY,
+      this.config.catalogTtlSeconds,
+      GENRE_PARSER_VERSION,
+      () => this.catalog.get<GenreTaxonomyEntry[]>(GENRES_CACHE_KEY),
+      async () => {
+        const source = await this.source.getHtml(genreTaxonomyUrl('manga'), ['category-type', 'name="genre[]"']);
+        if (source.kind !== 'success') throw sourceError(source);
+        const value = parseGenreTaxonomy(source.value, 'manga');
+        const fetchedAt = new Date().toISOString();
+        await this.catalog.put(GENRES_CACHE_KEY, value, fetchedAt, GENRE_PARSER_VERSION);
+        return value;
+      },
+      requestId,
+    );
     return filter ? { ...result, data: result.data.filter((entry) => entry.type === filter) } : result;
   }
 
-  async topManga(page: number, rawFilter: string | undefined, requestId: string): Promise<ServiceResponse<MangaListEntry[]>> {
+  async topManga(
+    page: number,
+    rawFilter: string | undefined,
+    requestId: string,
+  ): Promise<ServiceResponse<MangaListEntry[]>> {
     const filter = parseTopFilter(rawFilter, TOP_MANGA_FILTERS);
     const cacheKey = `catalog:top:manga:page:${page}${filter ? `:${filter}` : ''}`;
-    return withCache(this.deps, cacheKey, this.config.catalogTtlSeconds, TOP_MANGA_PARSER_VERSION, () => this.catalog.get<MangaListEntry[]>(cacheKey), async () => {
-      const source = await this.source.getHtml(topMangaUrl(page, filter), ['ranking-list']);
-      if (source.kind !== 'success') throw sourceError(source);
-      const value = parseTopManga(source.value);
-      const fetchedAt = new Date().toISOString();
-      await this.catalog.put(cacheKey, value, fetchedAt, TOP_MANGA_PARSER_VERSION);
-      return value;
-    }, requestId);
+    return withCache(
+      this.deps,
+      cacheKey,
+      this.config.catalogTtlSeconds,
+      TOP_MANGA_PARSER_VERSION,
+      () => this.catalog.get<MangaListEntry[]>(cacheKey),
+      async () => {
+        const source = await this.source.getHtml(topMangaUrl(page, filter), ['ranking-list']);
+        if (source.kind !== 'success') throw sourceError(source);
+        const value = parseTopManga(source.value);
+        const fetchedAt = new Date().toISOString();
+        await this.catalog.put(cacheKey, value, fetchedAt, TOP_MANGA_PARSER_VERSION);
+        return value;
+      },
+      requestId,
+    );
   }
 
   async magazines(rawQuery: string | undefined, requestId: string): Promise<ServiceResponse<Magazine[]>> {
-    const result = await withCache(this.deps, MAGAZINES_CACHE_KEY, this.config.catalogTtlSeconds, MAGAZINE_PARSER_VERSION, () => this.catalog.get<Magazine[]>(MAGAZINES_CACHE_KEY), async () => {
-      const source = await this.source.getHtml(magazinesUrl(), ['genre-name-link']);
-      if (source.kind !== 'success') throw sourceError(source);
-      const value = parseMagazines(source.value);
-      const fetchedAt = new Date().toISOString();
-      await this.catalog.put(MAGAZINES_CACHE_KEY, value, fetchedAt, MAGAZINE_PARSER_VERSION);
-      return value;
-    }, requestId);
+    const result = await withCache(
+      this.deps,
+      MAGAZINES_CACHE_KEY,
+      this.config.catalogTtlSeconds,
+      MAGAZINE_PARSER_VERSION,
+      () => this.catalog.get<Magazine[]>(MAGAZINES_CACHE_KEY),
+      async () => {
+        const source = await this.source.getHtml(magazinesUrl(), ['genre-name-link']);
+        if (source.kind !== 'success') throw sourceError(source);
+        const value = parseMagazines(source.value);
+        const fetchedAt = new Date().toISOString();
+        await this.catalog.put(MAGAZINES_CACHE_KEY, value, fetchedAt, MAGAZINE_PARSER_VERSION);
+        return value;
+      },
+      requestId,
+    );
     const query = (rawQuery ?? '').trim().toLowerCase();
-    return query ? { ...result, data: result.data.filter((magazine) => magazine.name.toLowerCase().includes(query)) } : result;
+    return query
+      ? { ...result, data: result.data.filter((magazine) => magazine.name.toLowerCase().includes(query)) }
+      : result;
   }
 
   private async perMangaResource<T>(
@@ -163,61 +232,133 @@ export class MangaService {
   ): Promise<ServiceResponse<T>> {
     const malId = this.validateMalId(rawId);
     const cacheKey = `catalog:manga:${malId}:${resource}`;
-    return withCache(this.deps, cacheKey, this.config.animeTtlSeconds, parserVersion, () => this.catalog.get<T>(cacheKey), async () => {
-      const source = await this.source.getHtml(url, requiredMarkers);
-      if (source.kind !== 'success') throw sourceError(source);
-      const value = parse(source.value);
-      const fetchedAt = new Date().toISOString();
-      await this.catalog.put(cacheKey, value, fetchedAt, parserVersion);
-      return value;
-    }, requestId);
+    return withCache(
+      this.deps,
+      cacheKey,
+      this.config.animeTtlSeconds,
+      parserVersion,
+      () => this.catalog.get<T>(cacheKey),
+      async () => {
+        const source = await this.source.getHtml(url, requiredMarkers);
+        if (source.kind !== 'success') throw sourceError(source);
+        const value = parse(source.value);
+        const fetchedAt = new Date().toISOString();
+        await this.catalog.put(cacheKey, value, fetchedAt, parserVersion);
+        return value;
+      },
+      requestId,
+    );
   }
 
   statistics(rawId: string, requestId: string): Promise<ServiceResponse<EntryStatistics>> {
     const malId = this.validateMalId(rawId);
-    return this.perMangaResource(rawId, 'statistics', statisticsUrl('manga', malId), ['Summary Stats'], STATISTICS_PARSER_VERSION, (html) => parseStatistics(html), requestId);
+    return this.perMangaResource(
+      rawId,
+      'statistics',
+      statisticsUrl('manga', malId),
+      ['Summary Stats'],
+      STATISTICS_PARSER_VERSION,
+      (html) => parseStatistics(html),
+      requestId,
+    );
   }
 
   userUpdates(rawId: string, requestId: string): Promise<ServiceResponse<TitleUserUpdate[]>> {
     const malId = this.validateMalId(rawId);
-    return this.perMangaResource(rawId, 'userupdates', statisticsUrl('manga', malId), ['Summary Stats'], TITLE_USERUPDATES_PARSER_VERSION, parseTitleUserUpdates, requestId);
+    return this.perMangaResource(
+      rawId,
+      'userupdates',
+      statisticsUrl('manga', malId),
+      ['Summary Stats'],
+      TITLE_USERUPDATES_PARSER_VERSION,
+      parseTitleUserUpdates,
+      requestId,
+    );
   }
 
   pictures(rawId: string, requestId: string): Promise<ServiceResponse<Picture[]>> {
     const malId = this.validateMalId(rawId);
-    return this.perMangaResource(rawId, 'pictures', picturesUrl('manga', malId), ['js-picture-gallery'], PICTURES_PARSER_VERSION, parsePictures, requestId);
+    return this.perMangaResource(
+      rawId,
+      'pictures',
+      picturesUrl('manga', malId),
+      ['js-picture-gallery'],
+      PICTURES_PARSER_VERSION,
+      parsePictures,
+      requestId,
+    );
   }
 
   news(rawId: string, requestId: string): Promise<ServiceResponse<NewsItem[]>> {
     const malId = this.validateMalId(rawId);
-    return this.perMangaResource(rawId, 'news', newsUrl('manga', malId), ['read more'], NEWS_PARSER_VERSION, parseNews, requestId);
+    return this.perMangaResource(
+      rawId,
+      'news',
+      newsUrl('manga', malId),
+      ['read more'],
+      NEWS_PARSER_VERSION,
+      parseNews,
+      requestId,
+    );
   }
 
   forum(rawId: string, requestId: string): Promise<ServiceResponse<ForumThread[]>> {
     const malId = this.validateMalId(rawId);
-    return this.perMangaResource(rawId, 'forum', forumUrl('manga', malId), ['data-topic-id'], FORUM_PARSER_VERSION, parseForum, requestId);
+    return this.perMangaResource(
+      rawId,
+      'forum',
+      forumUrl('manga', malId),
+      ['data-topic-id'],
+      FORUM_PARSER_VERSION,
+      parseForum,
+      requestId,
+    );
   }
 
   recommendations(rawId: string, requestId: string): Promise<ServiceResponse<TitleRecommendation[]>> {
     const malId = this.validateMalId(rawId);
-    return this.perMangaResource(rawId, 'recommendations', titleRecommendationsUrl('manga', malId), ['picSurround'], TITLE_RECOMMENDATIONS_PARSER_VERSION, (html) => parseTitleRecommendations(html, 'manga'), requestId);
+    return this.perMangaResource(
+      rawId,
+      'recommendations',
+      titleRecommendationsUrl('manga', malId),
+      ['picSurround'],
+      TITLE_RECOMMENDATIONS_PARSER_VERSION,
+      (html) => parseTitleRecommendations(html, 'manga'),
+      requestId,
+    );
   }
 
   reviews(rawId: string, page: number, requestId: string): Promise<ServiceResponse<TitleReview[]>> {
     const malId = this.validateMalId(rawId);
     const cacheKey = `catalog:manga:${malId}:reviews:page:${page}`;
-    return withCache(this.deps, cacheKey, this.config.animeTtlSeconds, TITLE_REVIEWS_PARSER_VERSION, () => this.catalog.get<TitleReview[]>(cacheKey), async () => {
-      const source = await this.source.getHtml(titleReviewsUrl('manga', malId, page), ['review-element']);
-      if (source.kind !== 'success') throw sourceError(source);
-      const value = parseTitleReviews(source.value);
-      const fetchedAt = new Date().toISOString();
-      await this.catalog.put(cacheKey, value, fetchedAt, TITLE_REVIEWS_PARSER_VERSION);
-      return value;
-    }, requestId);
+    return withCache(
+      this.deps,
+      cacheKey,
+      this.config.animeTtlSeconds,
+      TITLE_REVIEWS_PARSER_VERSION,
+      () => this.catalog.get<TitleReview[]>(cacheKey),
+      async () => {
+        const source = await this.source.getHtml(titleReviewsUrl('manga', malId, page), ['review-element']);
+        if (source.kind !== 'success') throw sourceError(source);
+        const value = parseTitleReviews(source.value);
+        const fetchedAt = new Date().toISOString();
+        await this.catalog.put(cacheKey, value, fetchedAt, TITLE_REVIEWS_PARSER_VERSION);
+        return value;
+      },
+      requestId,
+    );
   }
 
   moreInfo(rawId: string, requestId: string): Promise<ServiceResponse<MoreInfo>> {
     const malId = this.validateMalId(rawId);
-    return this.perMangaResource(rawId, 'moreinfo', moreInfoUrl('manga', malId), ['id="content"'], MORE_INFO_PARSER_VERSION, parseMoreInfo, requestId);
+    return this.perMangaResource(
+      rawId,
+      'moreinfo',
+      moreInfoUrl('manga', malId),
+      ['id="content"'],
+      MORE_INFO_PARSER_VERSION,
+      parseMoreInfo,
+      requestId,
+    );
   }
 }

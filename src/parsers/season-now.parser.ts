@@ -3,11 +3,22 @@ import type { AnimeListEntry } from '../domain/anime';
 import { decodeHtml, imageFrom, numeric, ParserError } from './html';
 
 const entrySchema = z.object({
-  malId: z.number().int().positive(), title: z.string().min(1), imageUrl: z.string().url().nullable(), score: z.number().nullable(),
-  type: z.string().nullable(), episodes: z.number().nullable(), startDate: z.string().nullable(), members: z.number().nullable(),
+  malId: z.number().int().positive(),
+  title: z.string().min(1),
+  imageUrl: z.string().url().nullable(),
+  score: z.number().nullable(),
+  type: z.string().nullable(),
+  episodes: z.number().nullable(),
+  startDate: z.string().nullable(),
+  members: z.number().nullable(),
 });
 
-export interface SeasonCompletenessEvidence { extractedTotal: number; sourceBytes: number; terminalMarkerFound: boolean; duplicateIds: number[]; }
+export interface SeasonCompletenessEvidence {
+  extractedTotal: number;
+  sourceBytes: number;
+  terminalMarkerFound: boolean;
+  duplicateIds: number[];
+}
 export type SeasonParseResult =
   | { kind: 'complete'; items: AnimeListEntry[]; evidence: SeasonCompletenessEvidence }
   | { kind: 'partial'; items: AnimeListEntry[]; reason: string; evidence: SeasonCompletenessEvidence }
@@ -26,14 +37,20 @@ const CARD_MARKER = 'js-seasonal-anime';
 // detail page, and `0` is MAL's own `Unknown` (61 of the 415 upcoming entries), not a parse failure.
 // An id outside this table stays null rather than becoming an invented label.
 const TYPE_BY_ID: Record<string, string> = {
-  '0': 'Unknown', '1': 'TV', '2': 'OVA', '3': 'Movie', '4': 'Special', '5': 'ONA', '9': 'TV Special',
+  '0': 'Unknown',
+  '1': 'TV',
+  '2': 'OVA',
+  '3': 'Movie',
+  '4': 'Special',
+  '5': 'ONA',
+  '9': 'TV Special',
 };
 
 // Bounded to the head of the chunk because that is where the wrapper's class attribute is — the
 // longest real prefix seen is `r18 js-r18 js-anime-type-all js-anime-type-N`, 46 characters.
 function typeOf(chunk: string): string | null {
   const id = chunk.slice(0, 200).match(/js-anime-type-(\d+)/)?.[1];
-  return id === undefined ? null : TYPE_BY_ID[id] ?? null;
+  return id === undefined ? null : (TYPE_BY_ID[id] ?? null);
 }
 
 function cardChunks(html: string): string[] {
@@ -41,7 +58,9 @@ function cardChunks(html: string): string[] {
 }
 
 function parseCard(chunk: string): AnimeListEntry | null {
-  const link = chunk.match(/<a href="https:\/\/myanimelist\.net\/anime\/(\d+)\/[^"]*" class="link-title">([^<]+)<\/a>/i);
+  const link = chunk.match(
+    /<a href="https:\/\/myanimelist\.net\/anime\/(\d+)\/[^"]*" class="link-title">([^<]+)<\/a>/i,
+  );
   if (!link) return null;
   const candidate = {
     malId: Number(link[1]),
@@ -67,9 +86,15 @@ export function parseSeasonNowSnapshot(html: string): SeasonParseResult {
     entries.set(parsed.malId, parsed);
   }
   const duplicateIds = matched === entries.size ? [] : [...entries.keys()];
-  const evidence: SeasonCompletenessEvidence = { extractedTotal: matched, sourceBytes: new TextEncoder().encode(html).byteLength, terminalMarkerFound: /<\/html>\s*$/i.test(html), duplicateIds };
+  const evidence: SeasonCompletenessEvidence = {
+    extractedTotal: matched,
+    sourceBytes: new TextEncoder().encode(html).byteLength,
+    terminalMarkerFound: /<\/html>\s*$/i.test(html),
+    duplicateIds,
+  };
   if (entries.size === 0) return { kind: 'invalid', reason: 'no_seasonal_entries_found', evidence };
-  if (!evidence.terminalMarkerFound) return { kind: 'partial', items: [...entries.values()], reason: 'terminal_marker_missing', evidence };
+  if (!evidence.terminalMarkerFound)
+    return { kind: 'partial', items: [...entries.values()], reason: 'terminal_marker_missing', evidence };
   return { kind: 'complete', items: [...entries.values()], evidence };
 }
 

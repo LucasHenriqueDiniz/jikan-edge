@@ -28,15 +28,26 @@ const CARD = {
   eyebrowAccent: 'Jikan v4 parity',
   title: ['jikan', '-edge'],
   tagline: ['Anime, manga, characters, people and users —', "served entirely from Cloudflare's edge."],
-  facts: [['97', 'routes'], ['7 ms', 'p50'], ['no', 'auth'], ['free', '']],
+  facts: [
+    ['97', 'routes'],
+    ['7 ms', 'p50'],
+    ['no', 'auth'],
+    ['free', ''],
+  ],
   url: 'jikan.lucashdo.com',
   foot: 'MIT · open source',
 };
 
 // Same palette as site/index.html. Kept in sync by hand; there is no build step to share it.
 const C = {
-  ink: '#0b0e14', line: '#232a3a', paper: '#e9e5d9', paperDim: '#9aa0ae',
-  paperFaint: '#5d6474', vermillion: '#ff4b33', gold: '#d8b46a', teal: '#6fd3c7',
+  ink: '#0b0e14',
+  line: '#232a3a',
+  paper: '#e9e5d9',
+  paperDim: '#9aa0ae',
+  paperFaint: '#5d6474',
+  vermillion: '#ff4b33',
+  gold: '#d8b46a',
+  teal: '#6fd3c7',
 };
 
 const page = `<!doctype html>
@@ -180,7 +191,10 @@ const server = createServer(async (req, res) => {
     process.stdout.write(`\n✔ ${message}\n`);
     res.end(message);
     // The whole point of the server is this one write; hanging around would just block the shell.
-    setTimeout(() => { server.close(); process.exit(0); }, 250);
+    setTimeout(() => {
+      server.close();
+      process.exit(0);
+    }, 250);
     return;
   }
   res.setHeader('Content-Type', 'text/html; charset=utf-8');
@@ -189,4 +203,7 @@ const server = createServer(async (req, res) => {
 
 server.listen(PORT, () => process.stdout.write(`Open http://127.0.0.1:${PORT}/ to render site/og.png\n`));
 // Never leave a stray listener behind if the page is never opened.
-setTimeout(() => { process.stdout.write('\n✖ Timed out waiting for the browser to POST the image.\n'); process.exit(1); }, 120000);
+setTimeout(() => {
+  process.stdout.write('\n✖ Timed out waiting for the browser to POST the image.\n');
+  process.exit(1);
+}, 120000);

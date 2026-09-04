@@ -36,7 +36,10 @@ describe('the agent guide under both of its names', () => {
   // The byte comparison above already covers this, but it fails as "line 40 differs", which does not
   // say why it matters. This one names the mistake that actually happened.
   it('points at the launch config that exists', () => {
-    for (const [name, text] of [['.claude/CLAUDE.md', canonical], ['AGENTS.md', copy]] as const) {
+    for (const [name, text] of [
+      ['.claude/CLAUDE.md', canonical],
+      ['AGENTS.md', copy],
+    ] as const) {
       expect(text, name).toContain('.claude/launch.json');
       expect(text, name).not.toContain('.Codex/launch.json');
     }

@@ -6,7 +6,9 @@ const pictureSchema = z.object({ imageUrl: z.string().url(), thumbnailUrl: z.str
 
 export function parsePictures(html: string): Picture[] {
   const pictures: Picture[] = [];
-  for (const match of html.matchAll(/<a href="([^"]+)"[^>]*class="js-picture-gallery"[^>]*>\s*<img[^>]*data-src="([^"]+)"/gi)) {
+  for (const match of html.matchAll(
+    /<a href="([^"]+)"[^>]*class="js-picture-gallery"[^>]*>\s*<img[^>]*data-src="([^"]+)"/gi,
+  )) {
     const parsed = pictureSchema.safeParse({ imageUrl: match[1], thumbnailUrl: match[2] });
     if (parsed.success) pictures.push(parsed.data);
   }

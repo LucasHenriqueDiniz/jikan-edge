@@ -4,7 +4,11 @@ import type { AnimeThemeSongs, ThemeSong } from '../domain/anime-theme';
 import { decodeHtml, ParserError } from './html';
 import { parseAnimeDetail } from './anime-detail.parser';
 
-const themeSongSchema = z.object({ title: z.string().min(1), artist: z.string().nullable(), episodes: z.string().nullable() });
+const themeSongSchema = z.object({
+  title: z.string().min(1),
+  artist: z.string().nullable(),
+  episodes: z.string().nullable(),
+});
 const themeSongsSchema = z.object({ openings: z.array(themeSongSchema), endings: z.array(themeSongSchema) });
 
 function extractSongs(block: string): ThemeSong[] {
@@ -15,8 +19,9 @@ function extractSongs(block: string): ThemeSong[] {
     // theme-song-title span. Both shapes appear on the same page during the rollout (confirmed
     // live: Frieren is 100% new, Fullmetal Alchemist: Brotherhood mixes both), so each row is
     // checked independently rather than branching on the whole document.
-    const rawTitle = row.match(/class="theme-song-title">([^<]+)<\/span>/i)?.[1]
-      ?? row.match(/class="theme-song-index">[^<]*<\/span>&nbsp;("[^"]+")/i)?.[1];
+    const rawTitle =
+      row.match(/class="theme-song-title">([^<]+)<\/span>/i)?.[1] ??
+      row.match(/class="theme-song-index">[^<]*<\/span>&nbsp;("[^"]+")/i)?.[1];
     if (!rawTitle) continue;
     const title = decodeHtml(rawTitle.replace(/^"+|"+$/g, ''));
     if (!title) continue;
@@ -32,7 +37,8 @@ function extractSongs(block: string): ThemeSong[] {
 function extractThemeSongs(html: string): AnimeThemeSongs {
   const openStart = html.indexOf('js-theme-songs opnening');
   const endStart = html.indexOf('js-theme-songs ending');
-  const openings = openStart === -1 ? [] : extractSongs(html.slice(openStart, endStart === -1 ? openStart + 10_000 : endStart));
+  const openings =
+    openStart === -1 ? [] : extractSongs(html.slice(openStart, endStart === -1 ? openStart + 10_000 : endStart));
   let endings: ThemeSong[] = [];
   if (endStart !== -1) {
     const nextSection = html.indexOf('<h2>', endStart);

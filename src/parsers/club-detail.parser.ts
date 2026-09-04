@@ -26,7 +26,11 @@ function extractStaff(html: string): ClubStaffMember[] {
   const block = html.slice(start, end === -1 ? start + 3_000 : end);
   return [...block.matchAll(/<a href="\/profile\/[^"]+">([^<]+)<\/a>\s*\(([^)]+)\)/gi)].map((match) => {
     const username = decodeHtml(match[1]);
-    return { username, url: `https://myanimelist.net/profile/${encodeURIComponent(username)}`, role: decodeHtml(match[2]) || null };
+    return {
+      username,
+      url: `https://myanimelist.net/profile/${encodeURIComponent(username)}`,
+      role: decodeHtml(match[2]) || null,
+    };
   });
 }
 

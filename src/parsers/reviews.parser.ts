@@ -18,22 +18,33 @@ function parseCard(chunk: string): ReviewEntry | null {
   if (!idMatch) return null;
   const malId = Number(idMatch[1]);
   const title = decodeHtml(chunk.match(/class="title ga-click"[^>]*>([^<]+)<\/a>/i)?.[1] ?? '');
-  const imageUrl = originalImage(chunk.match(/data-ga-click-type="review-\w+-title-pic"[\s\S]{0,300}?data-src="([^"]+)"/i)?.[1] ?? null);
+  const imageUrl = originalImage(
+    chunk.match(/data-ga-click-type="review-\w+-title-pic"[\s\S]{0,300}?data-src="([^"]+)"/i)?.[1] ?? null,
+  );
   const username = chunk.match(/data-ga-click-type="review-\w+-reviewer">([^<]+)<\/a>/i)?.[1] ?? null;
   const date = chunk.match(/class="update_at">([^<]+)<\/div>/i)?.[1] ?? null;
-  const tag = decodeHtml(chunk.match(/class="tag [^"]*btn-label[^"]*"[^>]*>(?:<i[^>]*><\/i>)?([^<]+)<\/div>/i)?.[1] ?? '') || null;
+  const tag =
+    decodeHtml(chunk.match(/class="tag [^"]*btn-label[^"]*"[^>]*>(?:<i[^>]*><\/i>)?([^<]+)<\/div>/i)?.[1] ?? '') ||
+    null;
   const score = numeric(chunk.match(/Rating:\s*<span class="num">(\d+)<\/span>/i)?.[1] ?? null);
   const textMarker = 'class="text">';
   const textStart = chunk.indexOf(textMarker);
   const textEnd = chunk.indexOf('<div class="rating', textStart);
-  const reviewText = textStart === -1 ? null : richText(chunk.slice(textStart + textMarker.length, textEnd === -1 ? textStart + 6_000 : textEnd)) || null;
+  const reviewText =
+    textStart === -1
+      ? null
+      : richText(chunk.slice(textStart + textMarker.length, textEnd === -1 ? textStart + 6_000 : textEnd)) || null;
   const candidate = { malId, title, imageUrl, username, date, tag, score, reviewText };
   const parsed = entrySchema.safeParse(candidate);
   return parsed.success ? parsed.data : null;
 }
 
 export function parseReviews(html: string, allowEmpty = false): ReviewEntry[] {
-  const entries = html.split('review-element js-review-element').slice(1).map(parseCard).filter((entry): entry is ReviewEntry => entry !== null);
+  const entries = html
+    .split('review-element js-review-element')
+    .slice(1)
+    .map(parseCard)
+    .filter((entry): entry is ReviewEntry => entry !== null);
   if (entries.length === 0 && !allowEmpty) throw new ParserError('empty_reviews_page');
   return entries;
 }

@@ -27,7 +27,13 @@ describe('runtime config defaults', () => {
   it('admits the character pages of long-running series', () => {
     // Measured 2026-08-27 against the live pages. These are the sizes that a 2 MiB ceiling refused
     // outright, taking /characters and /staff down together for each title.
-    const admitted = { naruto: 2_426_129, fairyTail: 2_660_972, bleach: 3_190_667, pokemon: 3_716_667, shippuden: 4_424_087 };
+    const admitted = {
+      naruto: 2_426_129,
+      fairyTail: 2_660_972,
+      bleach: 3_190_667,
+      pokemon: 3_716_667,
+      shippuden: 4_424_087,
+    };
     const { maxUpstreamBytes } = configFrom({} as Env);
     for (const [title, bytes] of Object.entries(admitted)) {
       expect(maxUpstreamBytes, `${title} (${bytes} bytes) must fit`).toBeGreaterThan(bytes);

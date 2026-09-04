@@ -7,11 +7,31 @@ export type { ImageKind, ImageSet, MalRef };
 // The named entities MAL actually emits in prose. Anything outside this table is left alone rather
 // than guessed at — a wrong character is worse than a visible `&frac34;`.
 const NAMED_ENTITIES: Record<string, string> = {
-  amp: '&', quot: '"', apos: "'", nbsp: ' ', lt: '<', gt: '>',
-  mdash: '—', ndash: '–', hellip: '…', middot: '·', bull: '•',
-  lsquo: '‘', rsquo: '’', ldquo: '“', rdquo: '”',
-  deg: '°', times: '×', frac12: '½', prime: '′', Prime: '″',
-  laquo: '«', raquo: '»', copy: '©', reg: '®', trade: '™',
+  amp: '&',
+  quot: '"',
+  apos: "'",
+  nbsp: ' ',
+  lt: '<',
+  gt: '>',
+  mdash: '—',
+  ndash: '–',
+  hellip: '…',
+  middot: '·',
+  bull: '•',
+  lsquo: '‘',
+  rsquo: '’',
+  ldquo: '“',
+  rdquo: '”',
+  deg: '°',
+  times: '×',
+  frac12: '½',
+  prime: '′',
+  Prime: '″',
+  laquo: '«',
+  raquo: '»',
+  copy: '©',
+  reg: '®',
+  trade: '™',
 };
 
 // Tags are stripped BEFORE entities are decoded, and the order is load-bearing: decoding first
@@ -39,7 +59,7 @@ export function richText(value: string): string {
     .replace(/<\/p\s*>/gi, '\n\n')
     .replace(/<[^>]+>/g, ' ');
   return decodeEntities(withBreaks)
-    .replace(/[^\S\n]+/g, ' ')       // collapse spaces/tabs, never newlines
+    .replace(/[^\S\n]+/g, ' ') // collapse spaces/tabs, never newlines
     .replace(/[^\S\n]*\n[^\S\n]*/g, '\n')
     .replace(/\n{3,}/g, '\n\n')
     .trim();
@@ -146,12 +166,17 @@ export function numeric(value: string | null): number | null {
 // `pictures.parser.ts` deliberately does NOT come through here: there the thumbnail is a field of
 // its own, so it has to survive.
 export function imageFrom(html: string): string | null {
-  const candidate = /\sdata-src="([^"]+)"/i.exec(html)?.[1]
-    ?? /\sdata-srcset="([^\s,"]+)/i.exec(html)?.[1]
-    ?? /\ssrcset="([^\s,"]+)/i.exec(html)?.[1]
-    ?? /\ssrc="([^"]+)"/i.exec(html)?.[1];
+  const candidate =
+    /\sdata-src="([^"]+)"/i.exec(html)?.[1] ??
+    /\sdata-srcset="([^\s,"]+)/i.exec(html)?.[1] ??
+    /\ssrcset="([^\s,"]+)/i.exec(html)?.[1] ??
+    /\ssrc="([^"]+)"/i.exec(html)?.[1];
   if (!candidate || /spacer\.gif|placeholder/i.test(candidate)) return null;
-  try { return new URL(candidate).protocol === 'https:' ? originalImage(candidate) : null; } catch { return null; }
+  try {
+    return new URL(candidate).protocol === 'https:' ? originalImage(candidate) : null;
+  } catch {
+    return null;
+  }
 }
 
 // Detail pages carry several images (cover, sidebar ads, related entries), so the cover has to be
@@ -226,7 +251,18 @@ export function anchorRefs(block: string): MalRef[] {
 const MAL_BASE = 'https://myanimelist.net';
 
 const MONTHS: Record<string, number> = {
-  jan: 1, feb: 2, mar: 3, apr: 4, may: 5, jun: 6, jul: 7, aug: 8, sep: 9, oct: 10, nov: 11, dec: 12,
+  jan: 1,
+  feb: 2,
+  mar: 3,
+  apr: 4,
+  may: 5,
+  jun: 6,
+  jul: 7,
+  aug: 8,
+  sep: 9,
+  oct: 10,
+  nov: 11,
+  dec: 12,
 };
 
 // MAL writes an airing range as one human string: "Apr 3, 1998 to Apr 24, 1999", "Aug 25, 1989 to ?",
@@ -274,15 +310,21 @@ export function backgroundSection(html: string): string | null {
 
 export function titleSynonyms(html: string): string[] {
   const raw = labelValue(html, 'Synonyms', 'Synonym');
-  return raw ? raw.split(',').map((part) => part.trim()).filter(Boolean) : [];
+  return raw
+    ? raw
+        .split(',')
+        .map((part) => part.trim())
+        .filter(Boolean)
+    : [];
 }
 
 // The canonical URL, with slug, that MAL puts on every page. Confirmed present on all seven detail
 // pages: anime, manga, character, person and producer carry both `<link rel="canonical">` and
 // `og:url`; club and profile carry only `og:url`, so that is the one to read.
 export function canonicalUrl(html: string): string | null {
-  const url = html.match(/<meta property="og:url" content="([^"]+)"/i)?.[1]
-    ?? html.match(/<link rel="canonical" href="([^"]+)"/i)?.[1];
+  const url =
+    html.match(/<meta property="og:url" content="([^"]+)"/i)?.[1] ??
+    html.match(/<link rel="canonical" href="([^"]+)"/i)?.[1];
   return url?.startsWith('https://myanimelist.net/') ? url : null;
 }
 

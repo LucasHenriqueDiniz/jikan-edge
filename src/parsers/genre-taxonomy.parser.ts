@@ -20,7 +20,12 @@ const ENTRY_PATTERN = /<input[^>]+name="genre\[\]"[^>]+value="(\d+)"[^>]*>\s*<p>
 // Names can carry their own parentheses ("Idols (Female) (417)"), so the count is the last group.
 const NAME_WITH_COUNT = /^(.+?)\s*\(([\d,]+)\)$/;
 
-const HEADINGS: Record<string, GenreKind> = { genres: 'genres', 'explicit genres': 'explicit_genres', themes: 'themes', demographics: 'demographics' };
+const HEADINGS: Record<string, GenreKind> = {
+  genres: 'genres',
+  'explicit genres': 'explicit_genres',
+  themes: 'themes',
+  demographics: 'demographics',
+};
 
 // Real taxonomy is 78 (anime) / 79 (manga) entries across all four categories. Anything far below
 // that, or missing a whole category, means a reduced document: refuse it instead of caching a
@@ -47,7 +52,13 @@ export function parseGenreTaxonomy(html: string, type: 'anime' | 'manga'): Genre
       if (!parts) continue;
       const name = parts[1];
       if (entries.has(malId)) continue;
-      entries.set(malId, { malId, name, url: `https://myanimelist.net/${type}/genre/${malId}/${encodeURIComponent(name.replace(/ /g, '_'))}`, count: Number(parts[2].replace(/,/g, '')), type: kind });
+      entries.set(malId, {
+        malId,
+        name,
+        url: `https://myanimelist.net/${type}/genre/${malId}/${encodeURIComponent(name.replace(/ /g, '_'))}`,
+        count: Number(parts[2].replace(/,/g, '')),
+        type: kind,
+      });
     }
   }
 
@@ -55,6 +66,7 @@ export function parseGenreTaxonomy(html: string, type: 'anime' | 'manga'): Genre
   const validated = z.array(entrySchema).safeParse(list);
   if (!validated.success) throw new ParserError('invalid_genre_list');
   const kinds = new Set(validated.data.map((entry) => entry.type));
-  if (validated.data.length < MIN_EXPECTED_ENTRIES || kinds.size < GENRE_KINDS.length) throw new ParserError('incomplete_genre_taxonomy');
+  if (validated.data.length < MIN_EXPECTED_ENTRIES || kinds.size < GENRE_KINDS.length)
+    throw new ParserError('incomplete_genre_taxonomy');
   return validated.data;
 }

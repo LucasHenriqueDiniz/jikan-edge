@@ -1,6 +1,16 @@
 import { z } from 'zod';
 import type { CharacterDetail } from '../domain/character';
-import { canonicalUrl, capture, imageSetSchema, imageVariants, numeric, ParserError, PORTRAIT_IMAGE, richText, taggedImage } from './html';
+import {
+  canonicalUrl,
+  capture,
+  imageSetSchema,
+  imageVariants,
+  numeric,
+  ParserError,
+  PORTRAIT_IMAGE,
+  richText,
+  taggedImage,
+} from './html';
 
 const characterDetailSchema = z.object({
   malId: z.number().int().positive(),
@@ -29,7 +39,11 @@ function extractAbout(html: string): string | null {
   return decoded.length > 0 ? decoded : null;
 }
 
-export function parseCharacterDetail(html: string, malId: number, fetchedAt = new Date().toISOString()): CharacterDetail {
+export function parseCharacterDetail(
+  html: string,
+  malId: number,
+  fetchedAt = new Date().toISOString(),
+): CharacterDetail {
   const head = html.slice(0, 60_000);
   const name = capture(head, /<h1[^>]*class="title-name[^"]*"[^>]*>\s*<strong>([^<]+)<\/strong>/i);
   const imageUrl = taggedImage(head, PORTRAIT_IMAGE);

@@ -27,9 +27,18 @@ function extract(block: string, type: 'anime' | 'manga' | 'character'): { malId:
 }
 
 export function parseClubRelations(html: string): ClubRelations {
-  const anime = extract(section(html, 'Anime Relations'), 'anime').map((item) => ({ malId: item.malId, title: item.text }));
-  const manga = extract(section(html, 'Manga Relations'), 'manga').map((item) => ({ malId: item.malId, title: item.text }));
-  const characters = extract(section(html, 'Character Relations'), 'character').map((item) => ({ malId: item.malId, name: item.text }));
+  const anime = extract(section(html, 'Anime Relations'), 'anime').map((item) => ({
+    malId: item.malId,
+    title: item.text,
+  }));
+  const manga = extract(section(html, 'Manga Relations'), 'manga').map((item) => ({
+    malId: item.malId,
+    title: item.text,
+  }));
+  const characters = extract(section(html, 'Character Relations'), 'character').map((item) => ({
+    malId: item.malId,
+    name: item.text,
+  }));
   return {
     anime: anime.filter((item) => titleSchema.safeParse(item).success),
     manga: manga.filter((item) => titleSchema.safeParse(item).success),

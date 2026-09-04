@@ -2,15 +2,33 @@ import { z } from 'zod';
 import type { PublishedManga, StaffPosition, VoiceActingRole } from '../domain/person-media';
 import { decodeHtml, imageFrom } from './html';
 
-const staffSchema = z.object({ animeId: z.number().int().positive(), animeTitle: z.string().min(1), imageUrl: z.string().url().nullable(), positions: z.array(z.string()) });
-const mangaSchema = z.object({ mangaId: z.number().int().positive(), mangaTitle: z.string().min(1), imageUrl: z.string().url().nullable(), positions: z.array(z.string()) });
+const staffSchema = z.object({
+  animeId: z.number().int().positive(),
+  animeTitle: z.string().min(1),
+  imageUrl: z.string().url().nullable(),
+  positions: z.array(z.string()),
+});
+const mangaSchema = z.object({
+  mangaId: z.number().int().positive(),
+  mangaTitle: z.string().min(1),
+  imageUrl: z.string().url().nullable(),
+  positions: z.array(z.string()),
+});
 const voiceSchema = z.object({
-  animeId: z.number().int().positive(), animeTitle: z.string().min(1), animeImageUrl: z.string().url().nullable(),
-  characterId: z.number().int().positive(), characterName: z.string().min(1), characterRole: z.string().nullable(), characterImageUrl: z.string().url().nullable(),
+  animeId: z.number().int().positive(),
+  animeTitle: z.string().min(1),
+  animeImageUrl: z.string().url().nullable(),
+  characterId: z.number().int().positive(),
+  characterName: z.string().min(1),
+  characterRole: z.string().nullable(),
+  characterImageUrl: z.string().url().nullable(),
 });
 
 function splitPositions(raw: string): string[] {
-  return raw.split(',').map((part) => decodeHtml(part.trim())).filter(Boolean);
+  return raw
+    .split(',')
+    .map((part) => decodeHtml(part.trim()))
+    .filter(Boolean);
 }
 
 // Anime staff positions and published manga credits share the exact same row shape (image +
@@ -58,11 +76,17 @@ export function parsePersonVoiceActingRoles(html: string): VoiceActingRole[] {
     const animeTitle = decodeHtml(animePart.match(/class="js-people-title">([^<]+)<\/a>/i)?.[1] ?? '');
     const animeImageUrl = imageFrom(animePart);
     const characterName = decodeHtml(charPart.match(/character\/\d+\/[^"]*">([^<]+)<\/a>/i)?.[1] ?? '');
-    const characterRole = decodeHtml(charPart.match(/<div class="spaceit_pad">([^<]+)&nbsp;<\/div>/i)?.[1] ?? '') || null;
+    const characterRole =
+      decodeHtml(charPart.match(/<div class="spaceit_pad">([^<]+)&nbsp;<\/div>/i)?.[1] ?? '') || null;
     const characterImageUrl = imageFrom(charPart);
     const parsed = voiceSchema.safeParse({
-      animeId: Number(animeMatch[1]), animeTitle, animeImageUrl,
-      characterId: Number(charMatch[1]), characterName, characterRole, characterImageUrl,
+      animeId: Number(animeMatch[1]),
+      animeTitle,
+      animeImageUrl,
+      characterId: Number(charMatch[1]),
+      characterName,
+      characterRole,
+      characterImageUrl,
     });
     if (parsed.success) roles.push(parsed.data);
   }

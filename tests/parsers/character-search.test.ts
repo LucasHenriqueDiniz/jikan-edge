@@ -8,8 +8,18 @@ describe('character search parser', () => {
   it('extracts character entries', () => {
     const results = parseCharacterSearch(html);
     expect(results).toEqual([
-      { malId: 33110, name: 'Spike', url: 'https://myanimelist.net/character/33110/Spike', imageUrl: 'https://cdn.myanimelist.net/images/characters/15/241595.jpg' },
-      { malId: 1, name: 'Spiegel, Spike', url: 'https://myanimelist.net/character/1/Spike_Spiegel', imageUrl: 'https://cdn.myanimelist.net/images/characters/11/516853.jpg' },
+      {
+        malId: 33110,
+        name: 'Spike',
+        url: 'https://myanimelist.net/character/33110/Spike',
+        imageUrl: 'https://cdn.myanimelist.net/images/characters/15/241595.jpg',
+      },
+      {
+        malId: 1,
+        name: 'Spiegel, Spike',
+        url: 'https://myanimelist.net/character/1/Spike_Spiegel',
+        imageUrl: 'https://cdn.myanimelist.net/images/characters/11/516853.jpg',
+      },
     ]);
   });
 });
