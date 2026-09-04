@@ -107,3 +107,7 @@ satisfy it **structurally** and did not have to change.
   its own adapter's directory — the port points outward. `CacheEntry` was moved into
   `catalog-store.port.ts` for exactly this reason; these two were left because `fetch-policy.ts`
   holds real policy alongside the type.
+
+---
+
+Superseded as the epic record by [[ports-and-injection]] (`docs/postmortem/`), which closes all three slices. This one covers slices 1 and 2 only, written the day they shipped.

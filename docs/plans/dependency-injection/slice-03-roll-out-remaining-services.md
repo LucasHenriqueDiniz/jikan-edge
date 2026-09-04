@@ -128,3 +128,7 @@ was written to check (a 502 mapping), not storage.
 method throws. Answering `null` or `{}` would have been easier and wrong: `AnimeService` reads none
 of them, and a permissive fake means a service quietly starting to depend on one goes green instead
 of saying it changed what it needs.
+
+---
+
+Closed by [[ports-and-injection]] (`docs/postmortem/`).
