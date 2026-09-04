@@ -1,5 +1,4 @@
-import type { CacheRepository } from '../repositories/cache.repository';
-import type { RefreshLockRepository } from '../repositories/refresh-lock.repository';
+import type { CatalogStore } from '../ports/driven/catalog-store.port';
 import type { SourceResult } from '../source/source-types';
 
 // Every status a ServiceError is actually constructed with, across direct `new ServiceError(...)`
@@ -59,7 +58,11 @@ export function sourceError(result: Exclude<SourceResult<string>, { kind: 'succe
  */
 export type WaitUntil = (promise: Promise<unknown>) => void;
 
-export interface CacheDeps { cache: CacheRepository; locks: RefreshLockRepository; waitUntil?: WaitUntil; }
+// Projected out of the store port rather than declared fresh, so this is the same contract the
+// adapter is checked against and not a second copy of it that can drift. Only the two members
+// withCache actually talks to: it reads and writes cache bookkeeping and holds a refresh lease, and
+// has no business reaching the payload tables.
+export interface CacheDeps { cache: CatalogStore['cacheEntries']; locks: CatalogStore['refreshLeases']; waitUntil?: WaitUntil; }
 
 // Whether a resource went stale recently enough to be worth serving while it refreshes. The window
 // is one more TTL past expiry, which is exactly what `Cache-Control: stale-while-revalidate=<ttl>`

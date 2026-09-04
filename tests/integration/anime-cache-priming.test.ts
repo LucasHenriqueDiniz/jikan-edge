@@ -1,6 +1,7 @@
 import { beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import type { CatalogSource } from '../../src/ports/driven/catalog-source.port';
 import { applyD1Migrations, env } from 'cloudflare:test';
+import { D1CatalogStore } from '../../src/adapters/d1-catalog-store';
 import { AnimeService } from '../../src/services/anime.service';
 import type { RuntimeConfig } from '../../src/config/env';
 import type { SourceResult } from '../../src/source/source-types';
@@ -77,7 +78,7 @@ beforeEach(async () => { for (const table of ['anime', 'catalog_lists', 'cache_e
 describe('AnimeService: detail() and full() share one upstream fetch on a cold cache', () => {
   it('detail() priming the cache lets a following full() call skip its own fetch', async () => {
     const calls = { count: 0 };
-    const service = new AnimeService(bindings.DB, config, stubSource(calls));
+    const service = new AnimeService(new D1CatalogStore(bindings.DB), stubSource(calls), config);
 
     const detailResult = await service.detail('1', 'req-1');
     expect(calls.count).toBe(1);
@@ -91,7 +92,7 @@ describe('AnimeService: detail() and full() share one upstream fetch on a cold c
 
   it('full() priming the cache lets a following detail() call skip its own fetch, without leaking themeSongs', async () => {
     const calls = { count: 0 };
-    const service = new AnimeService(bindings.DB, config, stubSource(calls));
+    const service = new AnimeService(new D1CatalogStore(bindings.DB), stubSource(calls), config);
 
     const fullResult = await service.full('1', 'req-1');
     expect(calls.count).toBe(1);

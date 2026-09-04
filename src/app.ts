@@ -8,6 +8,8 @@ import { success } from './http/response';
 import { paginationMeta, parseLimitParam } from './domain/pagination';
 import { CLUB_LIST_PAGE_SIZE, CLUB_MEMBERS_PAGE_SIZE, RECOMMENDATIONS_PAGE_SIZE, REVIEWS_PAGE_SIZE, SEARCH_PAGE_SIZE, TITLE_REVIEWS_PAGE_SIZE, TOP_PAGE_SIZE, USER_SEARCH_PAGE_SIZE } from './source/mal-urls';
 import { logMetric } from './observability/metrics';
+import { D1CatalogStore } from './adapters/d1-catalog-store';
+import { MalClient } from './source/mal-client';
 import { UserService } from './services/user.service';
 import { AnimeService } from './services/anime.service';
 import { MangaService } from './services/manga.service';
@@ -109,7 +111,13 @@ function background(c: Context<{ Bindings: Env; Variables: Variables }>): WaitUn
 }
 
 function service(c: Context<{ Bindings: Env; Variables: Variables }>): UserService { return new UserService(c.env.DB, configFrom(c.env), undefined, background(c)); }
-function animeService(c: Context<{ Bindings: Env; Variables: Variables }>): AnimeService { return new AnimeService(c.env.DB, configFrom(c.env), undefined, background(c)); }
+// The first factory that hands over built adapters instead of a raw binding — the shape the other
+// eleven take in slice 3. `configFrom` is read once and shared: the source needs it for its timeout
+// and user agent, the service for its TTLs.
+function animeService(c: Context<{ Bindings: Env; Variables: Variables }>): AnimeService {
+  const config = configFrom(c.env);
+  return new AnimeService(new D1CatalogStore(c.env.DB), new MalClient(config), config, background(c));
+}
 function mangaService(c: Context<{ Bindings: Env; Variables: Variables }>): MangaService { return new MangaService(c.env.DB, configFrom(c.env), undefined, background(c)); }
 function characterService(c: Context<{ Bindings: Env; Variables: Variables }>): CharacterService { return new CharacterService(c.env.DB, configFrom(c.env), undefined, background(c)); }
 function producerService(c: Context<{ Bindings: Env; Variables: Variables }>): ProducerService { return new ProducerService(c.env.DB, configFrom(c.env), undefined, background(c)); }

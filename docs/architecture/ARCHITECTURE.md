@@ -44,6 +44,10 @@ src/
                    PARSER_VERSION constant. Types and small pure helpers only.
   parsers/         pure HTML -> domain. Given a string, returns a domain value or throws
                    ParserError. Never fetches, never touches the database.
+  ports/driven/    the two conversations a service is allowed to have: CatalogSource and
+                   CatalogStore. Interfaces and their contract types, no implementations.
+  adapters/        d1-catalog-store.ts, which composes the repositories into the store
+                   port. The only place a D1 binding becomes a port.
   source/          the driven side of MyAnimeList: MalClient, URL builders, response
                    validation, fetch policy, the SourceResult union.
   repositories/    the driven side of D1. One file per resource, plus cache.repository
@@ -67,20 +71,29 @@ Hono → client.
 
 *One line per port: the conversation it names, its adapters, and why it exists.*
 
-**There is no `src/ports/` directory, and no interface declared for either driven dependency.**
-The two conversations exist as concrete classes instead:
+Two, one per driven conversation, decided in
+[the ports ADR](adr-ports-for-driven-dependencies.md) and named for the conversation rather than the
+technology behind it:
 
-| conversation | how it is expressed | implementations |
+| conversation | port | adapters |
 |---|---|---|
-| the catalog source | `MalClient` (`src/source/mal-client.ts`), returning `SourceResult<T>` | one, the real MAL fetch. Tests inject a stand-in `MalClient` through the service's optional `source` parameter. |
-| stored state | one repository class per resource over `D1Database` | one, D1. Tests run against a real D1 via `@cloudflare/vitest-pool-workers`, or pass a hand-built `CacheDeps`. |
+| the catalog source | `CatalogSource` (`src/ports/driven/catalog-source.port.ts`) — one method, returning `SourceResult<string>` | `MalClient` (`src/source/mal-client.ts`), the real MAL fetch. Tests declare their own stand-ins against the interface. |
+| the store | `CatalogStore` (`src/ports/driven/catalog-store.port.ts`) — cache bookkeeping, refresh leases, and the payload tables, grouped as members of one interface | `D1CatalogStore` (`src/adapters/d1-catalog-store.ts`), composing the repositories. Tests use it over a real D1 via `@cloudflare/vitest-pool-workers`, or an in-memory fake. |
 
-`SourceResult` is the one piece that already behaves like a port contract: it is a domain-shaped
+**No D1 type appears in either port** — not `D1Database`, not `D1Result`. That is the property that
+makes them ports rather than the driver with an interface in front of it, and it is checked by
+`tests/services/anime-service-ports.test.ts`, which builds `AnimeService` from fakes alone and
+cannot compile if a signature starts carrying one.
+
+`SourceResult` was already behaving like a port contract before the ports existed: a domain-shaped
 discriminated union (`success | not_found | private | rate_limited | timeout | suspicious |
 upstream_error`), so no upstream `Response` reaches a service. `sourceError()` is the single place
 that maps it to an HTTP status.
 
-Whether these become real ports is [an open decision](#known-gaps), not something this file settles.
+**The rollout is partial.** `AnimeService` receives both ports and constructs nothing; the other
+eleven services still take a raw `D1Database` and build their own repositories, and
+`src/app.ts:538`/`:548` still construct `RandomService` inline.
+[Slice 3](../plans/dependency-injection/slice-03-roll-out-remaining-services.md) is the rest.
 
 ## Decisions
 
@@ -153,9 +166,7 @@ own `/v1`.
 
 | what | house style says | here | why |
 |---|---|---|---|
-| layer names | `domain / ports / application / adapters` + composition root | `domain / parsers / source / repositories / services / http` | the names describe the four layers the spec asks for — `services` is the application layer, `source` + `repositories` are the driven side, `http` is the driving side — using the vocabulary the codebase and its whole test suite were written in. Renaming is a rename of everything, not a structural change. Undeclared, this reads as a missing hexagon. |
-| no `ports/` | a driven dependency gets a port from its first use | concrete `MalClient` and repository classes | there is one implementation of each, and the seam that makes them testable already exists: `SourceResult` keeps upstream types out of the services, and the services take an optional `source`. Adding the interfaces is a real option, listed below as a gap rather than settled here. |
-| wiring | a use case never constructs an adapter; only the composition root constructs | a service takes `D1Database` and builds its own repositories, and falls back to `new MalClient(config)` when no `source` is passed | `app.ts` is the composition root and it does construct per request, but it hands over the raw binding rather than built adapters. The `source ?? new MalClient(config)` default is what lets a test inject a stand-in without a container. It is still an inward-pointing violation of the wiring rule. |
+| layer names | `domain / ports / application / adapters` + composition root | `domain / parsers / ports / adapters / source / repositories / services / http` | the names describe the four layers the spec asks for — `services` is the application layer, `source` + `repositories` are the driven side, `http` is the driving side — using the vocabulary the codebase and its whole test suite were written in. Renaming is a rename of everything, not a structural change. Undeclared, this reads as a missing hexagon. |
 | driven grouping | group by resource, file per technology (`store/postgres.ts`) | `repositories/<resource>.repository.ts`, flat | there is exactly one technology (D1). A second one would need the directory-per-resource layout the `clean-code` skill describes. |
 | some domain types live in `parsers/` | the domain owns its types | `Favorite`, `Favorites`, `UserUpdate`, `UserUpdates`, `SeasonArchiveEntry`, `ScheduleByDay`, `ClubRelations` are exported from parser files | not argued, just how they grew. A gap, below — not a divergence anyone should defend. Parse-result wrappers (`SeasonParseResult`, `ListParseResult`, the completeness-evidence types) do belong to the parser layer and stay. |
 | no linter or formatter | — | typecheck and tests only | turning one on today rewrites `src/app.ts` (550 lines, with one handler line of 747 characters) in the same diff as anything else. Whoever adds it takes the reformat as its own commit. |
@@ -168,11 +179,16 @@ own `/v1`.
       arrow in the tree that points outward. The fix is a `src/domain/errors.ts` with a re-export left
       behind in `cacheable.ts`, which keeps it a two-line change instead of touching 15 files in `src/`
       and 4 in `tests/`.
-- [ ] **No `ports/` layer for D1 or for the MAL client**, and services construct their own adapters.
-      Both are listed as divergences above because they are deliberate today, not because they are
-      right.
+- [ ] **Eleven of the twelve services still construct their own adapters.** `AnimeService` takes the
+      two ports; the rest take a raw `D1Database`, and `RandomService` has no factory at all. The
+      ports exist and the pattern is settled — this is the remainder of the rollout, tracked as
+      [slice 3](../plans/dependency-injection/slice-03-roll-out-remaining-services.md).
+- [ ] **`SourceResult` and `FetchBudget` still live in `src/source/`** and `CatalogSource` imports
+      them from there, so the port points outward at its own adapter's directory. `CacheEntry` was
+      moved into `catalog-store.port.ts` for exactly this reason; these two were left because
+      `fetch-policy.ts` holds real policy alongside the type and splitting it is its own change.
 - [ ] **Seven domain-shaped types are exported from `src/parsers/`** instead of `src/domain/`.
-- [ ] **`src/app.ts` is 550 lines** — over the `clean-code` soft limit of 500, with handlers written
+- [ ] **`src/app.ts` is 558 lines** — over the `clean-code` soft limit of 500, with handlers written
       as single very long lines.
 - [ ] **No lint, format or dead-code gate.** `pnpm run typecheck` and `pnpm test` are the whole
       check surface; there is no eslint/biome/prettier config and no `knip`.

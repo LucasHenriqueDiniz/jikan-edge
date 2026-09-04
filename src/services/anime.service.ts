@@ -34,12 +34,8 @@ import { parseTitleUserUpdates } from '../parsers/title-userupdates.parser';
 import { SEASON_ARCHIVE_PARSER_VERSION, parseSeasonArchive, type SeasonArchiveEntry } from '../parsers/season-archive.parser';
 import { SCHEDULE_DAYS, SCHEDULE_PARSER_VERSION, parseScheduleByDay, type ScheduleByDay, type ScheduleDay } from '../parsers/schedule.parser';
 import { parseTopAnime } from '../parsers/top-anime.parser';
-import { AnimeRepository } from '../repositories/anime.repository';
-import { CacheRepository } from '../repositories/cache.repository';
-import { CatalogListRepository } from '../repositories/catalog-list.repository';
-import { RefreshLockRepository } from '../repositories/refresh-lock.repository';
 import type { CatalogSource } from '../ports/driven/catalog-source.port';
-import { MalClient } from '../source/mal-client';
+import type { CatalogStore } from '../ports/driven/catalog-store.port';
 import { animeDetailUrl, charactersUrl, episodeDetailUrl, episodesUrl, forumUrl, genreTaxonomyUrl, moreInfoUrl, newsUrl, picturesUrl, scheduleUrl, seasonArchiveUrl, seasonByYearUrl, seasonNowUrl, seasonUpcomingUrl, statisticsUrl, titleRecommendationsUrl, titleReviewsUrl, TOP_ANIME_FILTERS, topAnimeUrl, videosUrl } from '../source/mal-urls';
 import { parseTopFilter } from './top-filter';
 import { CHARACTER_PAGE_BUDGET, refreshLeaseSecondsFor } from '../source/fetch-policy';
@@ -51,14 +47,17 @@ interface AnimeCharactersAndStaff { characters: CharacterRole[]; staff: StaffMem
 const VALID_SEASONS = new Set(['winter', 'spring', 'summer', 'fall']);
 
 export class AnimeService {
-  private readonly cache: CacheRepository;
-  private readonly locks: RefreshLockRepository;
+  private readonly cache: CatalogStore['cacheEntries'];
   private readonly deps: CacheDeps;
-  private readonly anime: AnimeRepository;
-  private readonly catalog: CatalogListRepository;
-  private readonly source: CatalogSource;
-  constructor(private readonly db: D1Database, private readonly config: RuntimeConfig, source?: CatalogSource, waitUntil?: WaitUntil) {
-    this.cache = new CacheRepository(db); this.locks = new RefreshLockRepository(db); this.deps = { cache: this.cache, locks: this.locks, waitUntil }; this.anime = new AnimeRepository(db); this.catalog = new CatalogListRepository(db); this.source = source ?? new MalClient(config);
+  private readonly anime: CatalogStore['anime'];
+  private readonly catalog: CatalogStore['catalogLists'];
+  // Receives its collaborators; constructs nothing. `src/app.ts` builds the store and the source and
+  // hands them over, the way it already handed over `background(c)` — a capability passed in rather
+  // than reached for. The optional `source` parameter is gone with it: a dependency that defaults to
+  // a real adapter is a composition root hiding in a constructor, and it was also what let a test
+  // pass a stand-in the compiler never checked.
+  constructor(store: CatalogStore, private readonly source: CatalogSource, private readonly config: RuntimeConfig, waitUntil?: WaitUntil) {
+    this.cache = store.cacheEntries; this.deps = { cache: store.cacheEntries, locks: store.refreshLeases, waitUntil }; this.anime = store.anime; this.catalog = store.catalogLists;
   }
 
   private validateMalId(rawId: string): number {

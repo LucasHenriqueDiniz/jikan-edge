@@ -1,10 +1,4 @@
-export interface CacheEntry {
-  resourceKey: string;
-  expiresAt: string;
-  fetchedAt: string;
-  sourceStatus: string;
-  parserVersion: string;
-}
+import type { CacheEntry } from '../ports/driven/catalog-store.port';
 
 export class CacheRepository {
   constructor(private readonly db: D1Database) {}
