@@ -59,3 +59,7 @@ If writing it honestly makes the answer obviously "no", write "no" and mark the 
 set slices 2 and 3 to a status of `done` with a one-line note pointing at the ADR, and close the
 epic. A recorded refusal is a valid outcome of this slice — the failure mode is leaving the question
 open for the next audit to raise again.
+
+---
+
+Closed by [[ports-for-driven-dependencies]] (`docs/postmortem/`).

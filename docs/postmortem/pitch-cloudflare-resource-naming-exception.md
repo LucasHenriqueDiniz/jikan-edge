@@ -1,7 +1,11 @@
 ---
-status: active
+status: closed
 epic: naming
 ---
+
+> **Closed 2026-09-03.** Moved here from `docs/pitches/` so the pair reads as one thing: this is what
+> was promised, [[cloudflare-resource-naming-exception]] is what happened. The decision it asked for
+> is [[adr-cloudflare-resource-names]] — *accepted as an exception, the names do not change*.
 
 # Cloudflare resource names, and the rename that is not a `git mv`
 
