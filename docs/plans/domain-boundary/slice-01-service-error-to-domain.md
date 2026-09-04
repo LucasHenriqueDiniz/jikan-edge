@@ -92,3 +92,7 @@ after the previous commit. Nothing of theirs is in any commit here (checked with
 `git add -A`, which every earlier commit in this branch used. **`git add -A` in a shared working tree
 commits whatever the other session happens to have half-written.** The repo guide already records
 the deploy-side version of this hazard; this is the commit-side one.
+
+---
+
+Closed by [[the-domain-boundary]] (`docs/postmortem/`).

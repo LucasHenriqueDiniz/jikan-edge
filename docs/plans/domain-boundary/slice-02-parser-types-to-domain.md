@@ -110,3 +110,7 @@ chance to fire, because none of the eight carries one.
 same board's DI slice, and false the moment this one landed. Deleted with the move rather than left
 for an audit. It is the fourth time this session that shipping a change falsified prose written
 beside it.
+
+---
+
+Closed by [[the-domain-boundary]] (`docs/postmortem/`).
