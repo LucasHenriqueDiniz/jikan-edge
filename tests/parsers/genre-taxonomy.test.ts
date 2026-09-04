@@ -24,10 +24,10 @@ describe('genre taxonomy parser', () => {
       type: 'explicit_genres',
     });
     expect(genres.find((entry) => entry.malId === 27)).toMatchObject({ name: 'Shounen', type: 'demographics' });
-    const byKind = genres.reduce<Record<string, number>>(
-      (acc, entry) => ({ ...acc, [entry.type]: (acc[entry.type] ?? 0) + 1 }),
-      {},
-    );
+    const byKind = genres.reduce<Record<string, number>>((acc, entry) => {
+      acc[entry.type] = (acc[entry.type] ?? 0) + 1;
+      return acc;
+    }, {});
     expect(byKind).toEqual({ genres: 18, explicit_genres: 3, themes: 52, demographics: 5 });
   });
 

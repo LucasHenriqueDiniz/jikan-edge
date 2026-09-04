@@ -44,7 +44,7 @@ export class CharacterService {
   private readonly catalog: CatalogListRepository;
   private readonly source: CatalogSource;
   constructor(
-    private readonly db: D1Database,
+    db: D1Database,
     private readonly config: RuntimeConfig,
     source?: CatalogSource,
     waitUntil?: WaitUntil,

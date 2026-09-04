@@ -17,7 +17,7 @@ describe('user search on an unrecognised page shape', () => {
     const source: CatalogSource = {
       getHtml: async (url: string) => ({
         kind: 'success' as const,
-        value: '<html><body>'.padEnd(600, 'x') + '</body></html>',
+        value: `${'<html><body>'.padEnd(600, 'x')}</body></html>`,
         metadata: { url, status: 200, contentType: 'text/html', durationMs: 1, sizeBytes: 600 },
       }),
     };
@@ -33,7 +33,7 @@ describe('user search on an unrecognised page shape', () => {
     const source: CatalogSource = {
       getHtml: async (url: string) => ({
         kind: 'success' as const,
-        value: '<html><body>'.padEnd(600, 'x') + '</body></html>',
+        value: `${'<html><body>'.padEnd(600, 'x')}</body></html>`,
         metadata: { url, status: 200, contentType: 'text/html', durationMs: 1, sizeBytes: 600 },
       }),
     };

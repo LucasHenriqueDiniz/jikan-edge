@@ -212,7 +212,7 @@ export function parseUserMediaListSnapshot(
   }
 
   const expression = new RegExp(
-    `<a\\s+href="/${route}/(\\d+)/[^\"]*"[^>]*class="animetitle"[^>]*>[\\s\\S]{0,300}?<span>([\\s\\S]*?)<\\/span>`,
+    `<a\\s+href="/${route}/(\\d+)/[^"]*"[^>]*class="animetitle"[^>]*>[\\s\\S]{0,300}?<span>([\\s\\S]*?)<\\/span>`,
     'gi',
   );
   const anchors = [...html.matchAll(expression)];

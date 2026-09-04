@@ -1,19 +1,34 @@
 import { LIST_PARSER_VERSION, type MediaType, type UserMediaListEntry } from '../domain/list-entry';
 import { PARSER_VERSION, type UserProfile, type UserStatistics } from '../domain/user';
 
+// Mirrors the `users` table in migration 0001: the four columns declared NOT NULL (plus the primary
+// key) are `string`, the rest are nullable. Reading the row as `Record<string, string | null>` and
+// asserting the difference away with `!` said the same thing, but said it four times and in a place
+// where nothing checks it against the schema.
+type UserRow = {
+  username_key: string;
+  canonical_username: string;
+  profile_url: string;
+  avatar_url: string | null;
+  about: string | null;
+  gender: string | null;
+  location: string | null;
+  birthday: string | null;
+  joined_at: string | null;
+  last_online_at: string | null;
+  fetched_at: string;
+};
+
 export class UserRepository {
   constructor(private readonly db: D1Database) {}
 
   async getProfile(key: string): Promise<UserProfile | null> {
-    const row = await this.db
-      .prepare('SELECT * FROM users WHERE username_key = ?')
-      .bind(key)
-      .first<Record<string, string | null>>();
+    const row = await this.db.prepare('SELECT * FROM users WHERE username_key = ?').bind(key).first<UserRow>();
     if (!row) return null;
     return {
-      username: row.username_key!,
-      canonicalUsername: row.canonical_username!,
-      profileUrl: row.profile_url!,
+      username: row.username_key,
+      canonicalUsername: row.canonical_username,
+      profileUrl: row.profile_url,
       avatarUrl: row.avatar_url,
       about: row.about,
       gender: row.gender,
@@ -21,7 +36,7 @@ export class UserRepository {
       birthday: row.birthday,
       joinedAt: row.joined_at,
       lastOnlineAt: row.last_online_at,
-      fetchedAt: row.fetched_at!,
+      fetchedAt: row.fetched_at,
     };
   }
 

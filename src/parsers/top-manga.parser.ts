@@ -32,9 +32,10 @@ function rowInformation(row: string): {
   if (!match) return { type: null, volumes: null, startDate: null, members: null };
   const segments = match[1].split(/<br\s*\/?>/i).map((segment) => decodeHtml(segment));
   const [typeVolumes, startDate, membersText] = segments;
+  const volumesMatch = typeVolumes?.match(/\((\d+)/);
   return {
     type: typeVolumes?.match(/^(\S+)/)?.[1] ?? null,
-    volumes: typeVolumes?.match(/\((\d+)/) ? Number(typeVolumes.match(/\((\d+)/)![1]) : null,
+    volumes: volumesMatch ? Number(volumesMatch[1]) : null,
     startDate: startDate || null,
     members: numeric(membersText?.match(/([\d,]+)/)?.[1] ?? null),
   };

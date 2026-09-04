@@ -1,13 +1,7 @@
 import type { RuntimeConfig } from '../config/env';
 import { CHARACTER_SEARCH_PARSER_VERSION, type CharacterSearchResult } from '../domain/character-search';
 import { PERSON_SEARCH_PARSER_VERSION, type PersonSearchResult } from '../domain/person-search';
-import {
-  ANIME_SEARCH_PARSER_VERSION,
-  MANGA_SEARCH_PARSER_VERSION,
-  type AnimeSearchEntry,
-  type MangaSearchEntry,
-  type SearchEntry,
-} from '../domain/search';
+import { ANIME_SEARCH_PARSER_VERSION, MANGA_SEARCH_PARSER_VERSION, type SearchEntry } from '../domain/search';
 import { USER_SEARCH_PARSER_VERSION, type UserSearchResult } from '../domain/user-search';
 import { parseCharacterSearch } from '../parsers/character-search.parser';
 import { ParserError } from '../parsers/html';
@@ -185,7 +179,7 @@ export class SearchService {
   private readonly catalog: CatalogListRepository;
   private readonly source: CatalogSource;
   constructor(
-    private readonly db: D1Database,
+    db: D1Database,
     private readonly config: RuntimeConfig,
     source?: CatalogSource,
     waitUntil?: WaitUntil,

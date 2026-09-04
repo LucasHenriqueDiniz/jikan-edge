@@ -64,7 +64,7 @@ export class UserService {
   private readonly updates: UpdatesRepository;
   private readonly catalog: CatalogListRepository;
   constructor(
-    private readonly db: D1Database,
+    db: D1Database,
     private readonly config: RuntimeConfig,
     source?: CatalogSource,
     waitUntil?: WaitUntil,

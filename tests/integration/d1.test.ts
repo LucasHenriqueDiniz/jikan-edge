@@ -98,7 +98,9 @@ describe('D1 integration: persistence and cache', () => {
       sourceStatus: 'success',
       parserVersion: 'test',
     });
-    expect(cache.isFresh((await cache.get('x'))!)).toBe(true);
+    const fresh = await cache.get('x');
+    if (!fresh) throw new Error('expected the entry just written to be readable back');
+    expect(cache.isFresh(fresh)).toBe(true);
     await cache.put({
       resourceKey: 'x',
       fetchedAt,
@@ -106,7 +108,9 @@ describe('D1 integration: persistence and cache', () => {
       sourceStatus: 'success',
       parserVersion: 'test',
     });
-    expect(cache.isFresh((await cache.get('x'))!)).toBe(false);
+    const expired = await cache.get('x');
+    if (!expired) throw new Error('expected the overwritten entry to be readable back');
+    expect(cache.isFresh(expired)).toBe(false);
   });
 });
 

@@ -10,7 +10,7 @@ describe('UpdatesRepository.put', () => {
   it('binds the given parser version instead of a hardcoded literal', async () => {
     const calls: unknown[][] = [];
     const db = {
-      prepare: (sql: string) => ({
+      prepare: (_sql: string) => ({
         bind: (...args: unknown[]) => {
           calls.push(args);
           return { run: async () => ({ meta: { changes: 1 }, success: true }) };

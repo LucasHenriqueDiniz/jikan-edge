@@ -32,9 +32,10 @@ function rowInformation(row: string): {
   if (!match) return { type: null, episodes: null, startDate: null, members: null };
   const segments = match[1].split(/<br\s*\/?>/i).map((segment) => decodeHtml(segment));
   const [typeEpisodes, startDate, membersText] = segments;
+  const episodesMatch = typeEpisodes?.match(/\((\d+)/);
   return {
     type: typeEpisodes?.match(/^(\S+)/)?.[1] ?? null,
-    episodes: typeEpisodes?.match(/\((\d+)/) ? Number(typeEpisodes.match(/\((\d+)/)![1]) : null,
+    episodes: episodesMatch ? Number(episodesMatch[1]) : null,
     startDate: startDate || null,
     members: numeric(membersText?.match(/([\d,]+)/)?.[1] ?? null),
   };

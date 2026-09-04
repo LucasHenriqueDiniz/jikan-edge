@@ -16,8 +16,12 @@ export function parseSeasonArchive(html: string): SeasonArchiveEntry[] {
     /href="https:\/\/myanimelist\.net\/anime\/season\/(\d{4})\/(winter|spring|summer|fall)"/gi,
   )) {
     const year = Number(match[1]);
-    if (!byYear.has(year)) byYear.set(year, new Set());
-    byYear.get(year)!.add(match[2].toLowerCase());
+    let seasons = byYear.get(year);
+    if (!seasons) {
+      seasons = new Set();
+      byYear.set(year, seasons);
+    }
+    seasons.add(match[2].toLowerCase());
   }
   const list = [...byYear.entries()]
     .map(([year, seasons]) => ({ year, seasons: SEASON_ORDER.filter((season) => seasons.has(season)) }))
