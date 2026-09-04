@@ -1,5 +1,5 @@
 ---
-status: blocked
+status: done
 kanban: 93301641-fcc7-4af0-8263-cb36a7cae20b
 ---
 
@@ -57,3 +57,24 @@ like an answer either way. Today nothing prints — no file under `docs/architec
 If the owner decides to rename after all, this slice becomes obsolete and the rename gets its own
 plan with a cutover checklist. Do not attempt both in one slice: a documented exception and a live
 resource migration have nothing in common except the sentence that prompted them.
+
+## Outcome
+
+The deliverable already existed when this card was unblocked:
+`docs/architecture/adr-cloudflare-resource-names.md`, dated 2026-09-03, headed
+**"Accepted, as an exception. The names do not change."** The gate passes — that one file
+carries both `workers.dev` and `database_name`, which is what the two-string-same-file form
+was written to require.
+
+So the only thing missing was the owner's answer, and it is *keep the names*. This card was
+never work waiting to be done; it was a document waiting to stop being provisional.
+
+Both costs are recorded there as this slice asked: the Worker rename breaks the
+`*.workers.dev` hostname `README.md` promises not to remove (the custom domain
+`jikan.lucashdo.com` is unaffected), and a differently-named D1 is a different database, so
+that rename is create-migrate-cutover against a live account rather than a config edit.
+`scripts/setup.mjs`, which rewrites the database id for forks, keeps working because nothing
+was renamed.
+
+The *If stuck* branch — the owner deciding to rename after all — did not happen, so no
+cutover plan is needed.
