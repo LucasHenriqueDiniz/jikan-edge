@@ -169,6 +169,8 @@ own `/v1`.
 | layer names | `domain / ports / application / adapters` + composition root | `domain / parsers / ports / adapters / source / repositories / services / http` | the names describe the four layers the spec asks for — `services` is the application layer, `source` + `repositories` are the driven side, `http` is the driving side — using the vocabulary the codebase and its whole test suite were written in. Renaming is a rename of everything, not a structural change. Undeclared, this reads as a missing hexagon. |
 | driven grouping | group by resource, file per technology (`store/postgres.ts`) | `repositories/<resource>.repository.ts`, flat | there is exactly one technology (D1). A second one would need the directory-per-resource layout the `clean-code` skill describes. |
 | some domain types live in `parsers/` | the domain owns its types | `Favorite`, `Favorites`, `UserUpdate`, `UserUpdates`, `SeasonArchiveEntry`, `ScheduleByDay`, `ClubRelations` are exported from parser files | not argued, just how they grew. A gap, below — not a divergence anyone should defend. Parse-result wrappers (`SeasonParseResult`, `ListParseResult`, the completeness-evidence types) do belong to the parser layer and stay. |
+| Cloudflare resource names | `<owner>-<project>-<resource>-<env>` | `jikan-edge` (Worker) and `jikan-edge` (D1) | accepted as a permanent exception on 2026-09-03 — see [`adr-cloudflare-resource-names.md`](adr-cloudflare-resource-names.md). The Worker name **is** the `*.workers.dev` hostname `README.md` promises not to remove, and a differently-named D1 is a different database, so that rename is create-migrate-cutover against a live account. An audit will keep finding this gap; the ADR is the answer it should find. |
+| the agent guide | one `CLAUDE.md` | two identical copies, `.claude/CLAUDE.md` and `AGENTS.md` | kept in step by `tests/config/agent-guide-sync.test.ts`. The test compares the two copies; it does not check that the paths they name exist, and a third copy at the repository root would sit outside the guard entirely. |
 | no linter or formatter | — | typecheck and tests only | turning one on today rewrites `src/app.ts` (550 lines, with one handler line of 747 characters) in the same diff as anything else. Whoever adds it takes the reformat as its own commit. |
 
 ## Known gaps
@@ -192,15 +194,20 @@ own `/v1`.
       as single very long lines.
 - [ ] **No lint, format or dead-code gate.** `pnpm run typecheck` and `pnpm test` are the whole
       check surface; there is no eslint/biome/prettier config and no `knip`.
-- [ ] **Cloudflare resource names do not follow `<owner>-<project>-<resource>-<env>`.** Renaming a D1
-      database is a data migration, not a `git mv`, so this is not a drive-by fix — see the `naming`
-      skill.
-- [ ] **Two copies of the project guide** (`.claude/CLAUDE.md` and `AGENTS.md`) kept in step by
-      `tests/config/agent-guide-sync.test.ts`. The test compares the two copies; it does not check that
-      the paths they name exist. A third copy at the repository root would sit outside that guard
-      entirely.
-- [ ] **The vault is incomplete**: `docs/pitches/`, `docs/plans/`, `docs/postmortem/`, `docs/product/`
-      and `docs/roadmap/` do not exist, and `docs/planning/` and `docs/results/` hold what two of them
-      would. Renaming those two breaks named links in `.claude/CLAUDE.md`, `AGENTS.md`,
-      and `../architecture.md` that no test covers, and `docs/README.md` names `planning/` in its own
-      table.
+- [x] ~~**The vault is incomplete.**~~ Closed 2026-09-04. Every folder the `workflow` skill names now
+      exists: `pitches/`, `plans/`, `postmortem/`, `product/`, `roadmap/`, `architecture/diagrams/`,
+      each with the template README, plus `.obsidian/` and the `.mcp.json` that points a vault at
+      `./docs`.
+- [ ] **Two folders still hold what a standard one would**: `docs/planning/` (scope, risks,
+      milestones) and `docs/results/` (probes, benchmarks, audits — the material a postmortem is made
+      of). Renaming either breaks named links in `.claude/CLAUDE.md`, `AGENTS.md` and
+      `../architecture.md` that **no test covers**, and `docs/README.md` names `planning/` in its own
+      table. New records go to `postmortem/`; the two folders stay until a slice moves them with the
+      links.
+- [ ] **`docs/architecture.md` (9 lines) sits beside `docs/architecture/ARCHITECTURE.md` (208).** The
+      first is a prose summary of the request flow, the second is the file of record. Two documents
+      named for the same thing is how a reader ends up with the older one.
+- [ ] **`docs/DEVLOG.md`, `docs/PROGRESS.md` and `docs/IDEAS.md` do not exist.** The `workflow`
+      skill's implement step ends in one line in the first and a mark in the second; ideas that do
+      not fit the current slice go to the third. Today that traffic has nowhere to land, so it ends
+      up in `.claude/CLAUDE.md`, which is why that file is 48 KB.
