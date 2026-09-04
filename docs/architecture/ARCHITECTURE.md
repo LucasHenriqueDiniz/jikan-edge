@@ -111,11 +111,17 @@ quotes, semicolons, LF, `lineWidth` 120) and wired to `pnpm lint` / `pnpm lint:f
 the CRLF files in `site/`. `organizeImports` is off. Decided 2026-09-04; the numbers behind each value
 are in [`slice-01`](../plans/code-hygiene/slice-01-add-linter-check-only.md).
 
+*Completed 2026-09-04 by slice 2: the reformat landed (139 files, tool-generated only), the 25
+findings it could not fix were cleared by hand, and CI now runs `pnpm run lint` as its first step —
+which amends D5.*
+
 **Rules out.** ESLint + Prettier (two tools, a plugin chain, and formatting only via the second) and
-oxlint (does not format). Also rules out a green `pnpm lint` for now: 139 of 225 files carry formatter
-diffs until slice 2 takes the reformat as its own commit.
+oxlint (does not format). Also rules out reviewing a formatting change and a behavioural one in the
+same diff: config, reformat and hand fixes are three commits by construction.
 
 ### D5 — CI runs typecheck and the unit suite, and no build
+
+*Amended 2026-09-04 by D6: `pnpm run lint` is now the job's first step. The "and no build" half stands.*
 
 **Context.** Workers Builds compiles and publishes on every push to `main` and reports back as a check
 on the commit. A `wrangler deploy --dry-run` step in CI repeats that compilation without publishing.
@@ -187,7 +193,6 @@ own `/v1`.
 | some domain types live in `parsers/` | the domain owns its types | `Favorite`, `Favorites`, `UserUpdate`, `UserUpdates`, `SeasonArchiveEntry`, `ScheduleByDay`, `ClubRelations` are exported from parser files | not argued, just how they grew. A gap, below — not a divergence anyone should defend. Parse-result wrappers (`SeasonParseResult`, `ListParseResult`, the completeness-evidence types) do belong to the parser layer and stay. |
 | Cloudflare resource names | `<owner>-<project>-<resource>-<env>` | `jikan-edge` (Worker) and `jikan-edge` (D1) | accepted as a permanent exception on 2026-09-03 — see [`adr-cloudflare-resource-names.md`](adr-cloudflare-resource-names.md). The Worker name **is** the `*.workers.dev` hostname `README.md` promises not to remove, and a differently-named D1 is a different database, so that rename is create-migrate-cutover against a live account. An audit will keep finding this gap; the ADR is the answer it should find. |
 | the agent guide | one `CLAUDE.md` | two identical copies, `.claude/CLAUDE.md` and `AGENTS.md` | kept in step by `tests/config/agent-guide-sync.test.ts`. The test compares the two copies; it does not check that the paths they name exist, and a third copy at the repository root would sit outside the guard entirely. |
-| lint gates the build | — | `pnpm lint` exists and is red on purpose | Biome landed 2026-09-04 in check-only mode (D6). It is **not** wired to CI, and `pnpm lint` exits 1 today: 139 of 225 files carry formatter diffs. A red CI on a knowingly unformatted repo teaches everyone to ignore it, so the gate goes in after slice 2 takes the reformat as its own commit. |
 
 ## Known gaps
 
@@ -208,11 +213,10 @@ own `/v1`.
 - [ ] **Seven domain-shaped types are exported from `src/parsers/`** instead of `src/domain/`.
 - [ ] **`src/app.ts` is 558 lines** — over the `clean-code` soft limit of 500, with handlers written
       as single very long lines.
-- [ ] **The lint findings are measured but unfixed.** Biome landed 2026-09-04 (D6), so the check
-      surface is no longer just typecheck and tests — but nothing has been cleaned. 139 of 225 files
-      carry formatter diffs (slice 2), and there are 25 lint findings in seven rules, eleven of them
-      `correctness/`: ten unused private class members, one unused import, one unused parameter. No
-      dead-code tool (`knip`) either, and nothing is wired to CI.
+- [x] ~~**The lint findings are measured but unfixed.**~~ Closed 2026-09-04 by slice 2. `pnpm lint`
+      exits 0 on a clean tree and CI runs it. Still missing: a dead-code tool (`knip`). Biome's
+      `noUnusedPrivateClassMembers` caught ten dead fields, but it only sees inside a class — an
+      exported symbol nothing imports goes on looking used.
 - [x] ~~**The vault is incomplete.**~~ Closed 2026-09-04. Every folder the `workflow` skill names now
       exists: `pitches/`, `plans/`, `postmortem/`, `product/`, `roadmap/`, `architecture/diagrams/`,
       each with the template README, plus `.obsidian/` and the `.mcp.json` that points a vault at
