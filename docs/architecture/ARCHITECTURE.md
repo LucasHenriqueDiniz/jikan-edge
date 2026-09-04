@@ -57,9 +57,15 @@ src/
                    ServiceResponse<T> and sourceError().
   http/            the driving side: error mapping, cache headers, query contract and
                    guards, response envelope, setup diagnostics.
+    app-context.ts the App/AppContext types plus background() and cacheHeader(),
+                   which every route module needs. Separate from app.ts so the
+                   modules can import them without importing the app itself.
+    routes/        one module per resource, each exporting registerXRoutes(app, deps)
+                   and receiving its service factories rather than building them.
   config/env.ts    reads the Worker bindings into a RuntimeConfig with fallbacks.
   observability/   structured metric lines.
-  app.ts           the Hono app: routes, middleware, and the per-request wiring.
+  app.ts           the composition root: middleware, /health, the twelve service
+                   factories, and the calls that mount http/routes/*.
   index.ts         the Worker entry point. Two lines.
 ```
 
@@ -92,7 +98,8 @@ that maps it to an HTTP status.
 
 **The rollout is partial.** `AnimeService` receives both ports and constructs nothing; the other
 eleven services still take a raw `D1Database` and build their own repositories, and
-`src/app.ts:538`/`:548` still construct `RandomService` inline.
+`src/http/routes/random.routes.ts` still constructs `RandomService` inline — the only route module
+that builds a service instead of receiving a factory, because there is no factory to receive.
 [Slice 3](../plans/dependency-injection/slice-03-roll-out-remaining-services.md) is the rest.
 
 ## Decisions
@@ -211,8 +218,12 @@ own `/v1`.
       moved into `catalog-store.port.ts` for exactly this reason; these two were left because
       `fetch-policy.ts` holds real policy alongside the type and splitting it is its own change.
 - [ ] **Seven domain-shaped types are exported from `src/parsers/`** instead of `src/domain/`.
-- [ ] **`src/app.ts` is 558 lines** — over the `clean-code` soft limit of 500, with handlers written
-      as single very long lines.
+- [x] ~~**`src/app.ts` is 558 lines.**~~ Closed 2026-09-04 by
+      [code-hygiene slice 3](../plans/code-hygiene/slice-03-split-app-ts.md). 197 lines, and the 93
+      route registrations live in twelve modules under `src/http/routes/`, none over 426 lines. The
+      number got worse before it got better: the slice-2 reformat took the file to 1,782 — the
+      handlers had been written one per line, up to 747 characters each, so nothing about it was 558
+      lines' worth of code.
 - [x] ~~**The lint findings are measured but unfixed.**~~ Closed 2026-09-04 by slice 2. `pnpm lint`
       exits 0 on a clean tree and CI runs it. Still missing: a dead-code tool (`knip`). Biome's
       `noUnusedPrivateClassMembers` caught ten dead fields, but it only sees inside a class — an
