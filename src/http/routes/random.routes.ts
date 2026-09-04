@@ -4,15 +4,19 @@ import { configFrom } from '../../config/env';
 import { errorResponse } from '../../http/errors';
 import { isStale, NO_STORE } from '../../http/caching';
 import { success } from '../../http/response';
-import { RandomService, type RandomKind } from '../../services/random.service';
+import type { RandomKind } from '../../domain/random';
+import type { RandomService } from '../../services/random.service';
 import type { UserService } from '../../services/user.service';
 
 import type { AppContext } from '../app-context';
 type Factory<T> = (c: AppContext) => T;
 
 // 2 routes, moved out of src/app.ts unchanged.
-export function registerRandomRoutes(app: App, deps: { service: Factory<UserService> }): void {
-  const { service } = deps;
+export function registerRandomRoutes(
+  app: App,
+  deps: { service: Factory<UserService>; randomService: Factory<RandomService> },
+): void {
+  const { service, randomService } = deps;
 
   // Every random pick is explicitly uncacheable: a shared cache that stored one would pin a single
   // entity and serve it to everyone for the rest of its lifetime, which is the opposite of what the
@@ -26,7 +30,7 @@ export function registerRandomRoutes(app: App, deps: { service: Factory<UserServ
   for (const kind of ['anime', 'manga', 'characters', 'people'] as RandomKind[])
     app.get(`/v1/random/${kind}`, async (c) => {
       try {
-        const picked = await new RandomService(c.env.DB).pick(kind);
+        const picked = await randomService(c).pick(kind);
         // `local` rather than hit/miss: nothing upstream was consulted and nothing will be refreshed.
         c.header('X-Cache-Status', 'local');
         c.header('Cache-Control', NO_STORE);
@@ -45,7 +49,7 @@ export function registerRandomRoutes(app: App, deps: { service: Factory<UserServ
 
   app.get('/v1/random/users', async (c) => {
     try {
-      const picked = await new RandomService(c.env.DB).pickUser();
+      const picked = await randomService(c).pickUser();
       const result = await service(c).profile(picked.username, c.get('requestId'));
       cacheHeader(c, result);
       c.header('Cache-Control', NO_STORE);

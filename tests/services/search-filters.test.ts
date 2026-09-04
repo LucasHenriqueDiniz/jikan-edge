@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { CatalogSource } from '../../src/ports/driven/catalog-source.port';
 import { SearchService } from '../../src/services/search.service';
+import { D1CatalogStore } from '../../src/adapters/d1-catalog-store';
 
 // The filter-to-URL mapping is private, so it is observed where it becomes visible: the URL handed
 // to the source client. The stub records it and then fails, which is enough — nothing past the
@@ -16,7 +17,7 @@ async function params(filters: Record<string, string>): Promise<URLSearchParams>
   };
   const row = { first: async () => null, run: async () => ({ meta: { changes: 1 }, success: true }) };
   const db = { prepare: () => ({ bind: () => row, ...row }) };
-  const service = new SearchService(db as never, { catalogTtlSeconds: 1 } as never, source);
+  const service = new SearchService(new D1CatalogStore(db as never), source, { catalogTtlSeconds: 1 } as never);
 
   try {
     await service.anime('naruto', 1, filters, 'req');

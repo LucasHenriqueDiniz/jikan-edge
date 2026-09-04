@@ -27,12 +27,8 @@ import { parseForum } from '../parsers/forum.parser';
 import { parseMoreInfo } from '../parsers/more-info.parser';
 import { parseTitleRecommendations } from '../parsers/title-recommendations.parser';
 import { parseTitleReviews } from '../parsers/title-reviews.parser';
-import { CacheRepository } from '../repositories/cache.repository';
-import { CatalogListRepository } from '../repositories/catalog-list.repository';
-import { MangaRepository } from '../repositories/manga.repository';
-import { RefreshLockRepository } from '../repositories/refresh-lock.repository';
 import type { CatalogSource } from '../ports/driven/catalog-source.port';
-import { MalClient } from '../source/mal-client';
+import type { CatalogStore } from '../ports/driven/catalog-store.port';
 import {
   charactersUrl,
   forumUrl,
@@ -62,24 +58,18 @@ const GENRES_CACHE_KEY = 'catalog:genres:manga';
 const MAGAZINES_CACHE_KEY = 'catalog:magazines';
 
 export class MangaService {
-  private readonly cache: CacheRepository;
-  private readonly locks: RefreshLockRepository;
   private readonly deps: CacheDeps;
-  private readonly manga: MangaRepository;
-  private readonly catalog: CatalogListRepository;
-  private readonly source: CatalogSource;
+  private readonly manga: CatalogStore['manga'];
+  private readonly catalog: CatalogStore['catalogLists'];
   constructor(
-    db: D1Database,
+    store: CatalogStore,
+    private readonly source: CatalogSource,
     private readonly config: RuntimeConfig,
-    source?: CatalogSource,
     waitUntil?: WaitUntil,
   ) {
-    this.cache = new CacheRepository(db);
-    this.locks = new RefreshLockRepository(db);
-    this.deps = { cache: this.cache, locks: this.locks, waitUntil };
-    this.manga = new MangaRepository(db);
-    this.catalog = new CatalogListRepository(db);
-    this.source = source ?? new MalClient(config);
+    this.deps = { cache: store.cacheEntries, locks: store.refreshLeases, waitUntil };
+    this.manga = store.manga;
+    this.catalog = store.catalogLists;
   }
 
   private validateMalId(rawId: string): number {

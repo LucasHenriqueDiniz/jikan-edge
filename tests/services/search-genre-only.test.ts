@@ -3,6 +3,7 @@ import type { CatalogSource } from '../../src/ports/driven/catalog-source.port';
 import { SearchService } from '../../src/services/search.service';
 import { classifyHtml } from '../../src/source/response-validator';
 import { searchUrl } from '../../src/source/mal-urls';
+import { D1CatalogStore } from '../../src/adapters/d1-catalog-store';
 
 // `?genres=N` with nothing else answered 200 with an empty list for every genre id, on both media.
 // MyAnimeList redirects `anime.php?q=&genre[]=1` (301) to /anime/genre/1/Action, a genre-browse
@@ -63,7 +64,8 @@ const GENRE_BROWSE_PAGE = `<html><head><title>Action - Anime - MyAnimeList.net</
 const EMPTY_SEARCH_PAGE = `<html><head><title>Search Anime - MyAnimeList.net</title></head><body><div id="filterByType"></div>No titles that matched your query were found.${PADDING}</body></html>`;
 
 describe('a page that is not the search page is refused instead of parsed as empty', () => {
-  const service = (body: string) => new SearchService(stubDb(), { catalogTtlSeconds: 1 } as never, sourceServing(body));
+  const service = (body: string) =>
+    new SearchService(new D1CatalogStore(stubDb()), sourceServing(body), { catalogTtlSeconds: 1 } as never);
 
   // The old marker was `filterByType`, which the genre-browse page also carries — it has a
   // type-filter widget of its own — so the wrong page passed the guard and the empty parse became

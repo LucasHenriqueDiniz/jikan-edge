@@ -6,6 +6,7 @@ import { UserService } from '../../src/services/user.service';
 import { ServiceError } from '../../src/services/cacheable';
 import type { RuntimeConfig } from '../../src/config/env';
 import type { UserProfile, UserStatistics } from '../../src/domain/user';
+import { D1CatalogStore } from '../../src/adapters/d1-catalog-store';
 
 const bindings = env as unknown as { DB: D1Database; TEST_MIGRATIONS: import('cloudflare:test').D1Migration[] };
 const config: RuntimeConfig = {
@@ -98,9 +99,9 @@ describe('user list completeness guards', () => {
   it('refuses to store a prefix when the list runs past the page cap', async () => {
     // Every page comes back full, so the walk can never reach the end of the list.
     const service = new UserService(
-      bindings.DB,
-      config,
+      new D1CatalogStore(bindings.DB),
       client((offset) => listPage(300, offset + 1)),
+      config,
     );
     await expect(service.mediaList('tester', 'anime', 'req', 1, 100)).rejects.toMatchObject({
       code: 'LIST_TOO_LARGE',
@@ -112,9 +113,9 @@ describe('user list completeness guards', () => {
   it('rejects a snapshot holding fewer entries than the profile declares', async () => {
     await new UserRepository(bindings.DB).saveProfile(profile, statistics(360));
     const service = new UserService(
-      bindings.DB,
-      config,
+      new D1CatalogStore(bindings.DB),
       client(() => listPage(273, 1)),
+      config,
     );
     const failure = await service.mediaList('tester', 'anime', 'req', 1, 100).catch((error: unknown) => error);
     expect(failure).toBeInstanceOf(ServiceError);
@@ -125,9 +126,9 @@ describe('user list completeness guards', () => {
   it('stores the list when it matches the declared total', async () => {
     await new UserRepository(bindings.DB).saveProfile(profile, statistics(360));
     const service = new UserService(
-      bindings.DB,
-      config,
+      new D1CatalogStore(bindings.DB),
       client((offset) => (offset === 0 ? listPage(300, 1) : listPage(60, 301))),
+      config,
     );
     const result = await service.mediaList('tester', 'anime', 'req', 1, 100);
     expect(result.data.total).toBe(360);
@@ -137,9 +138,9 @@ describe('user list completeness guards', () => {
   it('accepts a list larger than a stale declared total', async () => {
     await new UserRepository(bindings.DB).saveProfile(profile, statistics(5));
     const service = new UserService(
-      bindings.DB,
-      config,
+      new D1CatalogStore(bindings.DB),
       client(() => listPage(40, 1)),
+      config,
     );
     const result = await service.mediaList('tester', 'anime', 'req', 1, 100);
     expect(result.data.total).toBe(40);
@@ -148,9 +149,9 @@ describe('user list completeness guards', () => {
   // Without a profile refresh there is no counter to compare against; the list must still be served.
   it('serves the list when no statistics have been stored yet', async () => {
     const service = new UserService(
-      bindings.DB,
-      config,
+      new D1CatalogStore(bindings.DB),
       client(() => listPage(12, 1)),
+      config,
     );
     const result = await service.mediaList('tester', 'anime', 'req', 1, 100);
     expect(result.data.total).toBe(12);

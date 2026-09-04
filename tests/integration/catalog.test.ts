@@ -15,6 +15,7 @@ import type { ProducerDetail } from '../../src/domain/producer';
 import type { ClubDetail } from '../../src/domain/club';
 import type { PersonDetail } from '../../src/domain/person';
 import type { GenreTaxonomyEntry } from '../../src/domain/genre';
+import { D1CatalogStore } from '../../src/adapters/d1-catalog-store';
 
 const bindings = env as unknown as { DB: D1Database; TEST_MIGRATIONS: import('cloudflare:test').D1Migration[] };
 const fetchedAt = '2026-07-19T00:00:00.000Z';
@@ -209,7 +210,7 @@ describe('D1 integration: catalog repositories', () => {
   });
 
   it('random picks a locally cached entry and 404s when the table is empty', async () => {
-    const random = new RandomService(bindings.DB);
+    const random = new RandomService(new D1CatalogStore(bindings.DB));
     await expect(random.pick('anime')).rejects.toMatchObject({ code: 'NO_LOCAL_ENTRIES', status: 404 });
     await new AnimeRepository(bindings.DB).put(detail(42), fetchedAt, 'test');
     const picked = await random.pick('anime');

@@ -96,11 +96,17 @@ discriminated union (`success | not_found | private | rate_limited | timeout | s
 upstream_error`), so no upstream `Response` reaches a service. `sourceError()` is the single place
 that maps it to an HTTP status.
 
-**The rollout is partial.** `AnimeService` receives both ports and constructs nothing; the other
-eleven services still take a raw `D1Database` and build their own repositories, and
-`src/http/routes/random.routes.ts` still constructs `RandomService` inline — the only route module
-that builds a service instead of receiving a factory, because there is no factory to receive.
-[Slice 3](../plans/dependency-injection/slice-03-roll-out-remaining-services.md) is the rest.
+**The rollout is complete**, as of 2026-09-04 and
+[slice 3](../plans/dependency-injection/slice-03-roll-out-remaining-services.md). All twelve services
+receive a built store and take `(store, source, config, waitUntil?)`; none constructs an adapter, and
+`src/services/` does not name `D1Database` anywhere — comments included, which is what the gate
+actually checks. Every route module receives factories; none builds a service.
+
+Six of the resources store one payload per MyAnimeList id and nothing else, so the port carries them
+as `DetailStore<T>` rather than six hand-written members that differ only in a type argument.
+`favorites` and `updates` are the username-keyed equivalent, `KeyedStore<T>`. `users` stayed
+bespoke — it reads and writes two payloads at once and its list is a collection, so forcing it into
+the generic would have meant renaming methods to fit a shape it does not have.
 
 ## Decisions
 
@@ -209,10 +215,13 @@ own `/v1`.
       arrow in the tree that points outward. The fix is a `src/domain/errors.ts` with a re-export left
       behind in `cacheable.ts`, which keeps it a two-line change instead of touching 15 files in `src/`
       and 4 in `tests/`.
-- [ ] **Eleven of the twelve services still construct their own adapters.** `AnimeService` takes the
-      two ports; the rest take a raw `D1Database`, and `RandomService` has no factory at all. The
-      ports exist and the pattern is settled — this is the remainder of the rollout, tracked as
-      [slice 3](../plans/dependency-injection/slice-03-roll-out-remaining-services.md).
+- [x] ~~**Eleven of the twelve services still construct their own adapters.**~~ Closed 2026-09-04 by
+      [dependency-injection slice 3](../plans/dependency-injection/slice-03-roll-out-remaining-services.md).
+      All twelve take the ports; `RandomService` gained both a repository and a factory. `D1Database`
+      now appears only where a binding belongs: `config/env.ts` (the binding declaration),
+      `repositories/` and `adapters/` (the driver side), `app.ts` (the composition root) and
+      `http/diagnostics.ts` (`/health` probing the binding directly). The port names it only in a
+      comment saying it does not appear in any signature.
 - [ ] **`SourceResult` and `FetchBudget` still live in `src/source/`** and `CatalogSource` imports
       them from there, so the port points outward at its own adapter's directory. `CacheEntry` was
       moved into `catalog-store.port.ts` for exactly this reason; these two were left because

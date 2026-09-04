@@ -16,12 +16,8 @@ import { parsePersonAnimeStaff, parsePersonManga, parsePersonVoiceActingRoles } 
 import { parsePictures } from '../parsers/pictures.parser';
 import { parseNews } from '../parsers/news.parser';
 import { parseTopPeople } from '../parsers/top-people.parser';
-import { CacheRepository } from '../repositories/cache.repository';
-import { CatalogListRepository } from '../repositories/catalog-list.repository';
-import { PersonRepository } from '../repositories/person.repository';
-import { RefreshLockRepository } from '../repositories/refresh-lock.repository';
 import type { CatalogSource } from '../ports/driven/catalog-source.port';
-import { MalClient } from '../source/mal-client';
+import type { CatalogStore } from '../ports/driven/catalog-store.port';
 import { newsUrl, personDetailUrl, picturesUrl, topPeopleUrl } from '../source/mal-urls';
 import {
   type CacheDeps,
@@ -39,24 +35,20 @@ interface PersonMediaBundle {
 }
 
 export class PersonService {
-  private readonly cache: CacheRepository;
-  private readonly locks: RefreshLockRepository;
+  private readonly cache: CatalogStore['cacheEntries'];
   private readonly deps: CacheDeps;
-  private readonly people: PersonRepository;
-  private readonly catalog: CatalogListRepository;
-  private readonly source: CatalogSource;
+  private readonly people: CatalogStore['people'];
+  private readonly catalog: CatalogStore['catalogLists'];
   constructor(
-    db: D1Database,
+    store: CatalogStore,
+    private readonly source: CatalogSource,
     private readonly config: RuntimeConfig,
-    source?: CatalogSource,
     waitUntil?: WaitUntil,
   ) {
-    this.cache = new CacheRepository(db);
-    this.locks = new RefreshLockRepository(db);
-    this.deps = { cache: this.cache, locks: this.locks, waitUntil };
-    this.people = new PersonRepository(db);
-    this.catalog = new CatalogListRepository(db);
-    this.source = source ?? new MalClient(config);
+    this.cache = store.cacheEntries;
+    this.deps = { cache: store.cacheEntries, locks: store.refreshLeases, waitUntil };
+    this.people = store.people;
+    this.catalog = store.catalogLists;
   }
 
   private validateMalId(rawId: string): number {

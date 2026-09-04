@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { CatalogSource } from '../../src/ports/driven/catalog-source.port';
 import { ServiceError } from '../../src/services/cacheable';
 import { SearchService } from '../../src/services/search.service';
+import { D1CatalogStore } from '../../src/adapters/d1-catalog-store';
 
 function stubDb() {
   const row = { first: async () => null, run: async () => ({ meta: { changes: 1 }, success: true }) };
@@ -21,7 +22,7 @@ describe('user search on an unrecognised page shape', () => {
         metadata: { url, status: 200, contentType: 'text/html', durationMs: 1, sizeBytes: 600 },
       }),
     };
-    const service = new SearchService(stubDb(), { catalogTtlSeconds: 1 } as never, source);
+    const service = new SearchService(new D1CatalogStore(stubDb()), source, { catalogTtlSeconds: 1 } as never);
 
     await expect(service.users('nonexistent-shape', 1, 'req')).rejects.toMatchObject({
       code: 'UPSTREAM_SUSPICIOUS',
@@ -37,7 +38,7 @@ describe('user search on an unrecognised page shape', () => {
         metadata: { url, status: 200, contentType: 'text/html', durationMs: 1, sizeBytes: 600 },
       }),
     };
-    const service = new SearchService(stubDb(), { catalogTtlSeconds: 1 } as never, source);
+    const service = new SearchService(new D1CatalogStore(stubDb()), source, { catalogTtlSeconds: 1 } as never);
 
     await expect(service.users('nonexistent-shape', 1, 'req')).rejects.toBeInstanceOf(ServiceError);
   });

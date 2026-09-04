@@ -6,6 +6,7 @@ import { CharacterService } from '../../src/services/character.service';
 import { PersonService } from '../../src/services/person.service';
 import type { RuntimeConfig } from '../../src/config/env';
 import type { SourceResult } from '../../src/source/source-types';
+import { D1CatalogStore } from '../../src/adapters/d1-catalog-store';
 
 const bindings = env as unknown as { DB: D1Database; TEST_MIGRATIONS: import('cloudflare:test').D1Migration[] };
 const config: RuntimeConfig = {
@@ -114,7 +115,7 @@ beforeEach(async () => {
 describe('ProducerService: detail() and full() share one upstream fetch on a cold cache', () => {
   it('detail() priming lets a following full() call skip its own fetch', async () => {
     const calls = { count: 0 };
-    const service = new ProducerService(bindings.DB, config, stubSource(calls, producerHtml));
+    const service = new ProducerService(new D1CatalogStore(bindings.DB), stubSource(calls, producerHtml), config);
     await service.detail('1', 'req-1');
     expect(calls.count).toBe(1);
     const full = await service.full('1', 'req-2');
@@ -125,7 +126,7 @@ describe('ProducerService: detail() and full() share one upstream fetch on a col
 
   it('full() priming lets a following detail() call skip its own fetch, without leaking about/external', async () => {
     const calls = { count: 0 };
-    const service = new ProducerService(bindings.DB, config, stubSource(calls, producerHtml));
+    const service = new ProducerService(new D1CatalogStore(bindings.DB), stubSource(calls, producerHtml), config);
     await service.full('1', 'req-1');
     expect(calls.count).toBe(1);
     const detail = await service.detail('1', 'req-2');
@@ -143,7 +144,7 @@ describe('ProducerService: detail() and full() share one upstream fetch on a col
 describe('CharacterService: detail(), full() and voices() share one upstream fetch', () => {
   it('detail() priming lets full() and voices() both skip their own fetch', async () => {
     const calls = { count: 0 };
-    const service = new CharacterService(bindings.DB, config, stubSource(calls, characterHtml));
+    const service = new CharacterService(new D1CatalogStore(bindings.DB), stubSource(calls, characterHtml), config);
     await service.detail('1', 'req-1');
     expect(calls.count).toBe(1);
     const full = await service.full('1', 'req-2');
@@ -156,7 +157,7 @@ describe('CharacterService: detail(), full() and voices() share one upstream fet
 
   it('full() priming lets detail() and voices() both skip their own fetch, without leaking media fields', async () => {
     const calls = { count: 0 };
-    const service = new CharacterService(bindings.DB, config, stubSource(calls, characterHtml));
+    const service = new CharacterService(new D1CatalogStore(bindings.DB), stubSource(calls, characterHtml), config);
     await service.full('1', 'req-1');
     expect(calls.count).toBe(1);
     const detail = await service.detail('1', 'req-2');
@@ -171,7 +172,7 @@ describe('CharacterService: detail(), full() and voices() share one upstream fet
 
   it('voices() priming lets detail() and full() both skip their own fetch', async () => {
     const calls = { count: 0 };
-    const service = new CharacterService(bindings.DB, config, stubSource(calls, characterHtml));
+    const service = new CharacterService(new D1CatalogStore(bindings.DB), stubSource(calls, characterHtml), config);
     await service.voices('1', 'req-1');
     expect(calls.count).toBe(1);
     await service.detail('1', 'req-2');
@@ -184,7 +185,7 @@ describe('CharacterService: detail(), full() and voices() share one upstream fet
 describe('PersonService: detail(), full() and voices() share one upstream fetch', () => {
   it('detail() priming lets full() and voices() both skip their own fetch', async () => {
     const calls = { count: 0 };
-    const service = new PersonService(bindings.DB, config, stubSource(calls, personHtml));
+    const service = new PersonService(new D1CatalogStore(bindings.DB), stubSource(calls, personHtml), config);
     await service.detail('1', 'req-1');
     expect(calls.count).toBe(1);
     const full = await service.full('1', 'req-2');
@@ -197,7 +198,7 @@ describe('PersonService: detail(), full() and voices() share one upstream fetch'
 
   it('full() priming lets detail() and voices() both skip their own fetch, without leaking media fields', async () => {
     const calls = { count: 0 };
-    const service = new PersonService(bindings.DB, config, stubSource(calls, personHtml));
+    const service = new PersonService(new D1CatalogStore(bindings.DB), stubSource(calls, personHtml), config);
     await service.full('1', 'req-1');
     expect(calls.count).toBe(1);
     const detail = await service.detail('1', 'req-2');

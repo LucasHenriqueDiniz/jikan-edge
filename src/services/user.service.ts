@@ -3,17 +3,12 @@ import { LIST_PARSER_VERSION, type MediaType, type UserMediaListEntry } from '..
 import { PARSER_VERSION, type UserProfile, type UserStatistics, usernameKey } from '../domain/user';
 import { LIST_PAGE_SIZE, listLayout, parseUserMediaListSnapshot } from '../parsers/user-list.parser';
 import { parseUserProfile, parseUserStatistics } from '../parsers/user-profile.parser';
-import { CacheRepository } from '../repositories/cache.repository';
-import { RefreshLockRepository } from '../repositories/refresh-lock.repository';
-import { UserRepository } from '../repositories/user.repository';
-import { FavoritesRepository } from '../repositories/favorites.repository';
+import type { UserRepository } from '../repositories/user.repository';
 import { FAVORITES_PARSER_VERSION, parseUserFavorites, type Favorites } from '../parsers/user-favorites.parser';
 import { parseUserUpdates, type UserUpdates } from '../parsers/user-updates.parser';
-import { UpdatesRepository } from '../repositories/updates.repository';
 import { animeListUrl, mangaListUrl, profileUrl, userSubPageUrl } from '../source/mal-urls';
 import type { CatalogSource } from '../ports/driven/catalog-source.port';
-import { MalClient } from '../source/mal-client';
-import { CatalogListRepository } from '../repositories/catalog-list.repository';
+import type { CatalogStore } from '../ports/driven/catalog-store.port';
 import { USER_SOCIAL_PARSER_VERSION, type UserClub, type UserFriend } from '../domain/user-social';
 import { parseUserFriends } from '../parsers/user-friends.parser';
 import { parseUserClubs } from '../parsers/user-clubs.parser';
@@ -55,28 +50,22 @@ export interface UserFullProfile {
 }
 
 export class UserService {
-  private readonly cache: CacheRepository;
-  private readonly locks: RefreshLockRepository;
   private readonly deps: CacheDeps;
-  private readonly users: UserRepository;
-  private readonly source: CatalogSource;
-  private readonly favorites: FavoritesRepository;
-  private readonly updates: UpdatesRepository;
-  private readonly catalog: CatalogListRepository;
+  private readonly users: CatalogStore['users'];
+  private readonly favorites: CatalogStore['favorites'];
+  private readonly updates: CatalogStore['updates'];
+  private readonly catalog: CatalogStore['catalogLists'];
   constructor(
-    db: D1Database,
+    store: CatalogStore,
+    private readonly source: CatalogSource,
     private readonly config: RuntimeConfig,
-    source?: CatalogSource,
     waitUntil?: WaitUntil,
   ) {
-    this.cache = new CacheRepository(db);
-    this.locks = new RefreshLockRepository(db);
-    this.deps = { cache: this.cache, locks: this.locks, waitUntil };
-    this.users = new UserRepository(db);
-    this.favorites = new FavoritesRepository(db);
-    this.updates = new UpdatesRepository(db);
-    this.catalog = new CatalogListRepository(db);
-    this.source = source ?? new MalClient(config);
+    this.deps = { cache: store.cacheEntries, locks: store.refreshLeases, waitUntil };
+    this.users = store.users;
+    this.favorites = store.favorites;
+    this.updates = store.updates;
+    this.catalog = store.catalogLists;
   }
 
   private validateUsername(username: string): string {

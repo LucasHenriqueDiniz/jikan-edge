@@ -78,8 +78,31 @@ function inMemoryStore(seed: { cacheEntries?: CacheEntry[]; catalogLists?: Recor
         catalogLists.set(resourceKey, payload);
       },
     },
+    // The nine members slice 3 added to the port for the other eleven services. `AnimeService` does
+    // not read any of them, and these throw rather than answering null or empty so that stays true:
+    // a service quietly starting to depend on one would go green against a permissive fake instead
+    // of saying it changed what it needs.
+    manga: unread('manga'),
+    characters: unread('characters'),
+    people: unread('people'),
+    clubs: unread('clubs'),
+    producers: unread('producers'),
+    favorites: unread('favorites'),
+    updates: unread('updates'),
+    users: unread('users'),
+    randomPicks: unread('randomPicks'),
   };
   return { store, held, released };
+}
+
+// Every method answers by failing, and the Proxy means a member gains no maintenance cost when the
+// port grows a method.
+function unread<T extends object>(member: string): T {
+  return new Proxy({} as T, {
+    get: (_target, method) => () => {
+      throw new Error(`AnimeService read store.${member}.${String(method)}, which it is not supposed to touch`);
+    },
+  });
 }
 
 // The fifth collaborator. Records every URL it is asked for, so a test can assert the source was

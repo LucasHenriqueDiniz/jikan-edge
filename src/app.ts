@@ -11,6 +11,7 @@ import { registerRecommendationsRoutes } from './http/routes/recommendations.rou
 import { registerReviewsRoutes } from './http/routes/reviews.routes';
 import { registerRandomRoutes } from './http/routes/random.routes';
 import { Hono } from 'hono';
+import { RandomService } from './services/random.service';
 import { type App, type AppContext, background, type Variables } from './http/app-context';
 import { configFrom, type Env } from './config/env';
 import { registerQueryGuards } from './http/query-guard';
@@ -138,42 +139,59 @@ app.get('/health', async (c) =>
   }),
 );
 
+// The composition root. Every service receives a built store and a built source; none of them
+// knows what a D1Database is. `configFrom` is read once per factory and shared: the source needs it
+// for its timeout and user agent, the service for its TTLs.
+//
+// `RandomService` is the odd one and gets no source — it never reaches MyAnimeList, only the local
+// catalog. It gained a factory in this slice; before, the two random route handlers built it inline,
+// which is why `src/services/` could not stop naming D1Database until they did.
 function service(c: AppContext): UserService {
-  return new UserService(c.env.DB, configFrom(c.env), undefined, background(c));
+  const config = configFrom(c.env);
+  return new UserService(new D1CatalogStore(c.env.DB), new MalClient(config), config, background(c));
 }
-// The first factory that hands over built adapters instead of a raw binding — the shape the other
-// eleven take in slice 3. `configFrom` is read once and shared: the source needs it for its timeout
-// and user agent, the service for its TTLs.
 function animeService(c: AppContext): AnimeService {
   const config = configFrom(c.env);
   return new AnimeService(new D1CatalogStore(c.env.DB), new MalClient(config), config, background(c));
 }
 function mangaService(c: AppContext): MangaService {
-  return new MangaService(c.env.DB, configFrom(c.env), undefined, background(c));
+  const config = configFrom(c.env);
+  return new MangaService(new D1CatalogStore(c.env.DB), new MalClient(config), config, background(c));
 }
 function characterService(c: AppContext): CharacterService {
-  return new CharacterService(c.env.DB, configFrom(c.env), undefined, background(c));
+  const config = configFrom(c.env);
+  return new CharacterService(new D1CatalogStore(c.env.DB), new MalClient(config), config, background(c));
 }
 function producerService(c: AppContext): ProducerService {
-  return new ProducerService(c.env.DB, configFrom(c.env), undefined, background(c));
+  const config = configFrom(c.env);
+  return new ProducerService(new D1CatalogStore(c.env.DB), new MalClient(config), config, background(c));
 }
 function clubService(c: AppContext): ClubService {
-  return new ClubService(c.env.DB, configFrom(c.env), undefined, background(c));
+  const config = configFrom(c.env);
+  return new ClubService(new D1CatalogStore(c.env.DB), new MalClient(config), config, background(c));
 }
 function personService(c: AppContext): PersonService {
-  return new PersonService(c.env.DB, configFrom(c.env), undefined, background(c));
+  const config = configFrom(c.env);
+  return new PersonService(new D1CatalogStore(c.env.DB), new MalClient(config), config, background(c));
 }
 function watchService(c: AppContext): WatchService {
-  return new WatchService(c.env.DB, configFrom(c.env), undefined, background(c));
+  const config = configFrom(c.env);
+  return new WatchService(new D1CatalogStore(c.env.DB), new MalClient(config), config, background(c));
 }
 function recommendationService(c: AppContext): RecommendationService {
-  return new RecommendationService(c.env.DB, configFrom(c.env), undefined, background(c));
+  const config = configFrom(c.env);
+  return new RecommendationService(new D1CatalogStore(c.env.DB), new MalClient(config), config, background(c));
 }
 function reviewService(c: AppContext): ReviewService {
-  return new ReviewService(c.env.DB, configFrom(c.env), undefined, background(c));
+  const config = configFrom(c.env);
+  return new ReviewService(new D1CatalogStore(c.env.DB), new MalClient(config), config, background(c));
 }
 function searchService(c: AppContext): SearchService {
-  return new SearchService(c.env.DB, configFrom(c.env), undefined, background(c));
+  const config = configFrom(c.env);
+  return new SearchService(new D1CatalogStore(c.env.DB), new MalClient(config), config, background(c));
+}
+function randomService(c: AppContext): RandomService {
+  return new RandomService(new D1CatalogStore(c.env.DB));
 }
 
 // Routes live one module per resource. Registration order does not matter for these — Hono
@@ -189,7 +207,7 @@ registerPeopleRoutes(app, { personService, searchService });
 registerWatchRoutes(app, { watchService });
 registerRecommendationsRoutes(app, { recommendationService });
 registerReviewsRoutes(app, { reviewService });
-registerRandomRoutes(app, { service });
+registerRandomRoutes(app, { service, randomService });
 
 app.notFound((c) =>
   c.json({ error: { code: 'NOT_FOUND', message: 'Route not found.', requestId: c.get('requestId') } }, 404),

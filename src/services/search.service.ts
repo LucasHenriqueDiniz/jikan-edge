@@ -8,11 +8,8 @@ import { ParserError } from '../parsers/html';
 import { parsePersonSearch } from '../parsers/person-search.parser';
 import { parseAnimeSearchResults, parseMangaSearchResults } from '../parsers/search.parser';
 import { parseUserSearch } from '../parsers/user-search.parser';
-import { CacheRepository } from '../repositories/cache.repository';
-import { CatalogListRepository } from '../repositories/catalog-list.repository';
-import { RefreshLockRepository } from '../repositories/refresh-lock.repository';
 import type { CatalogSource } from '../ports/driven/catalog-source.port';
-import { MalClient } from '../source/mal-client';
+import type { CatalogStore } from '../ports/driven/catalog-store.port';
 import { searchUrl, userSearchUrl } from '../source/mal-urls';
 import {
   type CacheDeps,
@@ -173,22 +170,16 @@ function buildTitleSearchParams(type: 'anime' | 'manga', filters: TitleSearchFil
 }
 
 export class SearchService {
-  private readonly cache: CacheRepository;
-  private readonly locks: RefreshLockRepository;
   private readonly deps: CacheDeps;
-  private readonly catalog: CatalogListRepository;
-  private readonly source: CatalogSource;
+  private readonly catalog: CatalogStore['catalogLists'];
   constructor(
-    db: D1Database,
+    store: CatalogStore,
+    private readonly source: CatalogSource,
     private readonly config: RuntimeConfig,
-    source?: CatalogSource,
     waitUntil?: WaitUntil,
   ) {
-    this.cache = new CacheRepository(db);
-    this.locks = new RefreshLockRepository(db);
-    this.deps = { cache: this.cache, locks: this.locks, waitUntil };
-    this.catalog = new CatalogListRepository(db);
-    this.source = source ?? new MalClient(config);
+    this.deps = { cache: store.cacheEntries, locks: store.refreshLeases, waitUntil };
+    this.catalog = store.catalogLists;
   }
 
   private validateQuery(rawQuery: string | undefined): string {
