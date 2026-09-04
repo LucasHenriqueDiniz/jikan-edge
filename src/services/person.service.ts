@@ -15,6 +15,7 @@ import { CacheRepository } from '../repositories/cache.repository';
 import { CatalogListRepository } from '../repositories/catalog-list.repository';
 import { PersonRepository } from '../repositories/person.repository';
 import { RefreshLockRepository } from '../repositories/refresh-lock.repository';
+import type { CatalogSource } from '../ports/driven/catalog-source.port';
 import { MalClient } from '../source/mal-client';
 import { newsUrl, personDetailUrl, picturesUrl, topPeopleUrl } from '../source/mal-urls';
 import { type CacheDeps, ServiceError, type ServiceResponse, sourceError, type WaitUntil, withCache } from './cacheable';
@@ -31,8 +32,8 @@ export class PersonService {
   private readonly deps: CacheDeps;
   private readonly people: PersonRepository;
   private readonly catalog: CatalogListRepository;
-  private readonly source: MalClient;
-  constructor(private readonly db: D1Database, private readonly config: RuntimeConfig, source?: MalClient, waitUntil?: WaitUntil) {
+  private readonly source: CatalogSource;
+  constructor(private readonly db: D1Database, private readonly config: RuntimeConfig, source?: CatalogSource, waitUntil?: WaitUntil) {
     this.cache = new CacheRepository(db); this.locks = new RefreshLockRepository(db); this.deps = { cache: this.cache, locks: this.locks, waitUntil }; this.people = new PersonRepository(db); this.catalog = new CatalogListRepository(db); this.source = source ?? new MalClient(config);
   }
 

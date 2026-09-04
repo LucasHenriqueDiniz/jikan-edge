@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import type { CatalogSource } from '../../src/ports/driven/catalog-source.port';
 import { ServiceError } from '../../src/services/cacheable';
 import { SearchService } from '../../src/services/search.service';
 
@@ -13,14 +14,14 @@ function stubDb() {
 // 500 INTERNAL_ERROR instead of the 502 UPSTREAM_SUSPICIOUS every other route gives for this case.
 describe('user search on an unrecognised page shape', () => {
   it('answers 502 UPSTREAM_SUSPICIOUS instead of a raw 500', async () => {
-    const source = {
+    const source: CatalogSource = {
       getHtml: async (url: string) => ({
         kind: 'success' as const,
         value: '<html><body>'.padEnd(600, 'x') + '</body></html>',
         metadata: { url, status: 200, contentType: 'text/html', durationMs: 1, sizeBytes: 600 },
       }),
     };
-    const service = new SearchService(stubDb(), { catalogTtlSeconds: 1 } as never, source as never);
+    const service = new SearchService(stubDb(), { catalogTtlSeconds: 1 } as never, source);
 
     await expect(service.users('nonexistent-shape', 1, 'req')).rejects.toMatchObject({
       code: 'UPSTREAM_SUSPICIOUS',
@@ -29,14 +30,14 @@ describe('user search on an unrecognised page shape', () => {
   });
 
   it('still throws ServiceError, not a raw ParserError, so the HTTP layer maps it correctly', async () => {
-    const source = {
+    const source: CatalogSource = {
       getHtml: async (url: string) => ({
         kind: 'success' as const,
         value: '<html><body>'.padEnd(600, 'x') + '</body></html>',
         metadata: { url, status: 200, contentType: 'text/html', durationMs: 1, sizeBytes: 600 },
       }),
     };
-    const service = new SearchService(stubDb(), { catalogTtlSeconds: 1 } as never, source as never);
+    const service = new SearchService(stubDb(), { catalogTtlSeconds: 1 } as never, source);
 
     await expect(service.users('nonexistent-shape', 1, 'req')).rejects.toBeInstanceOf(ServiceError);
   });

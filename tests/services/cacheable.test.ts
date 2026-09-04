@@ -1,6 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import type { CacheEntry, CacheRepository } from '../../src/repositories/cache.repository';
-import type { RefreshLockRepository } from '../../src/repositories/refresh-lock.repository';
+import type { CacheEntry } from '../../src/ports/driven/catalog-store.port';
 import { isOversizeRow, withCache, type CacheDeps, type WaitUntil } from '../../src/services/cacheable';
 
 const FRESH = '2999-01-01T00:00:00.000Z';
@@ -9,8 +8,8 @@ function deps(stored: CacheEntry | null): CacheDeps & { put: ReturnType<typeof v
   const put = vi.fn(async () => {});
   const acquire = vi.fn(async () => true);
   const release = vi.fn(async () => {});
-  const cache = { get: async () => stored, put, isFresh: (value: CacheEntry) => Date.parse(value.expiresAt) > Date.now() } as unknown as CacheRepository;
-  const locks = { acquire, release } as unknown as RefreshLockRepository;
+  const cache: CacheDeps['cache'] = { get: async () => stored, put, isFresh: (value: CacheEntry) => Date.parse(value.expiresAt) > Date.now() };
+  const locks: CacheDeps['locks'] = { acquire, release };
   return { cache, locks, put, acquire, release };
 }
 
