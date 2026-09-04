@@ -1,22 +1,14 @@
 import type { CatalogStore } from '../ports/driven/catalog-store.port';
 import type { SourceResult } from '../source/source-types';
 
-// Every status a ServiceError is actually constructed with, across direct `new ServiceError(...)`
-// call sites and sourceError's upstream-kind mapping below. Narrowed from `number` so errors.ts can
-// hand `error.status` straight to Hono's `c.json` without a cast that told the type system every
-// ServiceError is a 400 — which a typed client generated from this app (Hono's `hc<AppType>()`)
-// would have taken literally.
-export type ServiceErrorStatus = 400 | 403 | 404 | 429 | 501 | 502 | 503 | 504 | 507;
-
-export class ServiceError extends Error {
-  constructor(
-    public readonly code: string,
-    public readonly status: ServiceErrorStatus,
-    message: string,
-  ) {
-    super(message);
-  }
-}
+// Both moved to `src/domain/errors.ts`, and re-exported here so the fifteen files in `src/` and four
+// in `tests/` that import them from this module keep resolving. The move was about the direction of
+// one import — the domain used to reach into this layer — not about where callers should now look,
+// so rewriting nineteen import paths would have been churn with no reader on the other side of it.
+// Imported as well as re-exported: `export … from` forwards the names without binding them locally,
+// and this module throws `ServiceError` itself in four places.
+import { ServiceError, type ServiceErrorStatus } from '../domain/errors';
+export { ServiceError, type ServiceErrorStatus };
 
 // `ttlSeconds` is how long this resource stays fresh, carried out to the HTTP layer so
 // `Cache-Control` can state the *remaining* freshness instead of a guess. Optional because a few

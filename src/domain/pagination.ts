@@ -1,4 +1,4 @@
-import { ServiceError } from '../services/cacheable';
+import { ServiceError } from './errors';
 
 export interface Pagination {
   page: number;

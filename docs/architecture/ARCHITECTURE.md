@@ -211,10 +211,12 @@ own `/v1`.
 
 *The violations that exist right now. Being honest here is what makes the rest of the file credible.*
 
-- [ ] **`src/domain/pagination.ts` imports `ServiceError` from `../services/cacheable`** — the one
-      arrow in the tree that points outward. The fix is a `src/domain/errors.ts` with a re-export left
-      behind in `cacheable.ts`, which keeps it a two-line change instead of touching 15 files in `src/`
-      and 4 in `tests/`.
+- [x] ~~**`src/domain/pagination.ts` imports `ServiceError` from `../services/cacheable`.**~~ Closed
+      2026-09-04 by
+      [domain-boundary slice 1](../plans/domain-boundary/slice-01-service-error-to-domain.md), exactly
+      as this entry proposed: `src/domain/errors.ts` holds the class, `cacheable.ts` re-exports it,
+      and none of the nineteen call sites moved. **Every import in `src/domain/` now resolves inside
+      `src/domain/`** — no arrow out of the domain at all, not merely none into `src/services/`.
 - [x] ~~**Eleven of the twelve services still construct their own adapters.**~~ Closed 2026-09-04 by
       [dependency-injection slice 3](../plans/dependency-injection/slice-03-roll-out-remaining-services.md).
       All twelve take the ports; `RandomService` gained both a repository and a factory. `D1Database`
