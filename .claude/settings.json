@@ -1,0 +1,47 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "DIR=$CLAUDE_PROJECT_DIR; if git -C \"$DIR\" rev-parse --git-dir >/dev/null 2>&1; then BRANCH=$(git -C \"$DIR\" symbolic-ref --quiet --short HEAD 2>/dev/null || echo '?'); CHANGED=$(git -C \"$DIR\" status --porcelain 2>/dev/null | wc -l | tr -d ' '); echo \"{\\\"hookSpecificOutput\\\": {\\\"hookEventName\\\": \\\"SessionStart\\\", \\\"additionalContext\\\": \\\"Project status: branch=$BRANCH, $CHANGED uncommitted file(s)\\\"}}\"; else echo \"{\\\"hookSpecificOutput\\\": {\\\"hookEventName\\\": \\\"SessionStart\\\", \\\"additionalContext\\\": \\\"Project status: not a git repo yet\\\"}}\"; fi",
+            "statusMessage": "Checking project status..."
+          }
+        ]
+      }
+    ],
+    "PreCompact": [
+      {
+        "matcher": "auto",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "DIR=$CLAUDE_PROJECT_DIR; INFO=''; if git -C \"$DIR\" rev-parse --git-dir >/dev/null 2>&1; then BRANCH=$(git -C \"$DIR\" symbolic-ref --quiet --short HEAD 2>/dev/null || echo '?'); CHANGED=$(git -C \"$DIR\" diff --name-only 2>/dev/null | head -10 | tr '\\n' ', '); INFO=\"branch=$BRANCH modified=[$CHANGED]\"; fi; echo \"{\\\"hookSpecificOutput\\\": {\\\"hookEventName\\\": \\\"PreCompact\\\", \\\"additionalContext\\\": \\\"Before compaction: $INFO. Preserve awareness of current task.\\\"}}\"",
+            "statusMessage": "Preserving context..."
+          }
+        ]
+      }
+    ],
+    "Notification": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "P=$(basename \"${CLAUDE_PROJECT_DIR:-$PWD}\"); osascript -e 'on run argv' -e 'display notification \"Needs your input\" with title (item 1 of argv)' -e 'end run' \"$P\" 2>/dev/null || notify-send -a 'Claude Code' \"$P\" 'Needs your input' 2>/dev/null || true"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "DIR=$CLAUDE_PROJECT_DIR; if git -C \"$DIR\" rev-parse --git-dir >/dev/null 2>&1; then CHANGED=$(git -C \"$DIR\" status --porcelain 2>/dev/null | wc -l | tr -d ' '); if [ \"$CHANGED\" -gt 0 ]; then echo \"{\\\"systemMessage\\\": \\\"Uncommitted files: $CHANGED\\\"}\"; fi; fi"
+          }
+        ]
+      }
+    ]
+  }
+}
