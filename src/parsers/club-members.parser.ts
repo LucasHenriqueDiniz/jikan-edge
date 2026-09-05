@@ -2,7 +2,11 @@ import { z } from 'zod';
 import type { ClubMember } from '../domain/club-member';
 import { decodeHtml, originalImage, ParserError } from './html';
 
-const memberSchema = z.object({ username: z.string().min(1), url: z.string().url(), avatarUrl: z.string().url().nullable() });
+const memberSchema = z.object({
+  username: z.string().min(1),
+  url: z.string().url(),
+  avatarUrl: z.string().url().nullable(),
+});
 
 export function parseClubMembers(html: string): ClubMember[] {
   const members: ClubMember[] = [];

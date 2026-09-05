@@ -9,14 +9,15 @@ import { QUERY_CONTRACT, UNSUPPORTED_PARAMS } from './query-contract';
 // It has to be per-pattern rather than one catch-all on `/v1/*`: Hono composes middleware in
 // registration order instead of letting a specific one override a general one, so a blanket guard
 // would reject `?q=` before the route that accepts it ever ran.
-export function queryGuard(allowed: readonly string[]): MiddlewareHandler {
+function queryGuard(allowed: readonly string[]): MiddlewareHandler {
   const permitted = new Set(allowed);
   return async (c, next) => {
     try {
       for (const name of new URL(c.req.url).searchParams.keys()) {
         if (permitted.has(name)) continue;
         const reason = UNSUPPORTED_PARAMS[name];
-        if (reason) throw new ServiceError('UNSUPPORTED_PARAMETER', 400, `"${name}" is not supported on this route. ${reason}`);
+        if (reason)
+          throw new ServiceError('UNSUPPORTED_PARAMETER', 400, `"${name}" is not supported on this route. ${reason}`);
         throw new ServiceError(
           'UNKNOWN_PARAMETER',
           400,

@@ -23,7 +23,11 @@ function parseCard(chunk: string): WatchPromoEntry | null {
 }
 
 export function parseWatchPromos(html: string): WatchPromoEntry[] {
-  const entries = html.split('class="iframe js-fancybox-video').slice(1).map(parseCard).filter((entry): entry is WatchPromoEntry => entry !== null);
+  const entries = html
+    .split('class="iframe js-fancybox-video')
+    .slice(1)
+    .map(parseCard)
+    .filter((entry): entry is WatchPromoEntry => entry !== null);
   if (entries.length === 0) throw new ParserError('empty_watch_promos_page');
   return entries;
 }

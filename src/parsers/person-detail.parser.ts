@@ -1,6 +1,16 @@
 import { z } from 'zod';
 import type { PersonDetail } from '../domain/person';
-import { canonicalUrl, capture, imageSetSchema, imageVariants, numeric, ParserError, richCapture, taggedImage, VOICE_ACTOR_IMAGE } from './html';
+import {
+  canonicalUrl,
+  capture,
+  imageSetSchema,
+  imageVariants,
+  numeric,
+  ParserError,
+  richCapture,
+  taggedImage,
+  VOICE_ACTOR_IMAGE,
+} from './html';
 
 const personDetailSchema = z.object({
   malId: z.number().int().positive(),

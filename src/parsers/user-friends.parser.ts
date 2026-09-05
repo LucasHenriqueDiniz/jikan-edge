@@ -18,8 +18,11 @@ export function parseUserFriends(html: string): UserFriend[] {
     if (!username || seen.has(username)) continue;
     seen.add(username);
     const imageUrl = imageFrom(block);
-    const greyBits = [...block.matchAll(/<div class="di-ib mt4 fn-grey2">\s*([\s\S]*?)\s*<\/div>/gi)].map((match) => decodeHtml(match[1]));
-    const friendsSince = greyBits.find((bit) => bit.startsWith('Friends since'))?.replace(/^Friends since\s*/i, '') ?? null;
+    const greyBits = [...block.matchAll(/<div class="di-ib mt4 fn-grey2">\s*([\s\S]*?)\s*<\/div>/gi)].map((match) =>
+      decodeHtml(match[1]),
+    );
+    const friendsSince =
+      greyBits.find((bit) => bit.startsWith('Friends since'))?.replace(/^Friends since\s*/i, '') ?? null;
     const lastOnline = greyBits.find((bit) => !bit.startsWith('Friends since')) ?? null;
     const candidate = { username: decodeHtml(username), imageUrl, lastOnline, friendsSince };
     const parsed = friendSchema.safeParse(candidate);

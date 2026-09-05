@@ -7,7 +7,15 @@ import type { RuntimeConfig } from '../../src/config/env';
 import type { SourceResult } from '../../src/source/source-types';
 
 const bindings = env as unknown as { DB: D1Database; TEST_MIGRATIONS: import('cloudflare:test').D1Migration[] };
-const config: RuntimeConfig = { profileTtlSeconds: 60, listTtlSeconds: 60, animeTtlSeconds: 3_600, catalogTtlSeconds: 3_600, sourceTimeoutMs: 1_000, maxUpstreamBytes: 2_000_000, malUserAgent: 'test' };
+const config: RuntimeConfig = {
+  profileTtlSeconds: 60,
+  listTtlSeconds: 60,
+  animeTtlSeconds: 3_600,
+  catalogTtlSeconds: 3_600,
+  sourceTimeoutMs: 1_000,
+  maxUpstreamBytes: 2_000_000,
+  malUserAgent: 'test',
+};
 
 // Inlined rather than read from tests/fixtures/anime/full-valid.html: the Workers pool runs this
 // file in a bundled sandbox where readFileSync can't resolve a relative repo path (confirmed —
@@ -64,13 +72,20 @@ function stubSource(calls: { count: number }): CatalogSource {
   return {
     getHtml: async (url: string): Promise<SourceResult<string>> => {
       calls.count += 1;
-      return { kind: 'success', value: html, metadata: { url, status: 200, contentType: 'text/html', durationMs: 1, sizeBytes: html.length } };
+      return {
+        kind: 'success',
+        value: html,
+        metadata: { url, status: 200, contentType: 'text/html', durationMs: 1, sizeBytes: html.length },
+      };
     },
   };
 }
 
 beforeAll(async () => applyD1Migrations(bindings.DB, bindings.TEST_MIGRATIONS));
-beforeEach(async () => { for (const table of ['anime', 'catalog_lists', 'cache_entries', 'refresh_leases']) await bindings.DB.prepare(`DELETE FROM ${table}`).run(); });
+beforeEach(async () => {
+  for (const table of ['anime', 'catalog_lists', 'cache_entries', 'refresh_leases'])
+    await bindings.DB.prepare(`DELETE FROM ${table}`).run();
+});
 
 // detail() and full() both read animeDetailUrl(malId) — the exact same MAL page. Before this fix,
 // each managed its own cache independently, so calling both close together (a realistic pattern:

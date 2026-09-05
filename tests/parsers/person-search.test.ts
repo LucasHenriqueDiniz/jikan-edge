@@ -7,8 +7,18 @@ describe('person search parser', () => {
     const html = readFileSync('tests/fixtures/people/search-valid.html', 'utf8');
     const results = parsePersonSearch(html);
     expect(results).toEqual([
-      { malId: 46255, name: 'Miyazaki, Yuu', url: 'https://myanimelist.net/people/46255/Yuu_Miyazaki', imageUrl: 'https://cdn.myanimelist.net/images/voiceactors/3/76149.jpg' },
-      { malId: 1055, name: 'Miyazaki, Aoi', url: 'https://myanimelist.net/people/1055/Aoi_Miyazaki', imageUrl: 'https://cdn.myanimelist.net/images/voiceactors/2/49681.jpg' },
+      {
+        malId: 46255,
+        name: 'Miyazaki, Yuu',
+        url: 'https://myanimelist.net/people/46255/Yuu_Miyazaki',
+        imageUrl: 'https://cdn.myanimelist.net/images/voiceactors/3/76149.jpg',
+      },
+      {
+        malId: 1055,
+        name: 'Miyazaki, Aoi',
+        url: 'https://myanimelist.net/people/1055/Aoi_Miyazaki',
+        imageUrl: 'https://cdn.myanimelist.net/images/voiceactors/2/49681.jpg',
+      },
     ]);
   });
 

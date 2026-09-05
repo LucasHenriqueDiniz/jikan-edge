@@ -38,6 +38,32 @@ Four habits, and they are the whole point of the format:
 
 *What the tree looks like and what each directory is for. Only what exists.*
 
+![[component-view]]
+
+The diagram above is **generated** by [`tools/architecture_diagram.py`](../../tools/architecture_diagram.py)
+from the actual `from '...'` statements between the directories below, so it cannot drift from the
+code without the counts changing. A **dashed** arrow is `import type` only — erased at build time,
+which is why `services -> ports` (24 type imports, and no value import at all) is the hexagon
+working rather than a dependency. A **red** arrow is a rule being broken, and the generator exits
+non-zero while one exists.
+
+**Today there is none: `python3 tools/architecture_diagram.py` exits 0 over 10 folders and 17
+relationships.** It did not when the generator was written — it found two, and both were closed on
+2026-09-05 rather than documented. `ports -> source` went when `SourceResult`, `SourceMetadata` and
+`FetchBudget` moved into `catalog-source.port.ts`. `services -> repositories` was a single
+`import type { UserRepository }` in `user.service.ts`, used to derive a return shape as
+`Awaited<ReturnType<UserRepository['listEntries']>>['entries']` — the application naming its adapter
+to describe something the port already declares. It is `UserMediaListEntry[]` now.
+
+That second one is the generator earning its place: nothing else had reported it. `pnpm lint` cannot
+see a layering rule, `tsc` was perfectly happy, and the type import survived the whole
+dependency-injection rollout because the constructor it belonged to had already stopped naming the
+adapter.
+
+Regenerate with `python3 tools/architecture_diagram.py`, and look at it with
+`python3 tools/render_architecture.py`. **Do not nudge the boxes in Obsidian** — the next run
+overwrites them silently, which is the trade the `diagrams` skill asks you to make consciously.
+
 ```
 src/
   domain/          entities and value objects for every resource, plus each resource's
@@ -57,9 +83,15 @@ src/
                    ServiceResponse<T> and sourceError().
   http/            the driving side: error mapping, cache headers, query contract and
                    guards, response envelope, setup diagnostics.
+    app-context.ts the App/AppContext types plus background() and cacheHeader(),
+                   which every route module needs. Separate from app.ts so the
+                   modules can import them without importing the app itself.
+    routes/        one module per resource, each exporting registerXRoutes(app, deps)
+                   and receiving its service factories rather than building them.
   config/env.ts    reads the Worker bindings into a RuntimeConfig with fallbacks.
   observability/   structured metric lines.
-  app.ts           the Hono app: routes, middleware, and the per-request wiring.
+  app.ts           the composition root: middleware, /health, the twelve service
+                   factories, and the calls that mount http/routes/*.
   index.ts         the Worker entry point. Two lines.
 ```
 
@@ -90,16 +122,45 @@ discriminated union (`success | not_found | private | rate_limited | timeout | s
 upstream_error`), so no upstream `Response` reaches a service. `sourceError()` is the single place
 that maps it to an HTTP status.
 
-**The rollout is partial.** `AnimeService` receives both ports and constructs nothing; the other
-eleven services still take a raw `D1Database` and build their own repositories, and
-`src/app.ts:538`/`:548` still construct `RandomService` inline.
-[Slice 3](../plans/dependency-injection/slice-03-roll-out-remaining-services.md) is the rest.
+**The rollout is complete**, as of 2026-09-04 and
+[slice 3](../plans/dependency-injection/slice-03-roll-out-remaining-services.md). All twelve services
+receive a built store and take `(store, source, config, waitUntil?)`; none constructs an adapter, and
+`src/services/` does not name `D1Database` anywhere — comments included, which is what the gate
+actually checks. Every route module receives factories; none builds a service.
+
+Six of the resources store one payload per MyAnimeList id and nothing else, so the port carries them
+as `DetailStore<T>` rather than six hand-written members that differ only in a type argument.
+`favorites` and `updates` are the username-keyed equivalent, `KeyedStore<T>`. `users` stayed
+bespoke — it reads and writes two payloads at once and its list is a collection, so forcing it into
+the generic would have meant renaming methods to fit a shape it does not have.
 
 ## Decisions
 
 *Context, decision, and what it rules out. Newest first. A superseded entry stays, marked.*
 
+### D6 — Biome is the linter and the formatter, and it starts in check-only mode
+
+**Context.** There was no linter and no formatter at all; `tsc --noEmit` has no opinion about style,
+unused values or floating promises. Turning any of them on rewrites `src/app.ts` in whatever diff it
+happens to land in.
+
+**Decision.** Biome 2.5.12, pinned exactly, configured to what the code already does (2-space, single
+quotes, semicolons, LF, `lineWidth` 120) and wired to `pnpm lint` / `pnpm lint:fix` only — not to CI.
+`files.includes` is an allowlist, so the tool cannot reach `tests/fixtures/*.html`, `.kanban.json` or
+the CRLF files in `site/`. `organizeImports` is off. Decided 2026-09-04; the numbers behind each value
+are in [`slice-01`](../plans/code-hygiene/slice-01-add-linter-check-only.md).
+
+*Completed 2026-09-04 by slice 2: the reformat landed (139 files, tool-generated only), the 25
+findings it could not fix were cleared by hand, and CI now runs `pnpm run lint` as its first step —
+which amends D5.*
+
+**Rules out.** ESLint + Prettier (two tools, a plugin chain, and formatting only via the second) and
+oxlint (does not format). Also rules out reviewing a formatting change and a behavioural one in the
+same diff: config, reformat and hand fixes are three commits by construction.
+
 ### D5 — CI runs typecheck and the unit suite, and no build
+
+*Amended 2026-09-04 by D6: `pnpm run lint` is now the job's first step. The "and no build" half stands.*
 
 **Context.** Workers Builds compiles and publishes on every push to `main` and reports back as a check
 on the commit. A `wrangler deploy --dry-run` step in CI repeats that compilation without publishing.
@@ -169,38 +230,74 @@ own `/v1`.
 | layer names | `domain / ports / application / adapters` + composition root | `domain / parsers / ports / adapters / source / repositories / services / http` | the names describe the four layers the spec asks for — `services` is the application layer, `source` + `repositories` are the driven side, `http` is the driving side — using the vocabulary the codebase and its whole test suite were written in. Renaming is a rename of everything, not a structural change. Undeclared, this reads as a missing hexagon. |
 | driven grouping | group by resource, file per technology (`store/postgres.ts`) | `repositories/<resource>.repository.ts`, flat | there is exactly one technology (D1). A second one would need the directory-per-resource layout the `clean-code` skill describes. |
 | some domain types live in `parsers/` | the domain owns its types | `Favorite`, `Favorites`, `UserUpdate`, `UserUpdates`, `SeasonArchiveEntry`, `ScheduleByDay`, `ClubRelations` are exported from parser files | not argued, just how they grew. A gap, below — not a divergence anyone should defend. Parse-result wrappers (`SeasonParseResult`, `ListParseResult`, the completeness-evidence types) do belong to the parser layer and stay. |
-| no linter or formatter | — | typecheck and tests only | turning one on today rewrites `src/app.ts` (550 lines, with one handler line of 747 characters) in the same diff as anything else. Whoever adds it takes the reformat as its own commit. |
+| Cloudflare resource names | `<owner>-<project>-<resource>-<env>` | `jikan-edge` (Worker) and `jikan-edge` (D1) | accepted as a permanent exception on 2026-09-03 — see [`adr-cloudflare-resource-names.md`](adr-cloudflare-resource-names.md). The Worker name **is** the `*.workers.dev` hostname `README.md` promises not to remove, and a differently-named D1 is a different database, so that rename is create-migrate-cutover against a live account. An audit will keep finding this gap; the ADR is the answer it should find. |
+| the agent guide | one `CLAUDE.md` | two identical copies, `.claude/CLAUDE.md` and `AGENTS.md` | kept in step by `tests/config/agent-guide-sync.test.ts`. The test compares the two copies; it does not check that the paths they name exist, and a third copy at the repository root would sit outside the guard entirely. |
 
 ## Known gaps
 
 *The violations that exist right now. Being honest here is what makes the rest of the file credible.*
 
-- [ ] **`src/domain/pagination.ts` imports `ServiceError` from `../services/cacheable`** — the one
-      arrow in the tree that points outward. The fix is a `src/domain/errors.ts` with a re-export left
-      behind in `cacheable.ts`, which keeps it a two-line change instead of touching 15 files in `src/`
-      and 4 in `tests/`.
-- [ ] **Eleven of the twelve services still construct their own adapters.** `AnimeService` takes the
-      two ports; the rest take a raw `D1Database`, and `RandomService` has no factory at all. The
-      ports exist and the pattern is settled — this is the remainder of the rollout, tracked as
-      [slice 3](../plans/dependency-injection/slice-03-roll-out-remaining-services.md).
-- [ ] **`SourceResult` and `FetchBudget` still live in `src/source/`** and `CatalogSource` imports
-      them from there, so the port points outward at its own adapter's directory. `CacheEntry` was
-      moved into `catalog-store.port.ts` for exactly this reason; these two were left because
-      `fetch-policy.ts` holds real policy alongside the type and splitting it is its own change.
-- [ ] **Seven domain-shaped types are exported from `src/parsers/`** instead of `src/domain/`.
-- [ ] **`src/app.ts` is 558 lines** — over the `clean-code` soft limit of 500, with handlers written
-      as single very long lines.
-- [ ] **No lint, format or dead-code gate.** `pnpm run typecheck` and `pnpm test` are the whole
-      check surface; there is no eslint/biome/prettier config and no `knip`.
-- [ ] **Cloudflare resource names do not follow `<owner>-<project>-<resource>-<env>`.** Renaming a D1
-      database is a data migration, not a `git mv`, so this is not a drive-by fix — see the `naming`
-      skill.
-- [ ] **Two copies of the project guide** (`.claude/CLAUDE.md` and `AGENTS.md`) kept in step by
-      `tests/config/agent-guide-sync.test.ts`. The test compares the two copies; it does not check that
-      the paths they name exist. A third copy at the repository root would sit outside that guard
-      entirely.
-- [ ] **The vault is incomplete**: `docs/pitches/`, `docs/plans/`, `docs/postmortem/`, `docs/product/`
-      and `docs/roadmap/` do not exist, and `docs/planning/` and `docs/results/` hold what two of them
-      would. Renaming those two breaks named links in `.claude/CLAUDE.md`, `AGENTS.md`,
-      and `../architecture.md` that no test covers, and `docs/README.md` names `planning/` in its own
-      table.
+- [x] ~~**`src/domain/pagination.ts` imports `ServiceError` from `../services/cacheable`.**~~ Closed
+      2026-09-04 by
+      [domain-boundary slice 1](../plans/domain-boundary/slice-01-service-error-to-domain.md), exactly
+      as this entry proposed: `src/domain/errors.ts` holds the class, `cacheable.ts` re-exports it,
+      and none of the nineteen call sites moved. **Every import in `src/domain/` now resolves inside
+      `src/domain/`** — no arrow out of the domain at all, not merely none into `src/services/`.
+- [x] ~~**Eleven of the twelve services still construct their own adapters.**~~ Closed 2026-09-04 by
+      [dependency-injection slice 3](../plans/dependency-injection/slice-03-roll-out-remaining-services.md).
+      All twelve take the ports; `RandomService` gained both a repository and a factory. `D1Database`
+      now appears only where a binding belongs: `config/env.ts` (the binding declaration),
+      `repositories/` and `adapters/` (the driver side), `app.ts` (the composition root) and
+      `http/diagnostics.ts` (`/health` probing the binding directly). The port names it only in a
+      comment saying it does not appear in any signature.
+- [x] ~~**`SourceResult` and `FetchBudget` still live in `src/source/`.**~~ Closed 2026-09-05. Both
+      moved into `catalog-source.port.ts`, which is where `CacheEntry` already lived for the same
+      reason. The split that made it possible is the type against the policy: `FetchBudget` is a
+      parameter of `getHtml` so it belongs to the port, while the budgets themselves —
+      `CHARACTER_PAGE_BUDGET`, measured against One Piece at 9.88 MB — stay in `fetch-policy.ts`,
+      which now imports the type from the port. `source-types.ts` is a re-export, so the adapter, the
+      validator and three test files did not change.
+- [x] ~~**Seven domain-shaped types are exported from `src/parsers/`.**~~ Closed 2026-09-04 by
+      [domain-boundary slice 2](../plans/domain-boundary/slice-02-parser-types-to-domain.md). Eight
+      names in five new domain files; the parsers re-export every one, so the services that read them
+      from there — a legal direction — did not change. `src/repositories/` imports nothing from
+      `src/parsers/` any more. The five genuinely parser-internal types (`ListLayout`,
+      `ListParseResult`, `SeasonParseResult`, and the two completeness-evidence shapes) stayed, and
+      that was re-measured rather than assumed: nothing outside `src/parsers/` names them.
+- [x] ~~**`src/app.ts` is 558 lines.**~~ Closed 2026-09-04 by
+      [code-hygiene slice 3](../plans/code-hygiene/slice-03-split-app-ts.md). 197 lines, and the 93
+      route registrations live in twelve modules under `src/http/routes/`, none over 426 lines. The
+      number got worse before it got better: the slice-2 reformat took the file to 1,782 — the
+      handlers had been written one per line, up to 747 characters each, so nothing about it was 558
+      lines' worth of code.
+- [x] ~~**The lint findings are measured but unfixed.**~~ Closed 2026-09-04 by slice 2. `pnpm lint`
+      exits 0 on a clean tree and CI runs it.
+- [ ] **Still no dead-code tool (`knip`), and the manual sweep showed why one is worth having.** A
+      grep found 19 of 405 exports with no importer; a symbol-by-symbol audit reclassified almost all
+      of them as *over-exported* rather than dead — used inside their own file, often in the signature
+      of something still exported. 14 lost the keyword on 2026-09-05. Exactly one was genuinely dead
+      (`VOICE_ACTOR_PARSER_VERSION`, since deleted), and separating the two took two agents and a
+      per-symbol trace, which is the work a tool does in a second. Biome cannot help: its
+      `noUnusedPrivateClassMembers` only sees inside a class, and an exported symbol nothing imports
+      goes on looking used.
+- [x] ~~**Two declarations of `VoiceActor`.**~~ Closed 2026-09-05. `voice-actor.ts` and
+      `characters-staff.ts` each declared the same four fields in a different order — the same type to
+      TypeScript, two things to keep in step for a reader. One declaration now, in the file named for
+      the concept.
+- [x] ~~**The vault is incomplete.**~~ Closed 2026-09-04. Every folder the `workflow` skill names now
+      exists: `pitches/`, `plans/`, `postmortem/`, `product/`, `roadmap/`, `architecture/diagrams/`,
+      each with the template README, plus `.obsidian/` and the `.mcp.json` that points a vault at
+      `./docs`.
+- [ ] **Two folders still hold what a standard one would**: `docs/planning/` (scope, risks,
+      milestones) and `docs/results/` (probes, benchmarks, audits — the material a postmortem is made
+      of). Renaming either breaks named links in `.claude/CLAUDE.md`, `AGENTS.md` and
+      `../architecture.md` that **no test covers**, and `docs/README.md` names `planning/` in its own
+      table. New records go to `postmortem/`; the two folders stay until a slice moves them with the
+      links.
+- [ ] **`docs/architecture.md` (9 lines) sits beside `docs/architecture/ARCHITECTURE.md` (208).** The
+      first is a prose summary of the request flow, the second is the file of record. Two documents
+      named for the same thing is how a reader ends up with the older one.
+- [ ] **`docs/DEVLOG.md`, `docs/PROGRESS.md` and `docs/IDEAS.md` do not exist.** The `workflow`
+      skill's implement step ends in one line in the first and a mark in the second; ideas that do
+      not fit the current slice go to the third. Today that traffic has nowhere to land, so it ends
+      up in `.claude/CLAUDE.md`, which is why that file is 48 KB.

@@ -1,3 +1,5 @@
+import type { FetchBudget } from '../ports/driven/catalog-source.port';
+
 /**
  * Per-call fetch budgets for MyAnimeList pages that are far larger than the norm.
  *
@@ -6,10 +8,9 @@
  * loosening the limits for all 96 routes — where a runaway document would then go unnoticed — the
  * routes that need more ask for it explicitly.
  */
-export interface FetchBudget {
-  timeoutMs: number;
-  maxBytes: number;
-}
+// The type is the port's — it is a parameter of `getHtml`. What stays in this file is the policy:
+// which pages get which budget, and why, measured against the live documents.
+export type { FetchBudget };
 
 /**
  * The `/characters` page of a long-running series, which `/staff` reads too.

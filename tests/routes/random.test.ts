@@ -8,7 +8,12 @@ const KINDS = ['anime', 'manga', 'characters', 'people'] as const;
 const STANDARD_META = ['cached', 'fetchedAt', 'refreshFailed', 'stale'];
 
 function dbWithRow(payload: unknown, fetchedAt = new Date().toISOString()): D1Database {
-  const statement = { bind: () => statement, first: async () => ({ payload_json: JSON.stringify(payload), fetched_at: fetchedAt }), run: async () => ({ meta: {}, success: true }), all: async () => ({ results: [] }) };
+  const statement = {
+    bind: () => statement,
+    first: async () => ({ payload_json: JSON.stringify(payload), fetched_at: fetchedAt }),
+    run: async () => ({ meta: {}, success: true }),
+    all: async () => ({ results: [] }),
+  };
   return { prepare: () => statement } as unknown as D1Database;
 }
 
@@ -17,20 +22,42 @@ function dbWithRow(payload: unknown, fetchedAt = new Date().toISOString()): D1Da
 function dbWithCachedProfile(): D1Database {
   const now = new Date().toISOString();
   const row = {
-    canonical_username: 'Xinil', username_key: 'xinil', profile_url: 'https://myanimelist.net/profile/Xinil',
-    avatar_url: null, about: null, gender: null, location: null, birthday: null, joined_at: null, last_online_at: null,
-    fetched_at: now, expires_at: new Date(Date.now() + 3_600 * 1_000).toISOString(), source_status: 'success', parser_version: PARSER_VERSION,
+    canonical_username: 'Xinil',
+    username_key: 'xinil',
+    profile_url: 'https://myanimelist.net/profile/Xinil',
+    avatar_url: null,
+    about: null,
+    gender: null,
+    location: null,
+    birthday: null,
+    joined_at: null,
+    last_online_at: null,
+    fetched_at: now,
+    expires_at: new Date(Date.now() + 3_600 * 1_000).toISOString(),
+    source_status: 'success',
+    parser_version: PARSER_VERSION,
   };
-  const statement = { bind: () => statement, first: async () => row, run: async () => ({ meta: {}, success: true }), all: async () => ({ results: [] }) };
+  const statement = {
+    bind: () => statement,
+    first: async () => row,
+    run: async () => ({ meta: {}, success: true }),
+    all: async () => ({ results: [] }),
+  };
   return { prepare: () => statement } as unknown as D1Database;
 }
 
 function dbWithNothing(): D1Database {
-  const statement = { bind: () => statement, first: async () => null, run: async () => ({ meta: {}, success: true }), all: async () => ({ results: [] }) };
+  const statement = {
+    bind: () => statement,
+    first: async () => null,
+    run: async () => ({ meta: {}, success: true }),
+    all: async () => ({ results: [] }),
+  };
   return { prepare: () => statement } as unknown as D1Database;
 }
 
-const call = (path: string, db: D1Database) => app.request(`http://localhost${path}`, undefined, { DB: db } as Partial<Env>);
+const call = (path: string, db: D1Database) =>
+  app.request(`http://localhost${path}`, undefined, { DB: db } as Partial<Env>);
 
 // These four used to answer `meta: { requestId }` while `/v1/random/users` answered the standard
 // four fields, so the random group did not agree with itself. The predecessor of this file asserted
@@ -58,7 +85,9 @@ describe('random picks report freshness like every other route', () => {
 
     const old = new Date(Date.now() - 48 * 3_600 * 1_000).toISOString();
     const stale = await call('/v1/random/anime', dbWithRow({ malId: 1 }, old));
-    const body = (await stale.json()) as { meta: { stale: boolean; fetchedAt: string; cached: boolean; refreshFailed: boolean } };
+    const body = (await stale.json()) as {
+      meta: { stale: boolean; fetchedAt: string; cached: boolean; refreshFailed: boolean };
+    };
     expect(body.meta.stale).toBe(true);
     expect(body.meta.fetchedAt).toBe(old);
     // The pick always comes out of the local catalogue, and nothing was refreshed to get it.

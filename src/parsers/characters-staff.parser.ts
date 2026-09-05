@@ -1,13 +1,28 @@
 import { z } from 'zod';
-import type { CharacterRole, StaffMember, VoiceActor } from '../domain/characters-staff';
+import type { CharacterRole, StaffMember } from '../domain/characters-staff';
+import type { VoiceActor } from '../domain/voice-actor';
 import { decodeHtml, imageFrom, numeric, ParserError } from './html';
 
-const voiceActorSchema = z.object({ malId: z.number().int().positive(), name: z.string().min(1), language: z.string().nullable(), imageUrl: z.string().url().nullable() });
-const characterSchema = z.object({
-  malId: z.number().int().positive(), name: z.string().min(1), imageUrl: z.string().url().nullable(),
-  role: z.string().nullable(), favorites: z.number().nullable(), voiceActors: z.array(voiceActorSchema),
+const voiceActorSchema = z.object({
+  malId: z.number().int().positive(),
+  name: z.string().min(1),
+  language: z.string().nullable(),
+  imageUrl: z.string().url().nullable(),
 });
-const staffSchema = z.object({ malId: z.number().int().positive(), name: z.string().min(1), imageUrl: z.string().url().nullable(), role: z.string().nullable() });
+const characterSchema = z.object({
+  malId: z.number().int().positive(),
+  name: z.string().min(1),
+  imageUrl: z.string().url().nullable(),
+  role: z.string().nullable(),
+  favorites: z.number().nullable(),
+  voiceActors: z.array(voiceActorSchema),
+});
+const staffSchema = z.object({
+  malId: z.number().int().positive(),
+  name: z.string().min(1),
+  imageUrl: z.string().url().nullable(),
+  role: z.string().nullable(),
+});
 
 function extractVoiceActors(block: string): VoiceActor[] {
   const actors: VoiceActor[] = [];
@@ -16,7 +31,12 @@ function extractVoiceActors(block: string): VoiceActor[] {
     if (!idMatch) continue;
     const language = vaBlock.match(/js-anime-character-language[^>]*>([\s\S]*?)<\/div>/i)?.[1];
     const imageUrl = imageFrom(vaBlock);
-    const candidate = { malId: Number(idMatch[1]), name: decodeHtml(idMatch[2]), language: language ? decodeHtml(language) || null : null, imageUrl };
+    const candidate = {
+      malId: Number(idMatch[1]),
+      name: decodeHtml(idMatch[2]),
+      language: language ? decodeHtml(language) || null : null,
+      imageUrl,
+    };
     const parsed = voiceActorSchema.safeParse(candidate);
     if (parsed.success) actors.push(parsed.data);
   }
@@ -62,7 +82,12 @@ export function parseStaff(html: string): StaffMember[] {
     if (!idMatch) continue;
     const imageUrl = imageFrom(row);
     const roleMatch = row.match(/<small>([^<]+)<\/small>/i);
-    const candidate = { malId: Number(idMatch[1]), name: decodeHtml(idMatch[2]), imageUrl, role: roleMatch ? decodeHtml(roleMatch[1]) : null };
+    const candidate = {
+      malId: Number(idMatch[1]),
+      name: decodeHtml(idMatch[2]),
+      imageUrl,
+      role: roleMatch ? decodeHtml(roleMatch[1]) : null,
+    };
     const parsed = staffSchema.safeParse(candidate);
     if (parsed.success) staff.push(parsed.data);
   }

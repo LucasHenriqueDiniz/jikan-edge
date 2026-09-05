@@ -1,7 +1,10 @@
 ---
-status: active
+status: closed
 epic: domain
 ---
+
+> **Closed 2026-09-04.** Moved here from `docs/pitches/` so the pair reads as one thing: this is what
+> was promised, [[the-domain-boundary]] is what happened.
 
 # Point every type arrow inwards
 

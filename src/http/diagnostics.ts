@@ -3,7 +3,7 @@
 // generic INTERNAL_ERROR on every one of the 96 routes, because every route reads `cache_entries`
 // before anything else — see docs/self-hosting.md and issue #1.
 
-export type DatabaseStatus = 'ok' | 'not_configured' | 'not_migrated' | 'unavailable';
+type DatabaseStatus = 'ok' | 'not_configured' | 'not_migrated' | 'unavailable';
 
 /**
  * D1 reports a missing schema as `D1_ERROR: no such table: cache_entries: SQLITE_ERROR`. Matching the
@@ -26,6 +26,7 @@ export async function probeDatabase(db: D1Database | undefined): Promise<Databas
 }
 
 export const SETUP_HINT: Record<'not_configured' | 'not_migrated', string> = {
-  not_configured: 'No D1 database is bound to this Worker. Set d1_databases[0].database_id in wrangler.jsonc — run "npm run setup", or see docs/self-hosting.md.',
+  not_configured:
+    'No D1 database is bound to this Worker. Set d1_databases[0].database_id in wrangler.jsonc — run "npm run setup", or see docs/self-hosting.md.',
   not_migrated: 'The bound D1 database has no schema. Run "npm run db:migrate:remote" — see docs/self-hosting.md.',
 };

@@ -38,12 +38,16 @@ describe('manga detail parser', () => {
 
     it('keeps the MAL id on authors, magazines and every taxonomy', () => {
       expect(detail.authors[0]).toEqual({
-        malId: 1868, name: 'Miura, Kentarou', url: 'https://myanimelist.net/people/1868/Kentarou_Miura',
+        malId: 1868,
+        name: 'Miura, Kentarou',
+        url: 'https://myanimelist.net/people/1868/Kentarou_Miura',
       });
       // MAL lists more than one magazine for some titles, which the old singular `serialization`
       // string could never represent.
       expect(detail.serializations[0]).toEqual({
-        malId: 2, name: 'Young Animal', url: 'https://myanimelist.net/manga/magazine/2/Young_Animal',
+        malId: 2,
+        name: 'Young Animal',
+        url: 'https://myanimelist.net/manga/magazine/2/Young_Animal',
       });
       expect(detail.demographics.map((ref) => ref.malId)).toEqual([41]);
     });

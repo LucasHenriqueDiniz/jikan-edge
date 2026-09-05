@@ -32,7 +32,8 @@ describe('query contract coverage', () => {
       [...message.matchAll(/"([^"]+)"/g)]
         .map((quoted) => quoted[1])
         .filter((token) => token !== name && refused.has(token))
-        .map((token) => `${name} -> ${token}`));
+        .map((token) => `${name} -> ${token}`),
+    );
     expect(deadEnds).toEqual([]);
   });
 });

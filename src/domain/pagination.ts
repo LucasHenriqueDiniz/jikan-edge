@@ -1,6 +1,6 @@
-import { ServiceError } from '../services/cacheable';
+import { ServiceError } from './errors';
 
-export interface Pagination {
+interface Pagination {
   page: number;
   limit: number;
   count: number;
@@ -19,9 +19,11 @@ const DEFAULT_LIMIT = 100;
 // which is how `?page=abc` used to become page 1 without a word to the caller.
 function positiveInteger(raw: string | undefined, name: string, max: number, fallback: number): number {
   if (raw === undefined || raw === '') return fallback;
-  if (!/^\d+$/.test(raw)) throw new ServiceError(`INVALID_${name}`, 400, `"${name.toLowerCase()}" must be a whole number.`);
+  if (!/^\d+$/.test(raw))
+    throw new ServiceError(`INVALID_${name}`, 400, `"${name.toLowerCase()}" must be a whole number.`);
   const value = Number(raw);
-  if (value < 1 || value > max) throw new ServiceError(`INVALID_${name}`, 400, `"${name.toLowerCase()}" must be between 1 and ${max}.`);
+  if (value < 1 || value > max)
+    throw new ServiceError(`INVALID_${name}`, 400, `"${name.toLowerCase()}" must be between 1 and ${max}.`);
   return value;
 }
 

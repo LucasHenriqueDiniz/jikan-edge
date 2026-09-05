@@ -1,5 +1,14 @@
 import type { RuntimeConfig } from '../config/env';
-import { ANIME_PARSER_VERSION, SEASON_PARSER_VERSION, TOP_ANIME_PARSER_VERSION, type AnimeDetail, type AnimeListEntry, type ExternalLink, type RelationEntry, type StreamingEntry } from '../domain/anime';
+import {
+  ANIME_PARSER_VERSION,
+  SEASON_PARSER_VERSION,
+  TOP_ANIME_PARSER_VERSION,
+  type AnimeDetail,
+  type AnimeListEntry,
+  type ExternalLink,
+  type RelationEntry,
+  type StreamingEntry,
+} from '../domain/anime';
 import { GENRE_PARSER_VERSION, type GenreTaxonomyEntry } from '../domain/genre';
 import { ANIME_FULL_PARSER_VERSION, type AnimeFull } from '../domain/anime-full';
 import type { AnimeThemeSongs } from '../domain/anime-theme';
@@ -31,19 +40,60 @@ import { parseSeasonNow } from '../parsers/season-now.parser';
 import { parseTitleVideos } from '../parsers/videos.parser';
 import { parseEpisodeDetail } from '../parsers/episode-detail.parser';
 import { parseTitleUserUpdates } from '../parsers/title-userupdates.parser';
-import { SEASON_ARCHIVE_PARSER_VERSION, parseSeasonArchive, type SeasonArchiveEntry } from '../parsers/season-archive.parser';
-import { SCHEDULE_DAYS, SCHEDULE_PARSER_VERSION, parseScheduleByDay, type ScheduleByDay, type ScheduleDay } from '../parsers/schedule.parser';
+import {
+  SEASON_ARCHIVE_PARSER_VERSION,
+  parseSeasonArchive,
+  type SeasonArchiveEntry,
+} from '../parsers/season-archive.parser';
+import {
+  SCHEDULE_DAYS,
+  SCHEDULE_PARSER_VERSION,
+  parseScheduleByDay,
+  type ScheduleByDay,
+  type ScheduleDay,
+} from '../parsers/schedule.parser';
 import { parseTopAnime } from '../parsers/top-anime.parser';
 import type { CatalogSource } from '../ports/driven/catalog-source.port';
 import type { CatalogStore } from '../ports/driven/catalog-store.port';
-import { animeDetailUrl, charactersUrl, episodeDetailUrl, episodesUrl, forumUrl, genreTaxonomyUrl, moreInfoUrl, newsUrl, picturesUrl, scheduleUrl, seasonArchiveUrl, seasonByYearUrl, seasonNowUrl, seasonUpcomingUrl, statisticsUrl, titleRecommendationsUrl, titleReviewsUrl, TOP_ANIME_FILTERS, topAnimeUrl, videosUrl } from '../source/mal-urls';
+import {
+  animeDetailUrl,
+  charactersUrl,
+  episodeDetailUrl,
+  episodesUrl,
+  forumUrl,
+  genreTaxonomyUrl,
+  moreInfoUrl,
+  newsUrl,
+  picturesUrl,
+  scheduleUrl,
+  seasonArchiveUrl,
+  seasonByYearUrl,
+  seasonNowUrl,
+  seasonUpcomingUrl,
+  statisticsUrl,
+  titleRecommendationsUrl,
+  titleReviewsUrl,
+  TOP_ANIME_FILTERS,
+  topAnimeUrl,
+  videosUrl,
+} from '../source/mal-urls';
 import { parseTopFilter } from './top-filter';
 import { CHARACTER_PAGE_BUDGET, refreshLeaseSecondsFor } from '../source/fetch-policy';
-import { type CacheDeps, ServiceError, type ServiceResponse, sourceError, type WaitUntil, withCache } from './cacheable';
+import {
+  type CacheDeps,
+  ServiceError,
+  type ServiceResponse,
+  sourceError,
+  type WaitUntil,
+  withCache,
+} from './cacheable';
 import { parseGenreFilter } from './genre-filter';
 
 const GENRES_CACHE_KEY = 'catalog:genres:anime';
-interface AnimeCharactersAndStaff { characters: CharacterRole[]; staff: StaffMember[] }
+interface AnimeCharactersAndStaff {
+  characters: CharacterRole[];
+  staff: StaffMember[];
+}
 const VALID_SEASONS = new Set(['winter', 'spring', 'summer', 'fall']);
 
 export class AnimeService {
@@ -56,41 +106,66 @@ export class AnimeService {
   // than reached for. The optional `source` parameter is gone with it: a dependency that defaults to
   // a real adapter is a composition root hiding in a constructor, and it was also what let a test
   // pass a stand-in the compiler never checked.
-  constructor(store: CatalogStore, private readonly source: CatalogSource, private readonly config: RuntimeConfig, waitUntil?: WaitUntil) {
-    this.cache = store.cacheEntries; this.deps = { cache: store.cacheEntries, locks: store.refreshLeases, waitUntil }; this.anime = store.anime; this.catalog = store.catalogLists;
+  constructor(
+    store: CatalogStore,
+    private readonly source: CatalogSource,
+    private readonly config: RuntimeConfig,
+    waitUntil?: WaitUntil,
+  ) {
+    this.cache = store.cacheEntries;
+    this.deps = { cache: store.cacheEntries, locks: store.refreshLeases, waitUntil };
+    this.anime = store.anime;
+    this.catalog = store.catalogLists;
   }
 
   private validateMalId(rawId: string): number {
     const malId = Number.parseInt(rawId, 10);
-    if (!Number.isInteger(malId) || malId <= 0 || String(malId) !== rawId) throw new ServiceError('INVALID_ANIME_ID', 400, 'Anime id is invalid.');
+    if (!Number.isInteger(malId) || malId <= 0 || String(malId) !== rawId)
+      throw new ServiceError('INVALID_ANIME_ID', 400, 'Anime id is invalid.');
     return malId;
   }
 
   async detail(rawId: string, requestId: string): Promise<ServiceResponse<AnimeDetail>> {
     const malId = this.validateMalId(rawId);
-    return withCache(this.deps, `anime:${malId}:detail`, this.config.animeTtlSeconds, ANIME_PARSER_VERSION, () => this.anime.get(malId), async () => {
-      const source = await this.source.getHtml(animeDetailUrl(malId), ['Score:', 'Genre']);
-      if (source.kind !== 'success') throw sourceError(source);
-      const fetchedAt = new Date().toISOString();
-      const detail = parseAnimeDetail(source.value, malId, fetchedAt);
-      await this.anime.put(detail, fetchedAt, ANIME_PARSER_VERSION);
-      await this.primeFullCache(malId, source.value, fetchedAt);
-      return detail;
-    }, requestId);
+    return withCache(
+      this.deps,
+      `anime:${malId}:detail`,
+      this.config.animeTtlSeconds,
+      ANIME_PARSER_VERSION,
+      () => this.anime.get(malId),
+      async () => {
+        const source = await this.source.getHtml(animeDetailUrl(malId), ['Score:', 'Genre']);
+        if (source.kind !== 'success') throw sourceError(source);
+        const fetchedAt = new Date().toISOString();
+        const detail = parseAnimeDetail(source.value, malId, fetchedAt);
+        await this.anime.put(detail, fetchedAt, ANIME_PARSER_VERSION);
+        await this.primeFullCache(malId, source.value, fetchedAt);
+        return detail;
+      },
+      requestId,
+    );
   }
 
   full(rawId: string, requestId: string): Promise<ServiceResponse<AnimeFull>> {
     const malId = this.validateMalId(rawId);
     const cacheKey = `catalog:anime:${malId}:full`;
-    return withCache(this.deps, cacheKey, this.config.animeTtlSeconds, ANIME_FULL_PARSER_VERSION, () => this.catalog.get<AnimeFull>(cacheKey), async () => {
-      const source = await this.source.getHtml(animeDetailUrl(malId), ['Score:', 'Genre']);
-      if (source.kind !== 'success') throw sourceError(source);
-      const fetchedAt = new Date().toISOString();
-      const full = parseAnimeFull(source.value, malId, fetchedAt);
-      await this.catalog.put(cacheKey, full, fetchedAt, ANIME_FULL_PARSER_VERSION);
-      await this.primeDetailCache(malId, full, fetchedAt);
-      return full;
-    }, requestId);
+    return withCache(
+      this.deps,
+      cacheKey,
+      this.config.animeTtlSeconds,
+      ANIME_FULL_PARSER_VERSION,
+      () => this.catalog.get<AnimeFull>(cacheKey),
+      async () => {
+        const source = await this.source.getHtml(animeDetailUrl(malId), ['Score:', 'Genre']);
+        if (source.kind !== 'success') throw sourceError(source);
+        const fetchedAt = new Date().toISOString();
+        const full = parseAnimeFull(source.value, malId, fetchedAt);
+        await this.catalog.put(cacheKey, full, fetchedAt, ANIME_FULL_PARSER_VERSION);
+        await this.primeDetailCache(malId, full, fetchedAt);
+        return full;
+      },
+      requestId,
+    );
   }
 
   // detail() and full() read the exact same MAL page. Left alone, a client that calls both close
@@ -106,7 +181,9 @@ export class AnimeService {
       await this.catalog.put(cacheKey, full, fetchedAt, ANIME_FULL_PARSER_VERSION);
       await this.primeCacheEntry(cacheKey, ANIME_FULL_PARSER_VERSION, fetchedAt);
     } catch (error) {
-      console.warn(JSON.stringify({ type: 'cache_priming_failed', resource: 'anime_full', malId, error: String(error) }));
+      console.warn(
+        JSON.stringify({ type: 'cache_priming_failed', resource: 'anime_full', malId, error: String(error) }),
+      );
     }
   }
 
@@ -118,7 +195,9 @@ export class AnimeService {
       await this.anime.put(detail, fetchedAt, ANIME_PARSER_VERSION);
       await this.primeCacheEntry(`anime:${malId}:detail`, ANIME_PARSER_VERSION, fetchedAt);
     } catch (error) {
-      console.warn(JSON.stringify({ type: 'cache_priming_failed', resource: 'anime_detail', malId, error: String(error) }));
+      console.warn(
+        JSON.stringify({ type: 'cache_priming_failed', resource: 'anime_detail', malId, error: String(error) }),
+      );
     }
   }
 
@@ -142,17 +221,33 @@ export class AnimeService {
     return { ...result, data: result.data.streaming };
   }
 
-  private async charactersAndStaff(rawId: string, requestId: string): Promise<ServiceResponse<AnimeCharactersAndStaff>> {
+  private async charactersAndStaff(
+    rawId: string,
+    requestId: string,
+  ): Promise<ServiceResponse<AnimeCharactersAndStaff>> {
     const malId = this.validateMalId(rawId);
     const cacheKey = `catalog:anime:${malId}:characters-staff`;
-    return withCache(this.deps, cacheKey, this.config.animeTtlSeconds, CHARACTERS_STAFF_PARSER_VERSION, () => this.catalog.get<AnimeCharactersAndStaff>(cacheKey), async () => {
-      const source = await this.source.getHtml(charactersUrl('anime', malId), ['js-anime-character-table'], CHARACTER_PAGE_BUDGET);
-      if (source.kind !== 'success') throw sourceError(source);
-      const value = { characters: parseCharacters(source.value, 'anime'), staff: parseStaff(source.value) };
-      const fetchedAt = new Date().toISOString();
-      await this.catalog.put(cacheKey, value, fetchedAt, CHARACTERS_STAFF_PARSER_VERSION);
-      return value;
-    }, requestId, refreshLeaseSecondsFor(CHARACTER_PAGE_BUDGET));
+    return withCache(
+      this.deps,
+      cacheKey,
+      this.config.animeTtlSeconds,
+      CHARACTERS_STAFF_PARSER_VERSION,
+      () => this.catalog.get<AnimeCharactersAndStaff>(cacheKey),
+      async () => {
+        const source = await this.source.getHtml(
+          charactersUrl('anime', malId),
+          ['js-anime-character-table'],
+          CHARACTER_PAGE_BUDGET,
+        );
+        if (source.kind !== 'success') throw sourceError(source);
+        const value = { characters: parseCharacters(source.value, 'anime'), staff: parseStaff(source.value) };
+        const fetchedAt = new Date().toISOString();
+        await this.catalog.put(cacheKey, value, fetchedAt, CHARACTERS_STAFF_PARSER_VERSION);
+        return value;
+      },
+      requestId,
+      refreshLeaseSecondsFor(CHARACTER_PAGE_BUDGET),
+    );
   }
 
   async characters(rawId: string, requestId: string): Promise<ServiceResponse<CharacterRole[]>> {
@@ -165,70 +260,158 @@ export class AnimeService {
     return { ...result, data: result.data.staff };
   }
 
-  private async perAnimeResource<T>(rawId: string, resource: string, url: string, requiredMarkers: string[], parserVersion: string, parse: (html: string) => T, requestId: string): Promise<ServiceResponse<T>> {
+  private async perAnimeResource<T>(
+    rawId: string,
+    resource: string,
+    url: string,
+    requiredMarkers: string[],
+    parserVersion: string,
+    parse: (html: string) => T,
+    requestId: string,
+  ): Promise<ServiceResponse<T>> {
     const malId = this.validateMalId(rawId);
     const cacheKey = `catalog:anime:${malId}:${resource}`;
-    return withCache(this.deps, cacheKey, this.config.animeTtlSeconds, parserVersion, () => this.catalog.get<T>(cacheKey), async () => {
-      const source = await this.source.getHtml(url, requiredMarkers);
-      if (source.kind !== 'success') throw sourceError(source);
-      const value = parse(source.value);
-      const fetchedAt = new Date().toISOString();
-      await this.catalog.put(cacheKey, value, fetchedAt, parserVersion);
-      return value;
-    }, requestId);
+    return withCache(
+      this.deps,
+      cacheKey,
+      this.config.animeTtlSeconds,
+      parserVersion,
+      () => this.catalog.get<T>(cacheKey),
+      async () => {
+        const source = await this.source.getHtml(url, requiredMarkers);
+        if (source.kind !== 'success') throw sourceError(source);
+        const value = parse(source.value);
+        const fetchedAt = new Date().toISOString();
+        await this.catalog.put(cacheKey, value, fetchedAt, parserVersion);
+        return value;
+      },
+      requestId,
+    );
   }
 
   statistics(rawId: string, requestId: string): Promise<ServiceResponse<EntryStatistics>> {
     const malId = this.validateMalId(rawId);
-    return this.perAnimeResource(rawId, 'statistics', statisticsUrl('anime', malId), ['Summary Stats'], STATISTICS_PARSER_VERSION, (html) => parseStatistics(html), requestId);
+    return this.perAnimeResource(
+      rawId,
+      'statistics',
+      statisticsUrl('anime', malId),
+      ['Summary Stats'],
+      STATISTICS_PARSER_VERSION,
+      (html) => parseStatistics(html),
+      requestId,
+    );
   }
 
   pictures(rawId: string, requestId: string): Promise<ServiceResponse<Picture[]>> {
     const malId = this.validateMalId(rawId);
-    return this.perAnimeResource(rawId, 'pictures', picturesUrl('anime', malId), ['js-picture-gallery'], PICTURES_PARSER_VERSION, parsePictures, requestId);
+    return this.perAnimeResource(
+      rawId,
+      'pictures',
+      picturesUrl('anime', malId),
+      ['js-picture-gallery'],
+      PICTURES_PARSER_VERSION,
+      parsePictures,
+      requestId,
+    );
   }
 
   news(rawId: string, requestId: string): Promise<ServiceResponse<NewsItem[]>> {
     const malId = this.validateMalId(rawId);
-    return this.perAnimeResource(rawId, 'news', newsUrl('anime', malId), ['read more'], NEWS_PARSER_VERSION, parseNews, requestId);
+    return this.perAnimeResource(
+      rawId,
+      'news',
+      newsUrl('anime', malId),
+      ['read more'],
+      NEWS_PARSER_VERSION,
+      parseNews,
+      requestId,
+    );
   }
 
   forum(rawId: string, requestId: string): Promise<ServiceResponse<ForumThread[]>> {
     const malId = this.validateMalId(rawId);
-    return this.perAnimeResource(rawId, 'forum', forumUrl('anime', malId), ['data-topic-id'], FORUM_PARSER_VERSION, parseForum, requestId);
+    return this.perAnimeResource(
+      rawId,
+      'forum',
+      forumUrl('anime', malId),
+      ['data-topic-id'],
+      FORUM_PARSER_VERSION,
+      parseForum,
+      requestId,
+    );
   }
 
   episodes(rawId: string, requestId: string): Promise<ServiceResponse<Episode[]>> {
     const malId = this.validateMalId(rawId);
-    return this.perAnimeResource(rawId, 'episodes', episodesUrl(malId), ['episode-list-data'], EPISODES_PARSER_VERSION, parseEpisodes, requestId);
+    return this.perAnimeResource(
+      rawId,
+      'episodes',
+      episodesUrl(malId),
+      ['episode-list-data'],
+      EPISODES_PARSER_VERSION,
+      parseEpisodes,
+      requestId,
+    );
   }
 
   recommendations(rawId: string, requestId: string): Promise<ServiceResponse<TitleRecommendation[]>> {
     const malId = this.validateMalId(rawId);
-    return this.perAnimeResource(rawId, 'recommendations', titleRecommendationsUrl('anime', malId), ['picSurround'], TITLE_RECOMMENDATIONS_PARSER_VERSION, (html) => parseTitleRecommendations(html, 'anime'), requestId);
+    return this.perAnimeResource(
+      rawId,
+      'recommendations',
+      titleRecommendationsUrl('anime', malId),
+      ['picSurround'],
+      TITLE_RECOMMENDATIONS_PARSER_VERSION,
+      (html) => parseTitleRecommendations(html, 'anime'),
+      requestId,
+    );
   }
 
   reviews(rawId: string, page: number, requestId: string): Promise<ServiceResponse<TitleReview[]>> {
     const malId = this.validateMalId(rawId);
     const cacheKey = `catalog:anime:${malId}:reviews:page:${page}`;
-    return withCache(this.deps, cacheKey, this.config.animeTtlSeconds, TITLE_REVIEWS_PARSER_VERSION, () => this.catalog.get<TitleReview[]>(cacheKey), async () => {
-      const source = await this.source.getHtml(titleReviewsUrl('anime', malId, page), ['review-element']);
-      if (source.kind !== 'success') throw sourceError(source);
-      const value = parseTitleReviews(source.value);
-      const fetchedAt = new Date().toISOString();
-      await this.catalog.put(cacheKey, value, fetchedAt, TITLE_REVIEWS_PARSER_VERSION);
-      return value;
-    }, requestId);
+    return withCache(
+      this.deps,
+      cacheKey,
+      this.config.animeTtlSeconds,
+      TITLE_REVIEWS_PARSER_VERSION,
+      () => this.catalog.get<TitleReview[]>(cacheKey),
+      async () => {
+        const source = await this.source.getHtml(titleReviewsUrl('anime', malId, page), ['review-element']);
+        if (source.kind !== 'success') throw sourceError(source);
+        const value = parseTitleReviews(source.value);
+        const fetchedAt = new Date().toISOString();
+        await this.catalog.put(cacheKey, value, fetchedAt, TITLE_REVIEWS_PARSER_VERSION);
+        return value;
+      },
+      requestId,
+    );
   }
 
   moreInfo(rawId: string, requestId: string): Promise<ServiceResponse<MoreInfo>> {
     const malId = this.validateMalId(rawId);
-    return this.perAnimeResource(rawId, 'moreinfo', moreInfoUrl('anime', malId), ['id="content"'], MORE_INFO_PARSER_VERSION, parseMoreInfo, requestId);
+    return this.perAnimeResource(
+      rawId,
+      'moreinfo',
+      moreInfoUrl('anime', malId),
+      ['id="content"'],
+      MORE_INFO_PARSER_VERSION,
+      parseMoreInfo,
+      requestId,
+    );
   }
 
   videos(rawId: string, requestId: string): Promise<ServiceResponse<TitleVideos>> {
     const malId = this.validateMalId(rawId);
-    return this.perAnimeResource(rawId, 'videos', videosUrl(malId), ['id="content"'], VIDEOS_PARSER_VERSION, parseTitleVideos, requestId);
+    return this.perAnimeResource(
+      rawId,
+      'videos',
+      videosUrl(malId),
+      ['id="content"'],
+      VIDEOS_PARSER_VERSION,
+      parseTitleVideos,
+      requestId,
+    );
   }
 
   async videosEpisodes(rawId: string, requestId: string): Promise<ServiceResponse<EpisodeVideoEntry[]>> {
@@ -239,13 +422,30 @@ export class AnimeService {
   episodeDetail(rawId: string, rawEpisode: string, requestId: string): Promise<ServiceResponse<EpisodeDetail>> {
     const malId = this.validateMalId(rawId);
     const episode = Number.parseInt(rawEpisode, 10);
-    if (!Number.isInteger(episode) || episode <= 0 || String(episode) !== rawEpisode) throw new ServiceError('INVALID_EPISODE', 400, 'Episode number is invalid.');
-    return this.perAnimeResource(rawId, `episode:${episode}`, episodeDetailUrl(malId, episode), ['Synopsis'], EPISODE_DETAIL_PARSER_VERSION, (html) => parseEpisodeDetail(html, malId, episode), requestId);
+    if (!Number.isInteger(episode) || episode <= 0 || String(episode) !== rawEpisode)
+      throw new ServiceError('INVALID_EPISODE', 400, 'Episode number is invalid.');
+    return this.perAnimeResource(
+      rawId,
+      `episode:${episode}`,
+      episodeDetailUrl(malId, episode),
+      ['Synopsis'],
+      EPISODE_DETAIL_PARSER_VERSION,
+      (html) => parseEpisodeDetail(html, malId, episode),
+      requestId,
+    );
   }
 
   userUpdates(rawId: string, requestId: string): Promise<ServiceResponse<TitleUserUpdate[]>> {
     const malId = this.validateMalId(rawId);
-    return this.perAnimeResource(rawId, 'userupdates', statisticsUrl('anime', malId), ['Summary Stats'], TITLE_USERUPDATES_PARSER_VERSION, parseTitleUserUpdates, requestId);
+    return this.perAnimeResource(
+      rawId,
+      'userupdates',
+      statisticsUrl('anime', malId),
+      ['Summary Stats'],
+      TITLE_USERUPDATES_PARSER_VERSION,
+      parseTitleUserUpdates,
+      requestId,
+    );
   }
 
   async themes(rawId: string, requestId: string): Promise<ServiceResponse<AnimeThemeSongs>> {
@@ -255,93 +455,163 @@ export class AnimeService {
 
   async genres(rawFilter: string | undefined, requestId: string): Promise<ServiceResponse<GenreTaxonomyEntry[]>> {
     const filter = parseGenreFilter(rawFilter);
-    const result = await withCache(this.deps, GENRES_CACHE_KEY, this.config.catalogTtlSeconds, GENRE_PARSER_VERSION, () => this.catalog.get<GenreTaxonomyEntry[]>(GENRES_CACHE_KEY), async () => {
-      const source = await this.source.getHtml(genreTaxonomyUrl('anime'), ['category-type', 'name="genre[]"']);
-      if (source.kind !== 'success') throw sourceError(source);
-      const value = parseGenreTaxonomy(source.value, 'anime');
-      const fetchedAt = new Date().toISOString();
-      await this.catalog.put(GENRES_CACHE_KEY, value, fetchedAt, GENRE_PARSER_VERSION);
-      return value;
-    }, requestId);
+    const result = await withCache(
+      this.deps,
+      GENRES_CACHE_KEY,
+      this.config.catalogTtlSeconds,
+      GENRE_PARSER_VERSION,
+      () => this.catalog.get<GenreTaxonomyEntry[]>(GENRES_CACHE_KEY),
+      async () => {
+        const source = await this.source.getHtml(genreTaxonomyUrl('anime'), ['category-type', 'name="genre[]"']);
+        if (source.kind !== 'success') throw sourceError(source);
+        const value = parseGenreTaxonomy(source.value, 'anime');
+        const fetchedAt = new Date().toISOString();
+        await this.catalog.put(GENRES_CACHE_KEY, value, fetchedAt, GENRE_PARSER_VERSION);
+        return value;
+      },
+      requestId,
+    );
     return filter ? { ...result, data: result.data.filter((entry) => entry.type === filter) } : result;
   }
 
-  async topAnime(page: number, rawFilter: string | undefined, requestId: string): Promise<ServiceResponse<AnimeListEntry[]>> {
+  async topAnime(
+    page: number,
+    rawFilter: string | undefined,
+    requestId: string,
+  ): Promise<ServiceResponse<AnimeListEntry[]>> {
     const filter = parseTopFilter(rawFilter, TOP_ANIME_FILTERS);
     const cacheKey = `catalog:top:anime:page:${page}${filter ? `:${filter}` : ''}`;
-    return withCache(this.deps, cacheKey, this.config.catalogTtlSeconds, TOP_ANIME_PARSER_VERSION, () => this.catalog.get<AnimeListEntry[]>(cacheKey), async () => {
-      const source = await this.source.getHtml(topAnimeUrl(page, filter), ['ranking-list']);
-      if (source.kind !== 'success') throw sourceError(source);
-      const value = parseTopAnime(source.value);
-      const fetchedAt = new Date().toISOString();
-      await this.catalog.put(cacheKey, value, fetchedAt, TOP_ANIME_PARSER_VERSION);
-      return value;
-    }, requestId);
+    return withCache(
+      this.deps,
+      cacheKey,
+      this.config.catalogTtlSeconds,
+      TOP_ANIME_PARSER_VERSION,
+      () => this.catalog.get<AnimeListEntry[]>(cacheKey),
+      async () => {
+        const source = await this.source.getHtml(topAnimeUrl(page, filter), ['ranking-list']);
+        if (source.kind !== 'success') throw sourceError(source);
+        const value = parseTopAnime(source.value);
+        const fetchedAt = new Date().toISOString();
+        await this.catalog.put(cacheKey, value, fetchedAt, TOP_ANIME_PARSER_VERSION);
+        return value;
+      },
+      requestId,
+    );
   }
 
   async seasonNow(requestId: string): Promise<ServiceResponse<AnimeListEntry[]>> {
     const cacheKey = 'catalog:season:now';
-    return withCache(this.deps, cacheKey, this.config.catalogTtlSeconds, SEASON_PARSER_VERSION, () => this.catalog.get<AnimeListEntry[]>(cacheKey), async () => {
-      const source = await this.source.getHtml(seasonNowUrl(), ['seasonal-anime']);
-      if (source.kind !== 'success') throw sourceError(source);
-      const value = parseSeasonNow(source.value);
-      const fetchedAt = new Date().toISOString();
-      await this.catalog.put(cacheKey, value, fetchedAt, SEASON_PARSER_VERSION);
-      return value;
-    }, requestId);
+    return withCache(
+      this.deps,
+      cacheKey,
+      this.config.catalogTtlSeconds,
+      SEASON_PARSER_VERSION,
+      () => this.catalog.get<AnimeListEntry[]>(cacheKey),
+      async () => {
+        const source = await this.source.getHtml(seasonNowUrl(), ['seasonal-anime']);
+        if (source.kind !== 'success') throw sourceError(source);
+        const value = parseSeasonNow(source.value);
+        const fetchedAt = new Date().toISOString();
+        await this.catalog.put(cacheKey, value, fetchedAt, SEASON_PARSER_VERSION);
+        return value;
+      },
+      requestId,
+    );
   }
 
-  async seasonByYear(rawYear: string, rawSeason: string, requestId: string): Promise<ServiceResponse<AnimeListEntry[]>> {
+  async seasonByYear(
+    rawYear: string,
+    rawSeason: string,
+    requestId: string,
+  ): Promise<ServiceResponse<AnimeListEntry[]>> {
     const year = Number.parseInt(rawYear, 10);
     const season = rawSeason.toLowerCase();
-    if (!Number.isInteger(year) || year < 1917 || year > 2100 || String(year) !== rawYear) throw new ServiceError('INVALID_SEASON_YEAR', 400, 'Season year is invalid.');
-    if (!VALID_SEASONS.has(season)) throw new ServiceError('INVALID_SEASON', 400, 'Season must be one of winter, spring, summer, fall.');
+    if (!Number.isInteger(year) || year < 1917 || year > 2100 || String(year) !== rawYear)
+      throw new ServiceError('INVALID_SEASON_YEAR', 400, 'Season year is invalid.');
+    if (!VALID_SEASONS.has(season))
+      throw new ServiceError('INVALID_SEASON', 400, 'Season must be one of winter, spring, summer, fall.');
     const cacheKey = `catalog:season:${year}:${season}`;
-    return withCache(this.deps, cacheKey, this.config.catalogTtlSeconds, SEASON_PARSER_VERSION, () => this.catalog.get<AnimeListEntry[]>(cacheKey), async () => {
-      const source = await this.source.getHtml(seasonByYearUrl(year, season), ['seasonal-anime']);
-      if (source.kind !== 'success') throw sourceError(source);
-      const value = parseSeasonNow(source.value);
-      const fetchedAt = new Date().toISOString();
-      await this.catalog.put(cacheKey, value, fetchedAt, SEASON_PARSER_VERSION);
-      return value;
-    }, requestId);
+    return withCache(
+      this.deps,
+      cacheKey,
+      this.config.catalogTtlSeconds,
+      SEASON_PARSER_VERSION,
+      () => this.catalog.get<AnimeListEntry[]>(cacheKey),
+      async () => {
+        const source = await this.source.getHtml(seasonByYearUrl(year, season), ['seasonal-anime']);
+        if (source.kind !== 'success') throw sourceError(source);
+        const value = parseSeasonNow(source.value);
+        const fetchedAt = new Date().toISOString();
+        await this.catalog.put(cacheKey, value, fetchedAt, SEASON_PARSER_VERSION);
+        return value;
+      },
+      requestId,
+    );
   }
 
   async seasonUpcoming(requestId: string): Promise<ServiceResponse<AnimeListEntry[]>> {
     const cacheKey = 'catalog:season:upcoming';
-    return withCache(this.deps, cacheKey, this.config.catalogTtlSeconds, SEASON_PARSER_VERSION, () => this.catalog.get<AnimeListEntry[]>(cacheKey), async () => {
-      const source = await this.source.getHtml(seasonUpcomingUrl(), ['seasonal-anime']);
-      if (source.kind !== 'success') throw sourceError(source);
-      const value = parseSeasonNow(source.value);
-      const fetchedAt = new Date().toISOString();
-      await this.catalog.put(cacheKey, value, fetchedAt, SEASON_PARSER_VERSION);
-      return value;
-    }, requestId);
+    return withCache(
+      this.deps,
+      cacheKey,
+      this.config.catalogTtlSeconds,
+      SEASON_PARSER_VERSION,
+      () => this.catalog.get<AnimeListEntry[]>(cacheKey),
+      async () => {
+        const source = await this.source.getHtml(seasonUpcomingUrl(), ['seasonal-anime']);
+        if (source.kind !== 'success') throw sourceError(source);
+        const value = parseSeasonNow(source.value);
+        const fetchedAt = new Date().toISOString();
+        await this.catalog.put(cacheKey, value, fetchedAt, SEASON_PARSER_VERSION);
+        return value;
+      },
+      requestId,
+    );
   }
 
   async seasonArchive(requestId: string): Promise<ServiceResponse<SeasonArchiveEntry[]>> {
     const cacheKey = 'catalog:season:archive';
-    return withCache(this.deps, cacheKey, this.config.catalogTtlSeconds, SEASON_ARCHIVE_PARSER_VERSION, () => this.catalog.get<SeasonArchiveEntry[]>(cacheKey), async () => {
-      const source = await this.source.getHtml(seasonArchiveUrl(), ['season/1']);
-      if (source.kind !== 'success') throw sourceError(source);
-      const value = parseSeasonArchive(source.value);
-      await this.catalog.put(cacheKey, value, new Date().toISOString(), SEASON_ARCHIVE_PARSER_VERSION);
-      return value;
-    }, requestId);
+    return withCache(
+      this.deps,
+      cacheKey,
+      this.config.catalogTtlSeconds,
+      SEASON_ARCHIVE_PARSER_VERSION,
+      () => this.catalog.get<SeasonArchiveEntry[]>(cacheKey),
+      async () => {
+        const source = await this.source.getHtml(seasonArchiveUrl(), ['season/1']);
+        if (source.kind !== 'success') throw sourceError(source);
+        const value = parseSeasonArchive(source.value);
+        await this.catalog.put(cacheKey, value, new Date().toISOString(), SEASON_ARCHIVE_PARSER_VERSION);
+        return value;
+      },
+      requestId,
+    );
   }
 
-  async schedule(rawFilter: string | undefined, requestId: string): Promise<ServiceResponse<ScheduleByDay | AnimeListEntry[]>> {
+  async schedule(
+    rawFilter: string | undefined,
+    requestId: string,
+  ): Promise<ServiceResponse<ScheduleByDay | AnimeListEntry[]>> {
     const filter = rawFilter?.toLowerCase();
-    if (filter !== undefined && !SCHEDULE_DAYS.includes(filter as ScheduleDay)) throw new ServiceError('INVALID_FILTER', 400, `Invalid "filter"; allowed: ${SCHEDULE_DAYS.join(', ')}.`);
+    if (filter !== undefined && !SCHEDULE_DAYS.includes(filter as ScheduleDay))
+      throw new ServiceError('INVALID_FILTER', 400, `Invalid "filter"; allowed: ${SCHEDULE_DAYS.join(', ')}.`);
     const cacheKey = 'catalog:schedule:by-day';
-    const result = await withCache(this.deps, cacheKey, this.config.catalogTtlSeconds, SCHEDULE_PARSER_VERSION, () => this.catalog.get<ScheduleByDay>(cacheKey), async () => {
-      const source = await this.source.getHtml(scheduleUrl(), ['seasonal-anime']);
-      if (source.kind !== 'success') throw sourceError(source);
-      const value = parseScheduleByDay(source.value);
-      const fetchedAt = new Date().toISOString();
-      await this.catalog.put(cacheKey, value, fetchedAt, SCHEDULE_PARSER_VERSION);
-      return value;
-    }, requestId);
+    const result = await withCache(
+      this.deps,
+      cacheKey,
+      this.config.catalogTtlSeconds,
+      SCHEDULE_PARSER_VERSION,
+      () => this.catalog.get<ScheduleByDay>(cacheKey),
+      async () => {
+        const source = await this.source.getHtml(scheduleUrl(), ['seasonal-anime']);
+        if (source.kind !== 'success') throw sourceError(source);
+        const value = parseScheduleByDay(source.value);
+        const fetchedAt = new Date().toISOString();
+        await this.catalog.put(cacheKey, value, fetchedAt, SCHEDULE_PARSER_VERSION);
+        return value;
+      },
+      requestId,
+    );
     return filter ? { ...result, data: result.data[filter as ScheduleDay] } : result;
   }
 }

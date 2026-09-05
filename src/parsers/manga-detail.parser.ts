@@ -1,9 +1,33 @@
 import { z } from 'zod';
 import type { MangaDetail } from '../domain/manga';
-import { anchorRefs, backgroundSection, canonicalUrl, capture, COVER_IMAGE, dateRangeSchema, imageSetSchema, imageVariants, labelBlock, labelValue, malRefSchema, numeric, ParserError, parseDateRange, rankedValue, richCapture, taggedImage, titleSynonyms } from './html';
+import {
+  anchorRefs,
+  backgroundSection,
+  canonicalUrl,
+  capture,
+  COVER_IMAGE,
+  dateRangeSchema,
+  imageSetSchema,
+  imageVariants,
+  labelBlock,
+  labelValue,
+  malRefSchema,
+  numeric,
+  ParserError,
+  parseDateRange,
+  rankedValue,
+  richCapture,
+  taggedImage,
+  titleSynonyms,
+} from './html';
 import { extractExternalLinks, extractRelations } from './relations-links';
 
-const relationSchema = z.object({ relation: z.string().min(1), malId: z.number().int().positive(), type: z.enum(['anime', 'manga']), title: z.string().min(1) });
+const relationSchema = z.object({
+  relation: z.string().min(1),
+  malId: z.number().int().positive(),
+  type: z.enum(['anime', 'manga']),
+  title: z.string().min(1),
+});
 const externalLinkSchema = z.object({ name: z.string().min(1), url: z.string().url() });
 
 const mangaDetailSchema = z.object({

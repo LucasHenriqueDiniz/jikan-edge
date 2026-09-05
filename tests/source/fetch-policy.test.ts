@@ -13,11 +13,13 @@ describe('character page fetch budget', () => {
   it('admits the two titles a 5 MiB ceiling still refused', () => {
     for (const [title, page] of Object.entries(MEASURED)) {
       expect(CHARACTER_PAGE_BUDGET.maxBytes, `${title} must fit`).toBeGreaterThan(page.bytes);
-      expect(CHARACTER_PAGE_BUDGET.timeoutMs, `${title} must have time to arrive`).toBeGreaterThan(page.edgeFetchMsWorst);
+      expect(CHARACTER_PAGE_BUDGET.timeoutMs, `${title} must have time to arrive`).toBeGreaterThan(
+        page.edgeFetchMsWorst,
+      );
     }
   });
 
-  it('leaves real headroom rather than fitting snugly around today\'s largest page', () => {
+  it("leaves real headroom rather than fitting snugly around today's largest page", () => {
     // These pages only grow. A budget sized to the current worst case turns ordinary upstream
     // growth into a hard 502 on the day it is crossed, which is the bug this whole change came
     // from — so require margin explicitly instead of trusting that someone will notice.

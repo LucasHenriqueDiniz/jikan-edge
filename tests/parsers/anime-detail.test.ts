@@ -28,7 +28,9 @@ describe('anime detail parser', () => {
     expect(detail.genres.map((ref) => ref.name)).toEqual(['Action', 'Award Winning']);
     expect(detail.themes.map((ref) => ref.name)).toEqual(['Adult Cast', 'Space']);
     expect(detail.studios.map((ref) => ref.name)).toEqual(['Sunrise']);
-    expect(detail.relations).toEqual([{ relation: 'Adaptation', type: 'manga', malId: 174, title: 'Shooting Star Bebop: Cowboy Bebop' }]);
+    expect(detail.relations).toEqual([
+      { relation: 'Adaptation', type: 'manga', malId: 174, title: 'Shooting Star Bebop: Cowboy Bebop' },
+    ]);
     expect(detail.externalLinks).toEqual([
       { name: 'Official Site', url: 'http://www.cowboy-bebop.net/' },
       { name: 'AniDB', url: 'https://anidb.net/perl-bin/animedb.pl?show=anime&aid=23' },
@@ -48,7 +50,9 @@ describe('anime detail parser', () => {
 
     it('keeps the MAL id on every taxonomy reference, closing the loop with ?genres=', () => {
       expect(detail.genres[0]).toEqual({
-        malId: 1, name: 'Action', url: 'https://myanimelist.net/anime/genre/1/Action',
+        malId: 1,
+        name: 'Action',
+        url: 'https://myanimelist.net/anime/genre/1/Action',
       });
       // The ids are the ones `GET /v1/anime?genres=` takes, and the ones /v1/genres/anime lists.
       expect(detail.genres.map((ref) => ref.malId)).toEqual([1, 46, 24]);
@@ -64,7 +68,7 @@ describe('anime detail parser', () => {
       expect(detail.scoredBy).toBeGreaterThan(1_000_000);
     });
 
-    it('splits the aired range into dates while keeping MAL\'s own wording', () => {
+    it("splits the aired range into dates while keeping MAL's own wording", () => {
       expect(detail.aired).toEqual({
         from: '1998-04-03',
         to: '1999-04-24',
@@ -76,7 +80,10 @@ describe('anime detail parser', () => {
       expect(detail.season).toBe('spring');
       expect(detail.year).toBe(1998);
       expect(detail.broadcast).toEqual({
-        day: 'Saturdays', time: '01:00', timezone: 'JST', string: 'Saturdays at 01:00 (JST)',
+        day: 'Saturdays',
+        time: '01:00',
+        timezone: 'JST',
+        string: 'Saturdays at 01:00 (JST)',
       });
     });
 
@@ -97,7 +104,7 @@ describe('anime detail parser', () => {
 
     // The next section's "Edit" link sits before its own <h2>, so a cut anchored only on the
     // heading dragged it into the Background text.
-    it('stops the Background before the next section\'s Edit link', () => {
+    it("stops the Background before the next section's Edit link", () => {
       expect(detail.background).toMatch(/gateway drug.+anime aimed at adult audiences\.$/s);
     });
 

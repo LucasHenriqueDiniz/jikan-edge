@@ -1,9 +1,33 @@
 import { z } from 'zod';
 import type { AnimeDetail, Broadcast, Trailer } from '../domain/anime';
-import { anchorRefs, backgroundSection, canonicalUrl, capture, COVER_IMAGE, dateRangeSchema, imageSetSchema, imageVariants, labelBlock, labelValue, malRefSchema, numeric, ParserError, parseDateRange, rankedValue, richCapture, taggedImage, titleSynonyms } from './html';
+import {
+  anchorRefs,
+  backgroundSection,
+  canonicalUrl,
+  capture,
+  COVER_IMAGE,
+  dateRangeSchema,
+  imageSetSchema,
+  imageVariants,
+  labelBlock,
+  labelValue,
+  malRefSchema,
+  numeric,
+  ParserError,
+  parseDateRange,
+  rankedValue,
+  richCapture,
+  taggedImage,
+  titleSynonyms,
+} from './html';
 import { extractExternalLinks, extractRelations, extractStreaming } from './relations-links';
 
-const relationSchema = z.object({ relation: z.string().min(1), malId: z.number().int().positive(), type: z.enum(['anime', 'manga']), title: z.string().min(1) });
+const relationSchema = z.object({
+  relation: z.string().min(1),
+  malId: z.number().int().positive(),
+  type: z.enum(['anime', 'manga']),
+  title: z.string().min(1),
+});
 const externalLinkSchema = z.object({ name: z.string().min(1), url: z.string().url() });
 const streamingSchema = z.object({ name: z.string().min(1), url: z.string().url(), available: z.boolean() });
 
@@ -16,7 +40,11 @@ const animeDetailSchema = z.object({
   titleSynonyms: z.array(z.string()),
   imageUrl: z.string().url().nullable(),
   images: imageSetSchema,
-  trailer: z.object({ youtubeId: z.string().nullable(), url: z.string().url().nullable(), embedUrl: z.string().url().nullable() }),
+  trailer: z.object({
+    youtubeId: z.string().nullable(),
+    url: z.string().url().nullable(),
+    embedUrl: z.string().url().nullable(),
+  }),
   synopsis: z.string().nullable(),
   background: z.string().nullable(),
   type: z.string().nullable(),
@@ -26,7 +54,12 @@ const animeDetailSchema = z.object({
   aired: dateRangeSchema,
   season: z.string().nullable(),
   year: z.number().nullable(),
-  broadcast: z.object({ day: z.string().nullable(), time: z.string().nullable(), timezone: z.string().nullable(), string: z.string().nullable() }),
+  broadcast: z.object({
+    day: z.string().nullable(),
+    time: z.string().nullable(),
+    timezone: z.string().nullable(),
+    string: z.string().nullable(),
+  }),
   studios: z.array(malRefSchema),
   producers: z.array(malRefSchema),
   licensors: z.array(malRefSchema),
@@ -70,7 +103,9 @@ function broadcast(html: string): Broadcast {
 // The promo block links a youtube-nocookie embed; the watch URL is derived from the id rather than
 // present on the page.
 function trailer(html: string): Trailer {
-  const embedUrl = html.match(/video-promotion[\s\S]{0,300}?href="(https:\/\/www\.youtube-nocookie\.com\/embed\/[^"]+)"/i)?.[1] ?? null;
+  const embedUrl =
+    html.match(/video-promotion[\s\S]{0,300}?href="(https:\/\/www\.youtube-nocookie\.com\/embed\/[^"]+)"/i)?.[1] ??
+    null;
   const youtubeId = embedUrl?.match(/embed\/([A-Za-z0-9_-]+)/)?.[1] ?? null;
   return { youtubeId, url: youtubeId ? `https://www.youtube.com/watch?v=${youtubeId}` : null, embedUrl };
 }

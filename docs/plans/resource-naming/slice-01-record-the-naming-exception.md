@@ -78,3 +78,7 @@ was renamed.
 
 The *If stuck* branch — the owner deciding to rename after all — did not happen, so no
 cutover plan is needed.
+
+---
+
+Closed by [[cloudflare-resource-naming-exception]] (`docs/postmortem/`). The pitch moved with it, as `docs/postmortem/pitch-cloudflare-resource-naming-exception.md`.

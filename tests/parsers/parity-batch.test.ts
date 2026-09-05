@@ -8,14 +8,23 @@ import { parseClubRelations } from '../../src/parsers/club-relations.parser';
 
 describe('producers list parser', () => {
   function buildDirectory(count: number): string {
-    const entries = Array.from({ length: count }, (_, index) => `<a href="/anime/producer/${index + 1}/P_${index + 1}" class="genre-name-link">Producer ${index + 1} (${index + 1})</a>`).join('\n');
+    const entries = Array.from(
+      { length: count },
+      (_, index) =>
+        `<a href="/anime/producer/${index + 1}/P_${index + 1}" class="genre-name-link">Producer ${index + 1} (${index + 1})</a>`,
+    ).join('\n');
     return `<html><body>${entries}</body></html>`;
   }
 
   it('extracts a large producer directory', () => {
     const producers = parseProducersList(buildDirectory(400));
     expect(producers).toHaveLength(400);
-    expect(producers[0]).toEqual({ malId: 1, name: 'Producer 1', count: 1, url: 'https://myanimelist.net/anime/producer/1' });
+    expect(producers[0]).toEqual({
+      malId: 1,
+      name: 'Producer 1',
+      count: 1,
+      url: 'https://myanimelist.net/anime/producer/1',
+    });
   });
 
   it('rejects an implausibly short directory', () => {
@@ -27,7 +36,8 @@ describe('season archive parser', () => {
   function buildArchive(years: number): string {
     const links = [];
     for (let year = 2026; year > 2026 - years; year -= 1) {
-      for (const season of ['winter', 'spring', 'summer', 'fall']) links.push(`<a href="https://myanimelist.net/anime/season/${year}/${season}">${season} ${year}</a>`);
+      for (const season of ['winter', 'spring', 'summer', 'fall'])
+        links.push(`<a href="https://myanimelist.net/anime/season/${year}/${season}">${season} ${year}</a>`);
     }
     return `<html><body>${links.join('\n')}</body></html>`;
   }
@@ -56,9 +66,28 @@ describe('title videos parser', () => {
 
   it('extracts episodes, music videos, and trailers into separate buckets', () => {
     const videos = parseTitleVideos(html);
-    expect(videos.episodes).toEqual([{ episode: 26, title: 'The Real Folk Blues', url: 'https://myanimelist.net/anime/1/Cowboy_Bebop/episode/26', imageUrl: 'https://cdn.myanimelist.net/thumb26.jpg' }]);
-    expect(videos.musicVideos).toEqual([{ title: 'MV 1', videoUrl: 'https://www.youtube-nocookie.com/embed/mv1', imageUrl: 'https://cdn.myanimelist.net/mv.jpg' }]);
-    expect(videos.promos).toEqual([{ title: 'PV 1', videoUrl: 'https://www.youtube-nocookie.com/embed/pv1', imageUrl: 'https://cdn.myanimelist.net/pv.jpg' }]);
+    expect(videos.episodes).toEqual([
+      {
+        episode: 26,
+        title: 'The Real Folk Blues',
+        url: 'https://myanimelist.net/anime/1/Cowboy_Bebop/episode/26',
+        imageUrl: 'https://cdn.myanimelist.net/thumb26.jpg',
+      },
+    ]);
+    expect(videos.musicVideos).toEqual([
+      {
+        title: 'MV 1',
+        videoUrl: 'https://www.youtube-nocookie.com/embed/mv1',
+        imageUrl: 'https://cdn.myanimelist.net/mv.jpg',
+      },
+    ]);
+    expect(videos.promos).toEqual([
+      {
+        title: 'PV 1',
+        videoUrl: 'https://www.youtube-nocookie.com/embed/pv1',
+        imageUrl: 'https://cdn.myanimelist.net/pv.jpg',
+      },
+    ]);
   });
 });
 
@@ -95,8 +124,23 @@ describe('title userupdates parser', () => {
   it('extracts member update rows from the stats page', () => {
     const updates = parseTitleUserUpdates(html);
     expect(updates).toHaveLength(2);
-    expect(updates[0]).toEqual({ username: 'Lifalya', imageUrl: 'https://cdn.myanimelist.net/images/userimages/1.jpg', score: null, status: 'Watching', progress: 18, total: 26, date: '5 hours ago' });
-    expect(updates[1]).toMatchObject({ username: 'Zed', imageUrl: null, score: 8, status: 'Completed', progress: null, total: null });
+    expect(updates[0]).toEqual({
+      username: 'Lifalya',
+      imageUrl: 'https://cdn.myanimelist.net/images/userimages/1.jpg',
+      score: null,
+      status: 'Watching',
+      progress: 18,
+      total: 26,
+      date: '5 hours ago',
+    });
+    expect(updates[1]).toMatchObject({
+      username: 'Zed',
+      imageUrl: null,
+      score: 8,
+      status: 'Completed',
+      progress: null,
+      total: null,
+    });
   });
 });
 
@@ -111,7 +155,10 @@ describe('club relations parser', () => {
     const relations = parseClubRelations(html);
     expect(relations.anime).toEqual([{ malId: 1, title: 'Cowboy Bebop' }]);
     expect(relations.manga).toEqual([{ malId: 173, title: 'Cowboy Bebop' }]);
-    expect(relations.characters).toEqual([{ malId: 1, name: 'Spike Spiegel' }, { malId: 2, name: 'Faye Valentine' }]);
+    expect(relations.characters).toEqual([
+      { malId: 1, name: 'Spike Spiegel' },
+      { malId: 2, name: 'Faye Valentine' },
+    ]);
   });
 
   it('returns empty lists when the club has no relation sections', () => {

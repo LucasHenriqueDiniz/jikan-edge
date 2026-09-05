@@ -1,9 +1,4 @@
-export interface VoiceActor {
-  malId: number;
-  name: string;
-  language: string | null;
-  imageUrl: string | null;
-}
+import type { VoiceActor } from './voice-actor';
 
 export interface CharacterRole {
   malId: number;

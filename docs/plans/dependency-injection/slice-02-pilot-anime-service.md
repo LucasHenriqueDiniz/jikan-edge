@@ -142,3 +142,7 @@ The `Done when` grep matches text, not code. A comment in `anime.service.ts` quo
 `new MalClient(config)` line was enough to fail the gate on a file that was already correct — cost a
 debug cycle. `anime.service.ts` now carries no adapter-class name at all, comments included; the
 sibling services should end the same way.
+
+---
+
+Closed by [[ports-for-driven-dependencies]] (`docs/postmortem/`).

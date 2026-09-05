@@ -13,7 +13,13 @@ describe('season now parser', () => {
   it('extracts every card from the single-document season page', () => {
     const entries = parseSeasonNow(html);
     expect(entries).toHaveLength(2);
-    expect(entries[0]).toMatchObject({ malId: 59193, title: 'Mushoku Tensei III: Isekai Ittara Honki Dasu', score: 8.78, members: 280213, startDate: '20260706' });
+    expect(entries[0]).toMatchObject({
+      malId: 59193,
+      title: 'Mushoku Tensei III: Isekai Ittara Honki Dasu',
+      score: 8.78,
+      members: 280213,
+      startDate: '20260706',
+    });
   });
   it('flags a snapshot missing the terminal marker as partial', () => {
     const result = parseSeasonNowSnapshot(html.replace('</html>', ''));
@@ -26,7 +32,7 @@ describe('season now parser', () => {
 describe('media type on seasonal cards', () => {
   const byId = new Map(parseSeasonNow(realHtml).map((entry) => [entry.malId, entry]));
 
-  it('reads each of MyAnimeList\'s type ids', () => {
+  it("reads each of MyAnimeList's type ids", () => {
     expect(byId.get(59193)?.type).toBe('TV');
     expect(byId.get(64779)?.type).toBe('OVA');
     expect(byId.get(48820)?.type).toBe('Movie');
@@ -50,7 +56,9 @@ describe('media type on seasonal cards', () => {
   });
 
   it('leaves an unrecognised id null rather than inventing a label', () => {
-    const invented = parseSeasonNow(realHtml.replace('js-anime-type-all js-anime-type-3', 'js-anime-type-all js-anime-type-77'));
+    const invented = parseSeasonNow(
+      realHtml.replace('js-anime-type-all js-anime-type-3', 'js-anime-type-all js-anime-type-77'),
+    );
     expect(invented.find((entry) => entry.malId === 48820)?.type).toBeNull();
   });
 });

@@ -1,11 +1,9 @@
 import { z } from 'zod';
+import type { ClubRelations } from '../domain/club-relations';
 import { decodeHtml } from './html';
 
-export interface ClubRelations {
-  anime: { malId: number; title: string }[];
-  manga: { malId: number; title: string }[];
-  characters: { malId: number; name: string }[];
-}
+export type { ClubRelations };
+
 export const CLUB_RELATIONS_PARSER_VERSION = 'club-relations-html-v2';
 
 const titleSchema = z.object({ malId: z.number().int().positive(), title: z.string().min(1) });
@@ -27,9 +25,18 @@ function extract(block: string, type: 'anime' | 'manga' | 'character'): { malId:
 }
 
 export function parseClubRelations(html: string): ClubRelations {
-  const anime = extract(section(html, 'Anime Relations'), 'anime').map((item) => ({ malId: item.malId, title: item.text }));
-  const manga = extract(section(html, 'Manga Relations'), 'manga').map((item) => ({ malId: item.malId, title: item.text }));
-  const characters = extract(section(html, 'Character Relations'), 'character').map((item) => ({ malId: item.malId, name: item.text }));
+  const anime = extract(section(html, 'Anime Relations'), 'anime').map((item) => ({
+    malId: item.malId,
+    title: item.text,
+  }));
+  const manga = extract(section(html, 'Manga Relations'), 'manga').map((item) => ({
+    malId: item.malId,
+    title: item.text,
+  }));
+  const characters = extract(section(html, 'Character Relations'), 'character').map((item) => ({
+    malId: item.malId,
+    name: item.text,
+  }));
   return {
     anime: anime.filter((item) => titleSchema.safeParse(item).success),
     manga: manga.filter((item) => titleSchema.safeParse(item).success),

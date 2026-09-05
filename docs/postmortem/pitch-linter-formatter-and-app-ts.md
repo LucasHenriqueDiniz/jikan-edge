@@ -1,7 +1,11 @@
 ---
-status: active
+status: closed
 epic: hygiene
 ---
+
+> **Closed 2026-09-04.** Moved here from `docs/pitches/` so the pair reads as one thing: this is what
+> was promised, [[linter-formatter-and-app-ts]] is what happened. The bet it made -- that sequencing
+> the three slices is the whole reason to group them -- held.
 
 # A linter, a formatter, and an `app.ts` under the soft limit
 

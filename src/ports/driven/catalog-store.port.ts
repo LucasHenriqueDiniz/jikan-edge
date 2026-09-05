@@ -1,4 +1,31 @@
 import type { AnimeDetail } from '../../domain/anime';
+import type { CharacterDetail } from '../../domain/character';
+import type { ClubDetail } from '../../domain/club';
+import type { MediaType, UserMediaListEntry } from '../../domain/list-entry';
+import type { MangaDetail } from '../../domain/manga';
+import type { PersonDetail } from '../../domain/person';
+import type { ProducerDetail } from '../../domain/producer';
+import type { RandomKind } from '../../domain/random';
+import type { UserProfile, UserStatistics } from '../../domain/user';
+import type { Favorites } from '../../domain/user-favorites';
+import type { UserUpdates } from '../../domain/user-updates';
+
+/**
+ * Six of the resources store one payload per MyAnimeList id and nothing else, so they are one
+ * generic member rather than six identical hand-written ones. Writing them out separately was the
+ * first draft; it added sixty lines that differed only in a type argument, and a reader has to
+ * compare them character by character to see that they are in fact the same conversation.
+ */
+export interface DetailStore<T> {
+  get(malId: number): Promise<T | null>;
+  put(detail: T, fetchedAt: string, version: string): Promise<void>;
+}
+
+/** The same, for resources keyed by a username rather than a numeric id. */
+export interface KeyedStore<T> {
+  get(key: string): Promise<T | null>;
+  put(key: string, value: T, fetchedAt: string, version: string): Promise<void>;
+}
 
 /**
  * What the store knows about a cached resource, separate from the payload itself: when it was
@@ -38,8 +65,8 @@ export interface CacheEntry {
  * an interface in front of it. It answers the question instead — did I get the lease — which is what
  * the caller asked.
  *
- * Carries what `AnimeService` needs today. Slice 3 adds the remaining resource members as it moves
- * each service over.
+ * Complete as of slice 3: every one of the twelve services reads its store through this interface,
+ * and `src/services/` no longer names `D1Database` anywhere.
  */
 export interface CatalogStore {
   readonly cacheEntries: {
@@ -51,12 +78,43 @@ export interface CatalogStore {
     acquire(resourceKey: string, owner: string, leaseSeconds?: number): Promise<boolean>;
     release(resourceKey: string, owner: string): Promise<void>;
   };
-  readonly anime: {
-    get(malId: number): Promise<AnimeDetail | null>;
-    put(detail: AnimeDetail, fetchedAt: string, version: string): Promise<void>;
-  };
+  readonly anime: DetailStore<AnimeDetail>;
+  readonly manga: DetailStore<MangaDetail>;
+  readonly characters: DetailStore<CharacterDetail>;
+  readonly people: DetailStore<PersonDetail>;
+  readonly clubs: DetailStore<ClubDetail>;
+  readonly producers: DetailStore<ProducerDetail>;
+  readonly favorites: KeyedStore<Favorites>;
+  readonly updates: KeyedStore<UserUpdates>;
   readonly catalogLists: {
     get<T>(resourceKey: string): Promise<T | null>;
     put<T>(resourceKey: string, payload: T, fetchedAt: string, version: string): Promise<void>;
+  };
+  /**
+   * The profile side is not a `KeyedStore`: it reads and writes two payloads at once (the profile
+   * and its statistics), and the list is a collection rather than a payload. Forcing it into the
+   * generic would have meant renaming its methods to fit a shape it does not have.
+   */
+  readonly users: {
+    getProfile(key: string): Promise<UserProfile | null>;
+    getStatistics(key: string): Promise<UserStatistics | null>;
+    saveProfile(profile: UserProfile, stats: UserStatistics): Promise<void>;
+    replaceList(key: string, mediaType: MediaType, entries: UserMediaListEntry[]): Promise<void>;
+    listEntries(
+      key: string,
+      mediaType: MediaType,
+      page: number,
+      limit: number,
+    ): Promise<{ entries: UserMediaListEntry[]; total: number }>;
+  };
+  /**
+   * `RandomService` is the one that had no repository at all — it wrote `ORDER BY RANDOM()` against
+   * `this.db` directly, which is why it was also the only service with no factory in `src/app.ts`.
+   * The SQL moved to `RandomRepository`; the 404 policy for an empty local catalog stayed in the
+   * service, so this answers `null` rather than throwing.
+   */
+  readonly randomPicks: {
+    pick(kind: RandomKind): Promise<{ data: unknown; fetchedAt: string } | null>;
+    pickUser(): Promise<{ username: string } | null>;
   };
 }

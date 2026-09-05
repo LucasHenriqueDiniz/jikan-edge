@@ -16,7 +16,7 @@ on:
 
 jobs:
   check:
-    name: Typecheck & Tests
+    name: Lint, Typecheck & Tests
     runs-on: ubuntu-latest
     env:
       # wrangler tries to report metrics on its first run and, with no TTY,
@@ -30,6 +30,13 @@ jobs:
           node-version-file: .nvmrc
           cache: 'pnpm'
       - run: pnpm install --frozen-lockfile
+
+      # Format and lint in one pass. The script carries --error-on-warnings, so a
+      # warning fails the job rather than scrolling past it. Wired only after the
+      # reformat landed: a red CI on a knowingly unformatted repo teaches everyone
+      # to ignore CI.
+      - name: Lint
+        run: pnpm run lint
 
       - name: Typecheck
         run: pnpm run typecheck

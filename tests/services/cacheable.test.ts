@@ -4,11 +4,17 @@ import { isOversizeRow, withCache, type CacheDeps, type WaitUntil } from '../../
 
 const FRESH = '2999-01-01T00:00:00.000Z';
 
-function deps(stored: CacheEntry | null): CacheDeps & { put: ReturnType<typeof vi.fn>; acquire: ReturnType<typeof vi.fn>; release: ReturnType<typeof vi.fn> } {
+function deps(
+  stored: CacheEntry | null,
+): CacheDeps & { put: ReturnType<typeof vi.fn>; acquire: ReturnType<typeof vi.fn>; release: ReturnType<typeof vi.fn> } {
   const put = vi.fn(async () => {});
   const acquire = vi.fn(async () => true);
   const release = vi.fn(async () => {});
-  const cache: CacheDeps['cache'] = { get: async () => stored, put, isFresh: (value: CacheEntry) => Date.parse(value.expiresAt) > Date.now() };
+  const cache: CacheDeps['cache'] = {
+    get: async () => stored,
+    put,
+    isFresh: (value: CacheEntry) => Date.parse(value.expiresAt) > Date.now(),
+  };
   const locks: CacheDeps['locks'] = { acquire, release };
   return { cache, locks, put, acquire, release };
 }
@@ -17,7 +23,9 @@ function deps(stored: CacheEntry | null): CacheDeps & { put: ReturnType<typeof v
 // can await the work that outlives the response.
 function background(): WaitUntil & { settled: () => Promise<unknown[]> } {
   const pending: Promise<unknown>[] = [];
-  const waitUntil = ((promise: Promise<unknown>) => { pending.push(promise); }) as WaitUntil & { settled: () => Promise<unknown[]> };
+  const waitUntil = ((promise: Promise<unknown>) => {
+    pending.push(promise);
+  }) as WaitUntil & { settled: () => Promise<unknown[]> };
   waitUntil.settled = () => Promise.all(pending);
   return waitUntil;
 }
@@ -26,7 +34,13 @@ function background(): WaitUntil & { settled: () => Promise<unknown[]> } {
 const JUST_EXPIRED = new Date(Date.now() - 1_000).toISOString();
 
 function entry(parserVersion: string, expiresAt = FRESH): CacheEntry {
-  return { resourceKey: 'user:x:profile', expiresAt, fetchedAt: '2026-07-30T00:00:00.000Z', sourceStatus: 'success', parserVersion };
+  return {
+    resourceKey: 'user:x:profile',
+    expiresAt,
+    fetchedAt: '2026-07-30T00:00:00.000Z',
+    sourceStatus: 'success',
+    parserVersion,
+  };
 }
 
 describe('withCache', () => {
@@ -48,7 +62,15 @@ describe('withCache', () => {
 
   it('refetches once the TTL expires', async () => {
     const refresh = vi.fn(async () => 'new');
-    await withCache(deps(entry('v3', '2000-01-01T00:00:00.000Z')), 'user:x:profile', 60, 'v3', async () => 'stored', refresh, 'req');
+    await withCache(
+      deps(entry('v3', '2000-01-01T00:00:00.000Z')),
+      'user:x:profile',
+      60,
+      'v3',
+      async () => 'stored',
+      refresh,
+      'req',
+    );
     expect(refresh).toHaveBeenCalledOnce();
   });
 
@@ -57,15 +79,27 @@ describe('withCache', () => {
   // answering while MyAnimeList is unreachable. A version bump that changes the *shape* of a
   // payload is handled by deleting those rows in a migration, so they never reach this path.
   it('falls back to the version-mismatched snapshot when the refetch fails', async () => {
-    const refresh = vi.fn(async () => { throw new Error('upstream down'); });
+    const refresh = vi.fn(async () => {
+      throw new Error('upstream down');
+    });
     const result = await withCache(deps(entry('v2')), 'user:x:profile', 60, 'v3', async () => 'stored', refresh, 'req');
     expect(result).toMatchObject({ data: 'stored', cached: true, stale: true, refreshFailed: true });
   });
 
   it('records the current parser version when it writes a snapshot', async () => {
     const dependencies = deps(entry('v2'));
-    await withCache(dependencies, 'user:x:profile', 60, 'v3', async () => 'stored', async () => 'new', 'req');
-    expect(dependencies.put).toHaveBeenCalledWith(expect.objectContaining({ resourceKey: 'user:x:profile', parserVersion: 'v3' }));
+    await withCache(
+      dependencies,
+      'user:x:profile',
+      60,
+      'v3',
+      async () => 'stored',
+      async () => 'new',
+      'req',
+    );
+    expect(dependencies.put).toHaveBeenCalledWith(
+      expect.objectContaining({ resourceKey: 'user:x:profile', parserVersion: 'v3' }),
+    );
   });
 
   // refresh() already persisted the new value to its own domain table by the time cache.put() runs
@@ -73,8 +107,18 @@ describe('withCache', () => {
   // have, nor report a successful refresh as `refreshFailed`.
   it('still returns the freshly refreshed value when only the cache bookkeeping write fails', async () => {
     const dependencies = deps(entry('v2'));
-    dependencies.put.mockImplementationOnce(async () => { throw new Error('D1 blip'); });
-    const result = await withCache(dependencies, 'user:x:profile', 60, 'v3', async () => 'stored', async () => 'new', 'req');
+    dependencies.put.mockImplementationOnce(async () => {
+      throw new Error('D1 blip');
+    });
+    const result = await withCache(
+      dependencies,
+      'user:x:profile',
+      60,
+      'v3',
+      async () => 'stored',
+      async () => 'new',
+      'req',
+    );
     expect(result).toMatchObject({ data: 'new', cached: false, stale: false, refreshFailed: false });
   });
 
@@ -83,13 +127,30 @@ describe('withCache', () => {
   // starts a redundant scrape in parallel.
   it('passes a caller-supplied lease through to the lock instead of the repository default', async () => {
     const dependencies = deps(entry('v2'));
-    await withCache(dependencies, 'user:x:profile', 60, 'v3', async () => 'stored', async () => 'new', 'req', 300);
+    await withCache(
+      dependencies,
+      'user:x:profile',
+      60,
+      'v3',
+      async () => 'stored',
+      async () => 'new',
+      'req',
+      300,
+    );
     expect(dependencies.acquire).toHaveBeenCalledWith('user:x:profile', 'req', 300);
   });
 
   it('leaves the lease undefined when the caller does not supply one', async () => {
     const dependencies = deps(entry('v2'));
-    await withCache(dependencies, 'user:x:profile', 60, 'v3', async () => 'stored', async () => 'new', 'req');
+    await withCache(
+      dependencies,
+      'user:x:profile',
+      60,
+      'v3',
+      async () => 'stored',
+      async () => 'new',
+      'req',
+    );
     expect(dependencies.acquire).toHaveBeenCalledWith('user:x:profile', 'req', undefined);
   });
 });
@@ -98,7 +159,9 @@ describe('withCache', () => {
 // and reads back byte-identical; 4,194,257 raises this. Nothing truncates, and the ceiling is
 // per-row, not per-value. Until then this failure reached the caller as a bare 500 with no clue
 // that the cause was a size limit rather than a bug.
-const TOO_BIG = () => { throw new Error('D1_ERROR: string or blob too big: SQLITE_TOOBIG'); };
+const TOO_BIG = () => {
+  throw new Error('D1_ERROR: string or blob too big: SQLITE_TOOBIG');
+};
 
 describe('a row D1 refuses for being too large', () => {
   it('is an explained 507 rather than a bare 500 when there is nothing cached to fall back to', async () => {
@@ -113,7 +176,15 @@ describe('a row D1 refuses for being too large', () => {
   // clears on its own, so it is logged at error level rather than passing as a transient blip.
   it('keeps answering from the stored copy when there is one, and says so loudly', async () => {
     const logged = vi.spyOn(console, 'error').mockImplementation(() => {});
-    const result = await withCache(deps(entry('v3', '2000-01-01T00:00:00.000Z')), 'k', 60, 'v3', async () => 'stored', TOO_BIG, 'req');
+    const result = await withCache(
+      deps(entry('v3', '2000-01-01T00:00:00.000Z')),
+      'k',
+      60,
+      'v3',
+      async () => 'stored',
+      TOO_BIG,
+      'req',
+    );
     expect(result).toMatchObject({ data: 'stored', cached: true, stale: true, refreshFailed: true });
     expect(logged.mock.calls[0]?.[0]).toContain('payload_too_large');
     logged.mockRestore();
@@ -123,8 +194,19 @@ describe('a row D1 refuses for being too large', () => {
   // as a capacity limit, which is the sort of wrong signal that costs an afternoon.
   it('leaves every other write failure exactly as it was', async () => {
     const dependencies = deps(null);
-    await expect(withCache(dependencies, 'k', 60, 'v3', async () => null, () => { throw new Error('D1_ERROR: no such column: x'); }, 'req'))
-      .rejects.toThrow('no such column');
+    await expect(
+      withCache(
+        dependencies,
+        'k',
+        60,
+        'v3',
+        async () => null,
+        () => {
+          throw new Error('D1_ERROR: no such column: x');
+        },
+        'req',
+      ),
+    ).rejects.toThrow('no such column');
   });
 
   it('reports the same way when the failure lands in a background refresh', async () => {
@@ -141,7 +223,11 @@ describe('a row D1 refuses for being too large', () => {
 describe('isOversizeRow', () => {
   it('recognises the error however D1 wraps it', () => {
     expect(isOversizeRow(new Error('D1_ERROR: string or blob too big: SQLITE_TOOBIG'))).toBe(true);
-    expect(isOversizeRow(Object.assign(new Error('D1_ERROR'), { cause: new Error('string or blob too big: SQLITE_TOOBIG') }))).toBe(true);
+    expect(
+      isOversizeRow(
+        Object.assign(new Error('D1_ERROR'), { cause: new Error('string or blob too big: SQLITE_TOOBIG') }),
+      ),
+    ).toBe(true);
   });
 
   it('does not fire on anything else', () => {
@@ -161,7 +247,12 @@ describe('withCache serving stale while it revalidates', () => {
     // A refresh that cannot finish until this test lets it: if the answer depended on it, awaiting
     // withCache below would hang instead of returning.
     let finishRefresh = (): void => {};
-    const refresh = vi.fn(() => new Promise<string>((resolve) => { finishRefresh = () => resolve('new'); }));
+    const refresh = vi.fn(
+      () =>
+        new Promise<string>((resolve) => {
+          finishRefresh = () => resolve('new');
+        }),
+    );
 
     const result = await withCache(dependencies, 'user:x:profile', 60, 'v3', async () => 'stored', refresh, 'req');
 
@@ -180,7 +271,15 @@ describe('withCache serving stale while it revalidates', () => {
   it('holds the lock until the background refresh finishes, then releases it', async () => {
     const waitUntil = background();
     const dependencies = { ...deps(entry('v3', JUST_EXPIRED)), waitUntil };
-    await withCache(dependencies, 'user:x:profile', 60, 'v3', async () => 'stored', async () => 'new', 'req');
+    await withCache(
+      dependencies,
+      'user:x:profile',
+      60,
+      'v3',
+      async () => 'stored',
+      async () => 'new',
+      'req',
+    );
     expect(dependencies.release).not.toHaveBeenCalled();
     await waitUntil.settled();
     expect(dependencies.release).toHaveBeenCalledWith('user:x:profile', 'req');
@@ -191,7 +290,17 @@ describe('withCache serving stale while it revalidates', () => {
   it('swallows a background refresh failure without disturbing the answer already sent', async () => {
     const waitUntil = background();
     const dependencies = { ...deps(entry('v3', JUST_EXPIRED)), waitUntil };
-    const result = await withCache(dependencies, 'user:x:profile', 60, 'v3', async () => 'stored', async () => { throw new Error('upstream down'); }, 'req');
+    const result = await withCache(
+      dependencies,
+      'user:x:profile',
+      60,
+      'v3',
+      async () => 'stored',
+      async () => {
+        throw new Error('upstream down');
+      },
+      'req',
+    );
     expect(result).toMatchObject({ data: 'stored', stale: true, refreshFailed: false });
     await expect(waitUntil.settled()).resolves.toBeDefined();
     expect(dependencies.release).toHaveBeenCalledOnce();
@@ -204,7 +313,15 @@ describe('withCache serving stale while it revalidates', () => {
   it('does not serve a stale row written by a different parser version', async () => {
     const waitUntil = background();
     const dependencies = { ...deps(entry('v2', JUST_EXPIRED)), waitUntil };
-    const result = await withCache(dependencies, 'user:x:profile', 60, 'v3', async () => 'stored', async () => 'new', 'req');
+    const result = await withCache(
+      dependencies,
+      'user:x:profile',
+      60,
+      'v3',
+      async () => 'stored',
+      async () => 'new',
+      'req',
+    );
     expect(result).toMatchObject({ data: 'new', cached: false, stale: false });
   });
 
@@ -214,7 +331,15 @@ describe('withCache serving stale while it revalidates', () => {
     const waitUntil = background();
     const longExpired = new Date(Date.now() - 3_600 * 1_000).toISOString();
     const dependencies = { ...deps(entry('v3', longExpired)), waitUntil };
-    const result = await withCache(dependencies, 'user:x:profile', 60, 'v3', async () => 'stored', async () => 'new', 'req');
+    const result = await withCache(
+      dependencies,
+      'user:x:profile',
+      60,
+      'v3',
+      async () => 'stored',
+      async () => 'new',
+      'req',
+    );
     expect(result).toMatchObject({ data: 'new', cached: false, stale: false });
   });
 
@@ -222,7 +347,15 @@ describe('withCache serving stale while it revalidates', () => {
   // inline is the only honest option. This is also what keeps the test suite deterministic.
   it('refreshes inline when there is no way to keep work alive past the response', async () => {
     const dependencies = deps(entry('v3', JUST_EXPIRED));
-    const result = await withCache(dependencies, 'user:x:profile', 60, 'v3', async () => 'stored', async () => 'new', 'req');
+    const result = await withCache(
+      dependencies,
+      'user:x:profile',
+      60,
+      'v3',
+      async () => 'stored',
+      async () => 'new',
+      'req',
+    );
     expect(result).toMatchObject({ data: 'new', cached: false, stale: false });
     expect(dependencies.release).toHaveBeenCalledOnce();
   });

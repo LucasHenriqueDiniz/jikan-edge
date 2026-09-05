@@ -1,8 +1,22 @@
 import { describe, expect, it } from 'vitest';
 import {
-  anchorTexts, capture, COMPANY_LOGO_IMAGE, COVER_IMAGE, decodeHtml, divContent, imageFrom, imageVariants,
-  labelBlock, labelValue, numeric, originalImage, PORTRAIT_IMAGE, rankedValue, richText,
-  taggedImage, VOICE_ACTOR_IMAGE,
+  anchorTexts,
+  capture,
+  COMPANY_LOGO_IMAGE,
+  COVER_IMAGE,
+  decodeHtml,
+  divContent,
+  imageFrom,
+  imageVariants,
+  labelBlock,
+  labelValue,
+  numeric,
+  originalImage,
+  PORTRAIT_IMAGE,
+  rankedValue,
+  richText,
+  taggedImage,
+  VOICE_ACTOR_IMAGE,
 } from '../../src/parsers/html';
 
 describe('decodeHtml', () => {
@@ -69,8 +83,9 @@ describe('richText', () => {
 
 describe('originalImage', () => {
   it('drops the resize segment and the signature', () => {
-    expect(originalImage('https://cdn.myanimelist.net/r/50x70/images/anime/1/2.jpg?s=abc'))
-      .toBe('https://cdn.myanimelist.net/images/anime/1/2.jpg');
+    expect(originalImage('https://cdn.myanimelist.net/r/50x70/images/anime/1/2.jpg?s=abc')).toBe(
+      'https://cdn.myanimelist.net/images/anime/1/2.jpg',
+    );
   });
 
   it('leaves an already-original URL untouched', () => {
@@ -79,8 +94,9 @@ describe('originalImage', () => {
   });
 
   it('handles a signature without a resize segment, as producer logos have', () => {
-    expect(originalImage('https://cdn.myanimelist.net/s/common/company_logos/abc_600x600_i?s=def'))
-      .toBe('https://cdn.myanimelist.net/s/common/company_logos/abc_600x600_i');
+    expect(originalImage('https://cdn.myanimelist.net/s/common/company_logos/abc_600x600_i?s=def')).toBe(
+      'https://cdn.myanimelist.net/s/common/company_logos/abc_600x600_i',
+    );
   });
 
   it('passes null through', () => {
@@ -211,12 +227,13 @@ describe('taggedImage', () => {
 
 describe('labelValue / labelBlock', () => {
   // Markup copied from a real MAL sidebar: label in a span, values as anchors carrying the id.
-  const sidebar = '<div class="spaceit_pad"> <span class="dark_text">Studios:</span> '
-    + '<a href="/anime/producer/14/Sunrise" title="Sunrise">Sunrise</a> </div>'
-    + '<div class="spaceit_pad"> <span class="dark_text">Genres:</span> '
-    + '<a href="/anime/genre/1/Action" title="Action">Action</a>, '
-    + '<a href="/anime/genre/46/Award_Winning" title="Award Winning">Award Winning</a> </div>'
-    + '<div> <span class="dark_text">Ranked:</span> #49<sup>2</sup></div>';
+  const sidebar =
+    '<div class="spaceit_pad"> <span class="dark_text">Studios:</span> ' +
+    '<a href="/anime/producer/14/Sunrise" title="Sunrise">Sunrise</a> </div>' +
+    '<div class="spaceit_pad"> <span class="dark_text">Genres:</span> ' +
+    '<a href="/anime/genre/1/Action" title="Action">Action</a>, ' +
+    '<a href="/anime/genre/46/Award_Winning" title="Award Winning">Award Winning</a> </div>' +
+    '<div> <span class="dark_text">Ranked:</span> #49<sup>2</sup></div>';
 
   it('takes the first label that matches, so singular and plural both work', () => {
     expect(labelValue(sidebar, 'Studios', 'Studio')).toBe('Sunrise');

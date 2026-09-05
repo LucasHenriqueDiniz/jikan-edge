@@ -12,8 +12,22 @@ describe('user profile parser', () => {
   });
   it('reads status counts from the list anchors, not graph widths', () => {
     const statistics = parseUserStatistics(html);
-    expect(statistics.anime).toMatchObject({ watching: 2, completed: 10, onHold: 1, dropped: 0, planToWatch: 3, totalEntries: 16 });
-    expect(statistics.manga).toMatchObject({ reading: 1, completed: 4, onHold: 0, dropped: 0, planToRead: 2, totalEntries: 7 });
+    expect(statistics.anime).toMatchObject({
+      watching: 2,
+      completed: 10,
+      onHold: 1,
+      dropped: 0,
+      planToWatch: 3,
+      totalEntries: 16,
+    });
+    expect(statistics.manga).toMatchObject({
+      reading: 1,
+      completed: 4,
+      onHold: 0,
+      dropped: 0,
+      planToRead: 2,
+      totalEntries: 7,
+    });
   });
   it('extracts episode/chapter/volume totals and mean scores', () => {
     const statistics = parseUserStatistics(html);
@@ -85,7 +99,10 @@ describe('user profile parser, against a real profile', () => {
   // no About omits the container rather than emitting an empty one. Both must stay null instead of
   // becoming a scrape of whatever markup sits nearby.
   it('returns null rather than guessing when the profile genuinely has neither', () => {
-    const noAvatar = realHtml.replace(/<div class="user-image[^>]*>[\s\S]*?<\/div>/, '<div class="user-image mb8"><div class="btn-detail-add-picture nolink"><span class="text">No Picture</span></div>');
+    const noAvatar = realHtml.replace(
+      /<div class="user-image[^>]*>[\s\S]*?<\/div>/,
+      '<div class="user-image mb8"><div class="btn-detail-add-picture nolink"><span class="text">No Picture</span></div>',
+    );
     expect(parseUserProfile(noAvatar, 'AMayacrab', '2026-07-19T00:00:00.000Z').avatarUrl).toBeNull();
     const noAbout = realHtml.replace('class="user-profile-about', 'class="user-profile-nothing');
     expect(parseUserProfile(noAbout, 'AMayacrab', '2026-07-19T00:00:00.000Z').about).toBeNull();

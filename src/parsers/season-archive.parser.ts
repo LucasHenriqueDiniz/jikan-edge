@@ -1,7 +1,9 @@
 import { z } from 'zod';
+import type { SeasonArchiveEntry } from '../domain/season-archive';
 import { ParserError } from './html';
 
-export interface SeasonArchiveEntry { year: number; seasons: string[] }
+export type { SeasonArchiveEntry };
+
 export const SEASON_ARCHIVE_PARSER_VERSION = 'season-archive-html-v2';
 
 const SEASON_ORDER = ['winter', 'spring', 'summer', 'fall'];
@@ -9,10 +11,16 @@ const entrySchema = z.object({ year: z.number().int().min(1900).max(2100), seaso
 
 export function parseSeasonArchive(html: string): SeasonArchiveEntry[] {
   const byYear = new Map<number, Set<string>>();
-  for (const match of html.matchAll(/href="https:\/\/myanimelist\.net\/anime\/season\/(\d{4})\/(winter|spring|summer|fall)"/gi)) {
+  for (const match of html.matchAll(
+    /href="https:\/\/myanimelist\.net\/anime\/season\/(\d{4})\/(winter|spring|summer|fall)"/gi,
+  )) {
     const year = Number(match[1]);
-    if (!byYear.has(year)) byYear.set(year, new Set());
-    byYear.get(year)!.add(match[2].toLowerCase());
+    let seasons = byYear.get(year);
+    if (!seasons) {
+      seasons = new Set();
+      byYear.set(year, seasons);
+    }
+    seasons.add(match[2].toLowerCase());
   }
   const list = [...byYear.entries()]
     .map(([year, seasons]) => ({ year, seasons: SEASON_ORDER.filter((season) => seasons.has(season)) }))

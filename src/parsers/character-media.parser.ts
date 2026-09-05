@@ -3,8 +3,18 @@ import type { CharacterMediaEntry } from '../domain/character-media';
 import type { VoiceActor } from '../domain/voice-actor';
 import { decodeHtml, imageFrom } from './html';
 
-const mediaSchema = z.object({ malId: z.number().int().positive(), title: z.string().min(1), imageUrl: z.string().url().nullable(), role: z.string().nullable() });
-const voiceActorSchema = z.object({ malId: z.number().int().positive(), name: z.string().min(1), imageUrl: z.string().url().nullable(), language: z.string().nullable() });
+const mediaSchema = z.object({
+  malId: z.number().int().positive(),
+  title: z.string().min(1),
+  imageUrl: z.string().url().nullable(),
+  role: z.string().nullable(),
+});
+const voiceActorSchema = z.object({
+  malId: z.number().int().positive(),
+  name: z.string().min(1),
+  imageUrl: z.string().url().nullable(),
+  language: z.string().nullable(),
+});
 
 function extractMedia(block: string, type: 'anime' | 'manga'): CharacterMediaEntry[] {
   const entries: CharacterMediaEntry[] = [];

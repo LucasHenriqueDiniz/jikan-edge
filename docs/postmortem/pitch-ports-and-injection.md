@@ -1,7 +1,10 @@
 ---
-status: active
+status: closed
 epic: di
 ---
+
+> **Closed 2026-09-04.** Moved here from `docs/pitches/` so the pair reads as one thing: this is what
+> was promised, [[ports-and-injection]] is what happened.
 
 # Ports for D1 and MAL, and a composition root that builds them
 

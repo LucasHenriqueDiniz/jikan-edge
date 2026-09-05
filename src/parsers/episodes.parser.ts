@@ -3,8 +3,13 @@ import type { Episode } from '../domain/episode';
 import { decodeHtml, numeric, ParserError } from './html';
 
 const episodeSchema = z.object({
-  number: z.number().int().positive(), title: z.string().min(1), titleJapanese: z.string().nullable(),
-  url: z.string().url(), aired: z.string().nullable(), score: z.number().nullable(), forumReplies: z.number().nullable(),
+  number: z.number().int().positive(),
+  title: z.string().min(1),
+  titleJapanese: z.string().nullable(),
+  url: z.string().url(),
+  aired: z.string().nullable(),
+  score: z.number().nullable(),
+  forumReplies: z.number().nullable(),
 });
 
 export function parseEpisodes(html: string): Episode[] {
@@ -18,8 +23,13 @@ export function parseEpisodes(html: string): Episode[] {
     const score = numeric(block.match(/class="episode-poll[^"]*"[^>]*data-raw="([\d.]+)"/i)?.[1] ?? null);
     const forumReplies = numeric(block.match(/class="episode-forum[^"]*"[^>]*data-raw="(\d+)"/i)?.[1] ?? null);
     const candidate = {
-      number, title: decodeHtml(titleMatch[2]), titleJapanese: jpMatch ? decodeHtml(jpMatch[1]) : null,
-      url: titleMatch[1], aired: aired ? decodeHtml(aired) : null, score, forumReplies,
+      number,
+      title: decodeHtml(titleMatch[2]),
+      titleJapanese: jpMatch ? decodeHtml(jpMatch[1]) : null,
+      url: titleMatch[1],
+      aired: aired ? decodeHtml(aired) : null,
+      score,
+      forumReplies,
     };
     const parsed = episodeSchema.safeParse(candidate);
     if (parsed.success) episodes.push(parsed.data);

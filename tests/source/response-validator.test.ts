@@ -2,15 +2,25 @@ import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { classifyHtml } from '../../src/source/response-validator';
 
-const metadata = { url: 'https://myanimelist.net/profile/a', status: 200, contentType: 'text/html; charset=UTF-8', durationMs: 1, sizeBytes: 600 };
+const metadata = {
+  url: 'https://myanimelist.net/profile/a',
+  status: 200,
+  contentType: 'text/html; charset=UTF-8',
+  durationMs: 1,
+  sizeBytes: 600,
+};
 const validBody = `<html><body>${'valid profile '.repeat(60)} Profile Anime Stats</body></html>`;
 
 // This module is the only thing standing between "we trust this response" and "we don't" for every
 // one of the 96 routes — every kind classifyHtml can return needs its own test, not just the two
 // (challenge page, 404) it had before.
 describe('response validator', () => {
-  it('rejects challenge pages even with 200', () => expect(classifyHtml(readFileSync('tests/fixtures/users/suspicious.html', 'utf8'), metadata).kind).toBe('suspicious'));
-  it('classifies missing profiles', () => expect(classifyHtml('', { ...metadata, status: 404 }).kind).toBe('not_found'));
+  it('rejects challenge pages even with 200', () =>
+    expect(classifyHtml(readFileSync('tests/fixtures/users/suspicious.html', 'utf8'), metadata).kind).toBe(
+      'suspicious',
+    ));
+  it('classifies missing profiles', () =>
+    expect(classifyHtml('', { ...metadata, status: 404 }).kind).toBe('not_found'));
 
   it('classifies a rate-limited response', () => {
     expect(classifyHtml('', { ...metadata, status: 429 }).kind).toBe('rate_limited');

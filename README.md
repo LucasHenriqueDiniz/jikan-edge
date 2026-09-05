@@ -262,9 +262,9 @@ resource it needs is a D1 database, which the setup script creates and migrates 
 
 ```bash
 git clone https://github.com/LucasHenriqueDiniz/jikan-edge.git && cd jikan-edge
-npm install
+pnpm install
 npx wrangler login
-npm run setup            # creates D1, writes its id into wrangler.jsonc, applies the migrations
+pnpm run setup            # creates D1, writes its id into wrangler.jsonc, applies the migrations
 npx wrangler deploy
 
 curl https://<your-worker>.<your-subdomain>.workers.dev/health   # checks.database must read "ok"
@@ -278,13 +278,14 @@ real traffic to MyAnimeList — is in [`docs/self-hosting.md`](docs/self-hosting
 ## Development
 
 ```bash
-npm install
-npm run db:migrate:local
-npm run dev:local     # local simulator; `npm run dev` runs against the real network
-npm test              # unit tests
-npm run test:integration
-npm run typecheck
-npm run benchmark     # parser p95 smoke tests
+pnpm install          # pnpm, not npm: the lockfile is pnpm's and CI installs with --frozen-lockfile
+pnpm run db:migrate:local
+pnpm run dev:local    # local simulator; `pnpm run dev` runs against the real network
+pnpm test             # unit tests
+pnpm run test:integration
+pnpm run typecheck
+pnpm run lint         # Biome, format + lint in one pass; CI runs it first and warnings fail it
+pnpm run benchmark    # parser p95 smoke tests
 ```
 
 Use `npm run dev` (`wrangler dev --remote`) for anything that depends on **how MyAnimeList responds

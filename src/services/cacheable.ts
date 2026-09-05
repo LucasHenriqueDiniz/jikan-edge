@@ -1,22 +1,27 @@
 import type { CatalogStore } from '../ports/driven/catalog-store.port';
 import type { SourceResult } from '../source/source-types';
 
-// Every status a ServiceError is actually constructed with, across direct `new ServiceError(...)`
-// call sites and sourceError's upstream-kind mapping below. Narrowed from `number` so errors.ts can
-// hand `error.status` straight to Hono's `c.json` without a cast that told the type system every
-// ServiceError is a 400 — which a typed client generated from this app (Hono's `hc<AppType>()`)
-// would have taken literally.
-export type ServiceErrorStatus = 400 | 403 | 404 | 429 | 501 | 502 | 503 | 504 | 507;
-
-export class ServiceError extends Error {
-  constructor(public readonly code: string, public readonly status: ServiceErrorStatus, message: string) { super(message); }
-}
+// Both moved to `src/domain/errors.ts`, and re-exported here so the fifteen files in `src/` and four
+// in `tests/` that import them from this module keep resolving. The move was about the direction of
+// one import — the domain used to reach into this layer — not about where callers should now look,
+// so rewriting nineteen import paths would have been churn with no reader on the other side of it.
+// Imported as well as re-exported: `export … from` forwards the names without binding them locally,
+// and this module throws `ServiceError` itself in four places.
+import { ServiceError, type ServiceErrorStatus } from '../domain/errors';
+export { ServiceError, type ServiceErrorStatus };
 
 // `ttlSeconds` is how long this resource stays fresh, carried out to the HTTP layer so
 // `Cache-Control` can state the *remaining* freshness instead of a guess. Optional because a few
 // responses are not produced by withCache at all (the random picks read D1 directly), and those
 // must not advertise any cache lifetime.
-export interface ServiceResponse<T> { data: T; cached: boolean; stale: boolean; refreshFailed: boolean; fetchedAt: string; ttlSeconds?: number; }
+export interface ServiceResponse<T> {
+  data: T;
+  cached: boolean;
+  stale: boolean;
+  refreshFailed: boolean;
+  fetchedAt: string;
+  ttlSeconds?: number;
+}
 
 /**
  * Whether a failed write is D1 refusing the row for being too big.
@@ -45,7 +50,14 @@ export function isOversizeRow(error: unknown): boolean {
 }
 
 export function sourceError(result: Exclude<SourceResult<string>, { kind: 'success' }>): ServiceError {
-  const mapping: Record<string, [string, ServiceErrorStatus]> = { not_found: ['NOT_FOUND', 404], private: ['PRIVATE_PROFILE', 403], rate_limited: ['UPSTREAM_RATE_LIMITED', 429], timeout: ['UPSTREAM_TIMEOUT', 504], suspicious: ['UPSTREAM_SUSPICIOUS', 502], upstream_error: ['UPSTREAM_UNAVAILABLE', 503] };
+  const mapping: Record<string, [string, ServiceErrorStatus]> = {
+    not_found: ['NOT_FOUND', 404],
+    private: ['PRIVATE_PROFILE', 403],
+    rate_limited: ['UPSTREAM_RATE_LIMITED', 429],
+    timeout: ['UPSTREAM_TIMEOUT', 504],
+    suspicious: ['UPSTREAM_SUSPICIOUS', 502],
+    upstream_error: ['UPSTREAM_UNAVAILABLE', 503],
+  };
   const [code, status] = mapping[result.kind];
   return new ServiceError(code, status, 'Unable to refresh this resource.');
 }
@@ -62,7 +74,11 @@ export type WaitUntil = (promise: Promise<unknown>) => void;
 // adapter is checked against and not a second copy of it that can drift. Only the two members
 // withCache actually talks to: it reads and writes cache bookkeeping and holds a refresh lease, and
 // has no business reaching the payload tables.
-export interface CacheDeps { cache: CatalogStore['cacheEntries']; locks: CatalogStore['refreshLeases']; waitUntil?: WaitUntil; }
+export interface CacheDeps {
+  cache: CatalogStore['cacheEntries'];
+  locks: CatalogStore['refreshLeases'];
+  waitUntil?: WaitUntil;
+}
 
 // Whether a resource went stale recently enough to be worth serving while it refreshes. The window
 // is one more TTL past expiry, which is exactly what `Cache-Control: stale-while-revalidate=<ttl>`
@@ -73,9 +89,26 @@ function withinRevalidateWindow(expiresAt: string, ttl: number, now = Date.now()
   return !Number.isNaN(expiry) && now < expiry + ttl * 1_000;
 }
 
-export async function withCache<T>(deps: CacheDeps, key: string, ttl: number, parserVersion: string, read: () => Promise<T | null>, refresh: () => Promise<T>, owner: string, leaseSeconds?: number): Promise<ServiceResponse<T>> {
+export async function withCache<T>(
+  deps: CacheDeps,
+  key: string,
+  ttl: number,
+  parserVersion: string,
+  read: () => Promise<T | null>,
+  refresh: () => Promise<T>,
+  owner: string,
+  leaseSeconds?: number,
+): Promise<ServiceResponse<T>> {
   const [cache, stored] = await Promise.all([deps.cache.get(key), read()]);
-  if (cache && stored && cache.parserVersion === parserVersion && deps.cache.isFresh(cache)) return { data: stored, cached: true, stale: false, refreshFailed: false, fetchedAt: cache.fetchedAt, ttlSeconds: ttl };
+  if (cache && stored && cache.parserVersion === parserVersion && deps.cache.isFresh(cache))
+    return {
+      data: stored,
+      cached: true,
+      stale: false,
+      refreshFailed: false,
+      fetchedAt: cache.fetchedAt,
+      ttlSeconds: ttl,
+    };
   // The stale fallbacks below deliberately do NOT re-check `parserVersion`. After a change to the
   // *shape* of a payload that would mean serving the previous shape back, flagged only as
   // `stale: true` — but refusing instead would give up the one property this API is built on:
@@ -89,7 +122,15 @@ export async function withCache<T>(deps: CacheDeps, key: string, ttl: number, pa
   // second request that reads the lease as abandoned and starts a redundant scrape in parallel.
   const locked = await deps.locks.acquire(key, owner, leaseSeconds);
   if (!locked) {
-    if (stored && cache) return { data: stored, cached: true, stale: true, refreshFailed: false, fetchedAt: cache.fetchedAt, ttlSeconds: ttl };
+    if (stored && cache)
+      return {
+        data: stored,
+        cached: true,
+        stale: true,
+        refreshFailed: false,
+        fetchedAt: cache.fetchedAt,
+        ttlSeconds: ttl,
+      };
     throw new ServiceError('REFRESH_IN_PROGRESS', 503, 'Resource refresh is already in progress.');
   }
   const runRefresh = async (): Promise<{ value: T; fetchedAt: string }> => {
@@ -100,7 +141,13 @@ export async function withCache<T>(deps: CacheDeps, key: string, ttl: number, pa
     // failure writing this row only means the next request may re-check freshness sooner than
     // ideal — it must not throw away data we already have and report it as a failed refresh.
     try {
-      await deps.cache.put({ resourceKey: key, fetchedAt, expiresAt: new Date(Date.now() + ttl * 1000).toISOString(), sourceStatus: 'success', parserVersion });
+      await deps.cache.put({
+        resourceKey: key,
+        fetchedAt,
+        expiresAt: new Date(Date.now() + ttl * 1000).toISOString(),
+        sourceStatus: 'success',
+        parserVersion,
+      });
     } catch (bookkeepingError) {
       console.warn(JSON.stringify({ type: 'cache_bookkeeping_failed', key, error: String(bookkeepingError) }));
     }
@@ -117,19 +164,40 @@ export async function withCache<T>(deps: CacheDeps, key: string, ttl: number, pa
   // alternative is a few seconds of waiting, and a bump means the stored value is not merely older
   // but wrong — the empty genre lists of 2026-08-27 are the case in point. Those callers wait and
   // get the corrected value; they do not get the bad one one last time.
-  if (deps.waitUntil && stored && cache && cache.parserVersion === parserVersion && withinRevalidateWindow(cache.expiresAt, ttl)) {
+  if (
+    deps.waitUntil &&
+    stored &&
+    cache &&
+    cache.parserVersion === parserVersion &&
+    withinRevalidateWindow(cache.expiresAt, ttl)
+  ) {
     deps.waitUntil(
       runRefresh()
         // Nobody is left to receive this failure: the caller already has a 200 with the stale body.
         // The stored row keeps its old expiry, so the next request retries rather than backing off.
         // An oversize row is called out separately: it is the failure that will still be happening
         // tomorrow, and it would otherwise be one line among transient upstream blips.
-        .catch((error) => (isOversizeRow(error)
-          ? console.error(JSON.stringify({ type: 'payload_too_large', key, parserVersion, servingStale: true }))
-          : console.warn(JSON.stringify({ type: 'background_refresh_failed', key, error: error instanceof Error ? error.message : String(error) }))))
+        .catch((error) =>
+          isOversizeRow(error)
+            ? console.error(JSON.stringify({ type: 'payload_too_large', key, parserVersion, servingStale: true }))
+            : console.warn(
+                JSON.stringify({
+                  type: 'background_refresh_failed',
+                  key,
+                  error: error instanceof Error ? error.message : String(error),
+                }),
+              ),
+        )
         .finally(() => deps.locks.release(key, owner)),
     );
-    return { data: stored, cached: true, stale: true, refreshFailed: false, fetchedAt: cache.fetchedAt, ttlSeconds: ttl };
+    return {
+      data: stored,
+      cached: true,
+      stale: true,
+      refreshFailed: false,
+      fetchedAt: cache.fetchedAt,
+      ttlSeconds: ttl,
+    };
   }
 
   try {
@@ -141,11 +209,31 @@ export async function withCache<T>(deps: CacheDeps, key: string, ttl: number, pa
     // that outgrew the row limit does not shrink. Logged at error level either way, because the
     // branch that keeps answering is exactly the branch nobody would notice.
     if (isOversizeRow(error)) {
-      console.error(JSON.stringify({ type: 'payload_too_large', key, parserVersion, servingStale: Boolean(stored && cache) }));
-      if (stored && cache) return { data: stored, cached: true, stale: true, refreshFailed: true, fetchedAt: cache.fetchedAt, ttlSeconds: ttl };
+      console.error(
+        JSON.stringify({ type: 'payload_too_large', key, parserVersion, servingStale: Boolean(stored && cache) }),
+      );
+      if (stored && cache)
+        return {
+          data: stored,
+          cached: true,
+          stale: true,
+          refreshFailed: true,
+          fetchedAt: cache.fetchedAt,
+          ttlSeconds: ttl,
+        };
       throw new ServiceError('PAYLOAD_TOO_LARGE', 507, 'This resource is larger than this deployment can store.');
     }
-    if (stored && cache) return { data: stored, cached: true, stale: true, refreshFailed: true, fetchedAt: cache.fetchedAt, ttlSeconds: ttl };
+    if (stored && cache)
+      return {
+        data: stored,
+        cached: true,
+        stale: true,
+        refreshFailed: true,
+        fetchedAt: cache.fetchedAt,
+        ttlSeconds: ttl,
+      };
     throw error;
-  } finally { await deps.locks.release(key, owner); }
+  } finally {
+    await deps.locks.release(key, owner);
+  }
 }

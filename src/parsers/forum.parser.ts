@@ -3,8 +3,12 @@ import type { ForumThread } from '../domain/forum';
 import { decodeHtml, numeric, ParserError } from './html';
 
 const threadSchema = z.object({
-  topicId: z.number().int().positive(), title: z.string().min(1), startedBy: z.string().nullable(),
-  startedDate: z.string().nullable(), replies: z.number().nullable(), lastPostBy: z.string().nullable(),
+  topicId: z.number().int().positive(),
+  title: z.string().min(1),
+  startedBy: z.string().nullable(),
+  startedDate: z.string().nullable(),
+  replies: z.number().nullable(),
+  lastPostBy: z.string().nullable(),
 });
 
 export function parseForum(html: string): ForumThread[] {
@@ -20,7 +24,14 @@ export function parseForum(html: string): ForumThread[] {
     const startedDate = block.match(/<span class="lightLink">([^<]+)<\/span>/i)?.[1] ?? null;
     const replies = numeric(block.match(/class="forum_boardrow2"[^>]*>\s*(\d+)\s*<\/td>/i)?.[1] ?? null);
     const lastPostBy = block.match(/>by <a href="\/profile\/[^"]*">([^<]+)<\/a>/i)?.[1] ?? null;
-    const candidate = { topicId, title, startedBy: startedBy ? decodeHtml(startedBy) : null, startedDate: startedDate ? decodeHtml(startedDate) : null, replies, lastPostBy: lastPostBy ? decodeHtml(lastPostBy) : null };
+    const candidate = {
+      topicId,
+      title,
+      startedBy: startedBy ? decodeHtml(startedBy) : null,
+      startedDate: startedDate ? decodeHtml(startedDate) : null,
+      replies,
+      lastPostBy: lastPostBy ? decodeHtml(lastPostBy) : null,
+    };
     const parsed = threadSchema.safeParse(candidate);
     if (parsed.success) threads.push(parsed.data);
   }

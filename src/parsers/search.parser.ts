@@ -31,8 +31,15 @@ function parseCard<T>(chunk: string, media: 'anime' | 'manga', schema: z.ZodType
   const href = chunk.match(new RegExp(`href="(https://myanimelist\\.net/${media}/${malId}/[^"]*)"`, 'i'))?.[1];
   const title = decodeHtml(chunk.match(/<strong>([^<]+)<\/strong>/i)?.[1] ?? '');
   const synopsisRaw = chunk.match(/class="pt4">([\s\S]*?)<a\s/i)?.[1] ?? null;
-  const synopsis = synopsisRaw ? decodeHtml(synopsisRaw).replace(/\s*read more\.?$/i, '').replace(/\.{3}$/, '').trim() || null : null;
-  const cells = [...chunk.matchAll(/<td class="borderClass ac bgColor\d"[^>]*>\s*([\s\S]*?)\s*<\/td>/gi)].map((match) => decodeHtml(match[1]));
+  const synopsis = synopsisRaw
+    ? decodeHtml(synopsisRaw)
+        .replace(/\s*read more\.?$/i, '')
+        .replace(/\.{3}$/, '')
+        .trim() || null
+    : null;
+  const cells = [...chunk.matchAll(/<td class="borderClass ac bgColor\d"[^>]*>\s*([\s\S]*?)\s*<\/td>/gi)].map((match) =>
+    decodeHtml(match[1]),
+  );
   const count = numeric(cells[1] ?? null);
   const candidate = {
     malId,

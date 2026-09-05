@@ -1,6 +1,10 @@
 import type { CharacterFull } from '../domain/character-full';
 import { parseCharacterDetail } from './character-detail.parser';
-import { parseCharacterAnimeography, parseCharacterMangaography, parseCharacterVoiceActors } from './character-media.parser';
+import {
+  parseCharacterAnimeography,
+  parseCharacterMangaography,
+  parseCharacterVoiceActors,
+} from './character-media.parser';
 
 // Every sub-field here already has its own tested parser (used by the standalone
 // anime/manga/voices routes) — full() just combines one fetch of the same detail page into a

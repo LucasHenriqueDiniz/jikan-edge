@@ -1,5 +1,11 @@
 ﻿import { z } from 'zod';
-import { type AnimeStatistics, type MangaStatistics, type UserProfile, type UserStatistics, usernameKey } from '../domain/user';
+import {
+  type AnimeStatistics,
+  type MangaStatistics,
+  type UserProfile,
+  type UserStatistics,
+  usernameKey,
+} from '../domain/user';
 import { capture, divContent, numeric, ParserError, richText } from './html';
 
 const profileSchema = z.object({
@@ -44,12 +50,17 @@ function labelledValue(html: string, label: string): string | null {
   return capture(html, new RegExp(`${escaped}<\\/span>\\s*<span[^>]*>([\\s\\S]*?)<\\/span>`, 'i'));
 }
 
-export function parseUserProfile(html: string, requestedUsername: string, fetchedAt = new Date().toISOString()): UserProfile {
+export function parseUserProfile(
+  html: string,
+  requestedUsername: string,
+  fetchedAt = new Date().toISOString(),
+): UserProfile {
   const head = html.slice(0, 30_000);
   const status = section(html, 'user-status', 12_000);
-  const canonical = capture(head, /<span class="di-ib po-r">\s*([^<]+?)'s Profile\s*<\/span>/i)
-    ?? capture(head, /<title>\s*([^<|]+?)(?:&#039;|'s) Profile/i)
-    ?? requestedUsername;
+  const canonical =
+    capture(head, /<span class="di-ib po-r">\s*([^<]+?)'s Profile\s*<\/span>/i) ??
+    capture(head, /<title>\s*([^<|]+?)(?:&#039;|'s) Profile/i) ??
+    requestedUsername;
   const profile: UserProfile = {
     username: requestedUsername,
     canonicalUsername: canonical,
@@ -69,7 +80,8 @@ export function parseUserProfile(html: string, requestedUsername: string, fetche
     fetchedAt,
   };
   const validated = profileSchema.safeParse(profile);
-  if (!validated.success || usernameKey(validated.data.canonicalUsername) !== usernameKey(canonical)) throw new ParserError('invalid_profile');
+  if (!validated.success || usernameKey(validated.data.canonicalUsername) !== usernameKey(canonical))
+    throw new ParserError('invalid_profile');
   return validated.data;
 }
 
@@ -121,19 +133,38 @@ function meanScore(html: string): number | null {
 
 function parseAnimeBucket(html: string): AnimeStatistics {
   const data = statsSection(html, 'Anime Stats');
-  const status = statsList(data, 'stats-status'); const totals = statsList(data, 'stats-data');
+  const status = statsList(data, 'stats-status');
+  const totals = statsList(data, 'stats-data');
   return {
-    watching: statusCount(status, 'Watching'), completed: statusCount(status, 'Completed'), onHold: statusCount(status, 'On-Hold'), dropped: statusCount(status, 'Dropped'), planToWatch: statusCount(status, 'Plan to Watch'), totalEntries: dataValue(totals, 'Total Entries') ?? 0,
-    rewatched: dataValue(totals, 'Rewatched'), episodesWatched: dataValue(totals, 'Episodes'), daysWatched: daysValue(data), meanScore: meanScore(data),
+    watching: statusCount(status, 'Watching'),
+    completed: statusCount(status, 'Completed'),
+    onHold: statusCount(status, 'On-Hold'),
+    dropped: statusCount(status, 'Dropped'),
+    planToWatch: statusCount(status, 'Plan to Watch'),
+    totalEntries: dataValue(totals, 'Total Entries') ?? 0,
+    rewatched: dataValue(totals, 'Rewatched'),
+    episodesWatched: dataValue(totals, 'Episodes'),
+    daysWatched: daysValue(data),
+    meanScore: meanScore(data),
   };
 }
 
 function parseMangaBucket(html: string): MangaStatistics {
   const data = statsSection(html, 'Manga Stats');
-  const status = statsList(data, 'stats-status'); const totals = statsList(data, 'stats-data');
+  const status = statsList(data, 'stats-status');
+  const totals = statsList(data, 'stats-data');
   return {
-    reading: statusCount(status, 'Reading'), completed: statusCount(status, 'Completed'), onHold: statusCount(status, 'On-Hold'), dropped: statusCount(status, 'Dropped'), planToRead: statusCount(status, 'Plan to Read'), totalEntries: dataValue(totals, 'Total Entries') ?? 0,
-    reread: dataValue(totals, 'Reread'), chaptersRead: dataValue(totals, 'Chapters'), volumesRead: dataValue(totals, 'Volumes'), daysRead: daysValue(data), meanScore: meanScore(data),
+    reading: statusCount(status, 'Reading'),
+    completed: statusCount(status, 'Completed'),
+    onHold: statusCount(status, 'On-Hold'),
+    dropped: statusCount(status, 'Dropped'),
+    planToRead: statusCount(status, 'Plan to Read'),
+    totalEntries: dataValue(totals, 'Total Entries') ?? 0,
+    reread: dataValue(totals, 'Reread'),
+    chaptersRead: dataValue(totals, 'Chapters'),
+    volumesRead: dataValue(totals, 'Volumes'),
+    daysRead: daysValue(data),
+    meanScore: meanScore(data),
   };
 }
 

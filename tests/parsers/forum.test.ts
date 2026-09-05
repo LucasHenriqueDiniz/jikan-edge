@@ -8,7 +8,14 @@ describe('forum parser', () => {
   it('extracts forum threads', () => {
     const threads = parseForum(html);
     expect(threads).toEqual([
-      { topicId: 101271, title: 'Cowboy Bebop Episode 8 Discussion', startedBy: 'KillthisAccount', startedDate: 'Jul 23, 2009', replies: 159, lastPostBy: 'TheGhoster_12' },
+      {
+        topicId: 101271,
+        title: 'Cowboy Bebop Episode 8 Discussion',
+        startedBy: 'KillthisAccount',
+        startedDate: 'Jul 23, 2009',
+        replies: 159,
+        lastPostBy: 'TheGhoster_12',
+      },
     ]);
   });
 });

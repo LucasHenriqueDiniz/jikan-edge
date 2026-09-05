@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { CatalogSource } from '../../src/ports/driven/catalog-source.port';
 import { SearchService } from '../../src/services/search.service';
+import { D1CatalogStore } from '../../src/adapters/d1-catalog-store';
 
 // The filter-to-URL mapping is private, so it is observed where it becomes visible: the URL handed
 // to the source client. The stub records it and then fails, which is enough — nothing past the
@@ -9,11 +10,14 @@ import { SearchService } from '../../src/services/search.service';
 async function params(filters: Record<string, string>): Promise<URLSearchParams> {
   let seen: string | null = null;
   const source: CatalogSource = {
-    getHtml: async (url: string) => { seen = url; throw new Error('stop after recording the URL'); },
+    getHtml: async (url: string) => {
+      seen = url;
+      throw new Error('stop after recording the URL');
+    },
   };
   const row = { first: async () => null, run: async () => ({ meta: { changes: 1 }, success: true }) };
   const db = { prepare: () => ({ bind: () => row, ...row }) };
-  const service = new SearchService(db as never, { catalogTtlSeconds: 1 } as never, source);
+  const service = new SearchService(new D1CatalogStore(db as never), source, { catalogTtlSeconds: 1 } as never);
 
   try {
     await service.anime('naruto', 1, filters, 'req');
@@ -52,7 +56,7 @@ describe('date filters', () => {
     expect([q.get('em'), q.get('ed'), q.get('ey')]).toEqual(['12', '31', '2020']);
   });
 
-  it('drops the leading zero, which is not what MAL\'s option values look like', async () => {
+  it("drops the leading zero, which is not what MAL's option values look like", async () => {
     const q = await params({ startDate: '2015-01-05' });
     expect(q.get('sm')).toBe('1');
     expect(q.get('sd')).toBe('5');
@@ -63,9 +67,12 @@ describe('date filters', () => {
     for (const key of ['sm', 'sd', 'sy', 'em', 'ed', 'ey']) expect(q.get(key)).toBeNull();
   });
 
-  it.each(['2015', '2015-1-2', '15-01-02', 'yesterday', '2015/01/02'])('refuses %j rather than guessing at it', async (value) => {
-    await expect(params({ startDate: value })).rejects.toThrow(/YYYY-MM-DD/);
-  });
+  it.each(['2015', '2015-1-2', '15-01-02', 'yesterday', '2015/01/02'])(
+    'refuses %j rather than guessing at it',
+    async (value) => {
+      await expect(params({ startDate: value })).rejects.toThrow(/YYYY-MM-DD/);
+    },
+  );
 
   it('refuses a date that could never exist', async () => {
     await expect(params({ startDate: '2015-13-01' })).rejects.toThrow(/not a real date/);
