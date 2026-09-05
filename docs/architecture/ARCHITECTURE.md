@@ -38,6 +38,32 @@ Four habits, and they are the whole point of the format:
 
 *What the tree looks like and what each directory is for. Only what exists.*
 
+![[component-view]]
+
+The diagram above is **generated** by [`tools/architecture_diagram.py`](../../tools/architecture_diagram.py)
+from the actual `from '...'` statements between the directories below, so it cannot drift from the
+code without the counts changing. A **dashed** arrow is `import type` only — erased at build time,
+which is why `services -> ports` (24 type imports, and no value import at all) is the hexagon
+working rather than a dependency. A **red** arrow is a rule being broken, and the generator exits
+non-zero while one exists.
+
+**Today there is none: `python3 tools/architecture_diagram.py` exits 0 over 10 folders and 17
+relationships.** It did not when the generator was written — it found two, and both were closed on
+2026-09-05 rather than documented. `ports -> source` went when `SourceResult`, `SourceMetadata` and
+`FetchBudget` moved into `catalog-source.port.ts`. `services -> repositories` was a single
+`import type { UserRepository }` in `user.service.ts`, used to derive a return shape as
+`Awaited<ReturnType<UserRepository['listEntries']>>['entries']` — the application naming its adapter
+to describe something the port already declares. It is `UserMediaListEntry[]` now.
+
+That second one is the generator earning its place: nothing else had reported it. `pnpm lint` cannot
+see a layering rule, `tsc` was perfectly happy, and the type import survived the whole
+dependency-injection rollout because the constructor it belonged to had already stopped naming the
+adapter.
+
+Regenerate with `python3 tools/architecture_diagram.py`, and look at it with
+`python3 tools/render_architecture.py`. **Do not nudge the boxes in Obsidian** — the next run
+overwrites them silently, which is the trade the `diagrams` skill asks you to make consciously.
+
 ```
 src/
   domain/          entities and value objects for every resource, plus each resource's
@@ -224,10 +250,13 @@ own `/v1`.
       `repositories/` and `adapters/` (the driver side), `app.ts` (the composition root) and
       `http/diagnostics.ts` (`/health` probing the binding directly). The port names it only in a
       comment saying it does not appear in any signature.
-- [ ] **`SourceResult` and `FetchBudget` still live in `src/source/`** and `CatalogSource` imports
-      them from there, so the port points outward at its own adapter's directory. `CacheEntry` was
-      moved into `catalog-store.port.ts` for exactly this reason; these two were left because
-      `fetch-policy.ts` holds real policy alongside the type and splitting it is its own change.
+- [x] ~~**`SourceResult` and `FetchBudget` still live in `src/source/`.**~~ Closed 2026-09-05. Both
+      moved into `catalog-source.port.ts`, which is where `CacheEntry` already lived for the same
+      reason. The split that made it possible is the type against the policy: `FetchBudget` is a
+      parameter of `getHtml` so it belongs to the port, while the budgets themselves —
+      `CHARACTER_PAGE_BUDGET`, measured against One Piece at 9.88 MB — stay in `fetch-policy.ts`,
+      which now imports the type from the port. `source-types.ts` is a re-export, so the adapter, the
+      validator and three test files did not change.
 - [x] ~~**Seven domain-shaped types are exported from `src/parsers/`.**~~ Closed 2026-09-04 by
       [domain-boundary slice 2](../plans/domain-boundary/slice-02-parser-types-to-domain.md). Eight
       names in five new domain files; the parsers re-export every one, so the services that read them
@@ -242,9 +271,19 @@ own `/v1`.
       handlers had been written one per line, up to 747 characters each, so nothing about it was 558
       lines' worth of code.
 - [x] ~~**The lint findings are measured but unfixed.**~~ Closed 2026-09-04 by slice 2. `pnpm lint`
-      exits 0 on a clean tree and CI runs it. Still missing: a dead-code tool (`knip`). Biome's
-      `noUnusedPrivateClassMembers` caught ten dead fields, but it only sees inside a class — an
-      exported symbol nothing imports goes on looking used.
+      exits 0 on a clean tree and CI runs it.
+- [ ] **Still no dead-code tool (`knip`), and the manual sweep showed why one is worth having.** A
+      grep found 19 of 405 exports with no importer; a symbol-by-symbol audit reclassified almost all
+      of them as *over-exported* rather than dead — used inside their own file, often in the signature
+      of something still exported. 14 lost the keyword on 2026-09-05. Exactly one was genuinely dead
+      (`VOICE_ACTOR_PARSER_VERSION`, since deleted), and separating the two took two agents and a
+      per-symbol trace, which is the work a tool does in a second. Biome cannot help: its
+      `noUnusedPrivateClassMembers` only sees inside a class, and an exported symbol nothing imports
+      goes on looking used.
+- [x] ~~**Two declarations of `VoiceActor`.**~~ Closed 2026-09-05. `voice-actor.ts` and
+      `characters-staff.ts` each declared the same four fields in a different order — the same type to
+      TypeScript, two things to keep in step for a reader. One declaration now, in the file named for
+      the concept.
 - [x] ~~**The vault is incomplete.**~~ Closed 2026-09-04. Every folder the `workflow` skill names now
       exists: `pitches/`, `plans/`, `postmortem/`, `product/`, `roadmap/`, `architecture/diagrams/`,
       each with the template README, plus `.obsidian/` and the `.mcp.json` that points a vault at
