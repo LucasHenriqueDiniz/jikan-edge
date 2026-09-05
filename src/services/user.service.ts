@@ -3,7 +3,6 @@ import { LIST_PARSER_VERSION, type MediaType, type UserMediaListEntry } from '..
 import { PARSER_VERSION, type UserProfile, type UserStatistics, usernameKey } from '../domain/user';
 import { LIST_PAGE_SIZE, listLayout, parseUserMediaListSnapshot } from '../parsers/user-list.parser';
 import { parseUserProfile, parseUserStatistics } from '../parsers/user-profile.parser';
-import type { UserRepository } from '../repositories/user.repository';
 import { FAVORITES_PARSER_VERSION, parseUserFavorites, type Favorites } from '../parsers/user-favorites.parser';
 import { parseUserUpdates, type UserUpdates } from '../parsers/user-updates.parser';
 import { animeListUrl, mangaListUrl, profileUrl, userSubPageUrl } from '../source/mal-urls';
@@ -271,9 +270,7 @@ export class UserService {
     requestId: string,
     page: number,
     limit: number,
-  ): Promise<
-    ServiceResponse<{ entries: Awaited<ReturnType<UserRepository['listEntries']>>['entries']; total: number }>
-  > {
+  ): Promise<ServiceResponse<{ entries: UserMediaListEntry[]; total: number }>> {
     const key = this.validateUsername(username);
     const cacheKey = `user:${key}:${mediaType}-list`;
     return this.withCache(

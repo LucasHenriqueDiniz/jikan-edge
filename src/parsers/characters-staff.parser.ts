@@ -1,5 +1,6 @@
 import { z } from 'zod';
-import type { CharacterRole, StaffMember, VoiceActor } from '../domain/characters-staff';
+import type { CharacterRole, StaffMember } from '../domain/characters-staff';
+import type { VoiceActor } from '../domain/voice-actor';
 import { decodeHtml, imageFrom, numeric, ParserError } from './html';
 
 const voiceActorSchema = z.object({
