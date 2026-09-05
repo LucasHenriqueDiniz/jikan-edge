@@ -13,6 +13,15 @@ tags:
 [known gaps](ARCHITECTURE.md#known-gaps), which recorded the divergence without deciding it. This
 acceptance removes all three and rewrites that file's Ports section around the ports that now exist.
 
+> ⚠️ **The `src/app.ts:NNN` line numbers below describe the tree on 2026-09-03 and no longer resolve.**
+> They are evidence for the decision at the moment it was taken and are deliberately not rewritten —
+> an ADR that gets its numbers refreshed stops being a record of what was known. Where things are
+> today: the eleven factories at `:111-121` are twelve at `src/app.ts:149-195`, they hand over a built
+> `D1CatalogStore` and `MalClient` instead of `c.env.DB`, and the two inline
+> `new RandomService(c.env.DB)` calls at `:530`/`:540` are gone — `RandomService` has a factory beside
+> the others, and the route handlers it lived in moved to `src/http/routes/random.routes.ts`. The
+> decision was carried out in full; see [[ports-and-injection]] in `docs/postmortem/`.
+
 **Why this file lives in `docs/architecture/` and not `docs/adr/`.** [`../README.md`](../README.md)
 reserves `adr/` for "formal architecture decisions once there are mature alternatives", and this
 decision has two. Seeding that folder was the alternative and it costs more than it buys: a second

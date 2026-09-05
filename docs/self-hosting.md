@@ -19,10 +19,10 @@ documentation it is linked; where it comes from this project's own measurements 
 ```bash
 git clone https://github.com/LucasHenriqueDiniz/jikan-edge.git
 cd jikan-edge
-npm install
+pnpm install
 npx wrangler login
 
-npm run setup        # creates your D1, writes its id into wrangler.jsonc, applies the migrations
+pnpm run setup        # creates your D1, writes its id into wrangler.jsonc, applies the migrations
 npx wrangler deploy
 ```
 
@@ -41,7 +41,7 @@ can serve. Any other value is diagnosed in [Troubleshooting](#troubleshooting).
 
 ### Options
 
-`npm run setup` accepts flags, all optional:
+`pnpm run setup` accepts flags, all optional:
 
 | Flag | Effect |
 | --- | --- |
@@ -56,7 +56,7 @@ already ran are skipped. It never deploys — publishing stays a separate, delib
 
 | Resource | Needed? | Why |
 | --- | --- | --- |
-| **D1 database** | **Yes** | Every route reads the cache table before anything else. Created and migrated by `npm run setup`. |
+| **D1 database** | **Yes** | Every route reads the cache table before anything else. Created and migrated by `pnpm run setup`. |
 | **Rate limiting bindings** | Yes, already configured | Nothing to create. `namespace_id` is [an integer you choose, scoped to your own account](https://developers.cloudflare.com/workers/runtime-apis/bindings/rate-limit/), so the values committed here work as-is in your account and share no counters with anyone else's. |
 | **Static assets** (`site/`) | Included | The landing page at `/`. Deployed by `wrangler deploy` with no build step. |
 | **R2 bucket** | **No** | An unused `SNAPSHOTS_BUCKET` binding used to be required here, forcing an R2 subscription for nothing. It was removed. |
@@ -69,7 +69,7 @@ If you would rather not run the script, it is four commands and one edit:
 ```bash
 npx wrangler d1 create jikan-edge     # prints the database id
 # paste that id into wrangler.jsonc → d1_databases[0].database_id
-npm run db:migrate:remote             # applies migrations to the REMOTE database
+pnpm run db:migrate:remote             # applies migrations to the REMOTE database
 npx wrangler deploy
 ```
 
@@ -82,8 +82,8 @@ Start with `/health`, then read the logs live with `npx wrangler tail` while you
 
 | What you see | What it means | Fix |
 | --- | --- | --- |
-| `checks.database: "not_migrated"`, or `503 DATABASE_NOT_MIGRATED` on `/v1/*` | The database exists but has no schema. | `npm run db:migrate:remote` |
-| `checks.database: "not_configured"`, or `503 DATABASE_NOT_CONFIGURED` | No D1 is bound to the Worker. | Check `d1_databases[0].database_id` in `wrangler.jsonc`, or re-run `npm run setup`. |
+| `checks.database: "not_migrated"`, or `503 DATABASE_NOT_MIGRATED` on `/v1/*` | The database exists but has no schema. | `pnpm run db:migrate:remote` |
+| `checks.database: "not_configured"`, or `503 DATABASE_NOT_CONFIGURED` | No D1 is bound to the Worker. | Check `d1_databases[0].database_id` in `wrangler.jsonc`, or re-run `pnpm run setup`. |
 | `checks.database: "unavailable"` | The binding and schema are fine; D1 itself failed. | Retry, then check [Cloudflare status](https://www.cloudflarestatus.com/). |
 | `500 INTERNAL_ERROR` on **every** route | A build from before this page existed: the two cases above were not diagnosed and surfaced as this. | Pull the latest `main` and redeploy. ([issue #1](https://github.com/LucasHenriqueDiniz/jikan-edge/issues/1)) |
 | `Error 1102 — Worker exceeded resource limits` on heavy routes only | Free plan CPU limit. | [Free plan or Paid](#free-plan-or-paid) |
@@ -139,8 +139,8 @@ are deliberately conservative — please keep them that way.
 ```bash
 git remote add upstream https://github.com/LucasHenriqueDiniz/jikan-edge.git
 git pull upstream main
-npm install
-npm run db:migrate:remote     # new migrations arrive with parser changes
+pnpm install
+pnpm run db:migrate:remote     # new migrations arrive with parser changes
 npx wrangler deploy
 ```
 
