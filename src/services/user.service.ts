@@ -42,7 +42,7 @@ export function listRefreshLeaseSeconds(sourceTimeoutMs: number): number {
   return Math.ceil((MAX_LIST_PAGES * sourceTimeoutMs) / 1000) + 60;
 }
 
-export interface UserFullProfile {
+interface UserFullProfile {
   profile: UserProfile;
   statistics: UserStatistics;
   favorites: Favorites;

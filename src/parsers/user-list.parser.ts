@@ -27,7 +27,7 @@ export const LIST_PAGE_SIZE = 300;
  * JSON array inside a `data-items` attribute. Only the classic one used to be read, so every modern-layout
  * user matched zero rows and the completeness guard rejected the snapshot with a 502.
  */
-export type ListLayout = 'classic' | 'modern';
+type ListLayout = 'classic' | 'modern';
 
 /**
  * Per-page evidence only. There is deliberately no `declaredTotal` here: MAL's list page never states how
@@ -35,7 +35,7 @@ export type ListLayout = 'classic' | 'modern';
  * ever be null and read as if completeness had been checked. The real cross-check lives in the service,
  * which compares the assembled list against the profile's own counter.
  */
-export interface ListCompletenessEvidence {
+interface ListCompletenessEvidence {
   extractedTotal: number;
   uniqueTotal: number;
   sourceBytes: number;
@@ -43,7 +43,7 @@ export interface ListCompletenessEvidence {
   terminalMarkerFound: boolean;
   duplicateIds: number[];
 }
-export type ListParseResult =
+type ListParseResult =
   | { kind: 'complete'; items: UserMediaListEntry[]; evidence: ListCompletenessEvidence }
   | { kind: 'empty'; items: []; evidence: ListCompletenessEvidence }
   | { kind: 'partial'; items: UserMediaListEntry[]; reason: string; evidence: ListCompletenessEvidence }

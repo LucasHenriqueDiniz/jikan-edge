@@ -1,6 +1,7 @@
 import type { Context, Hono } from 'hono';
 import type { Env } from '../config/env';
 import type { WaitUntil } from '../services/cacheable';
+import type { Freshness } from './caching';
 import { cacheControlFor } from './caching';
 
 export type Variables = { requestId: string; startedAt: number; page: number };
@@ -35,10 +36,7 @@ export function background(c: AppContext): WaitUntil | undefined {
 //
 // stale-while-revalidate lets a shared cache keep serving during a refresh, which matches how this
 // API already behaves internally and spares callers the multi-second upstream wait.
-export function cacheHeader(
-  c: AppContext,
-  result: { cached: boolean; stale: boolean; fetchedAt?: string; ttlSeconds?: number },
-): void {
+export function cacheHeader(c: AppContext, result: Freshness & { cached: boolean }): void {
   c.header('X-Cache-Status', result.stale ? 'stale' : result.cached ? 'hit' : 'miss');
   const cacheControl = cacheControlFor(result);
   if (cacheControl) c.header('Cache-Control', cacheControl);

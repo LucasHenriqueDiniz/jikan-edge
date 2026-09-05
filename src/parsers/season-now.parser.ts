@@ -13,13 +13,13 @@ const entrySchema = z.object({
   members: z.number().nullable(),
 });
 
-export interface SeasonCompletenessEvidence {
+interface SeasonCompletenessEvidence {
   extractedTotal: number;
   sourceBytes: number;
   terminalMarkerFound: boolean;
   duplicateIds: number[];
 }
-export type SeasonParseResult =
+type SeasonParseResult =
   | { kind: 'complete'; items: AnimeListEntry[]; evidence: SeasonCompletenessEvidence }
   | { kind: 'partial'; items: AnimeListEntry[]; reason: string; evidence: SeasonCompletenessEvidence }
   | { kind: 'invalid'; reason: string; evidence: SeasonCompletenessEvidence };

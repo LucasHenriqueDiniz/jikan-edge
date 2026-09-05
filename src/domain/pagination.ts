@@ -1,6 +1,6 @@
 import { ServiceError } from './errors';
 
-export interface Pagination {
+interface Pagination {
   page: number;
   limit: number;
   count: number;

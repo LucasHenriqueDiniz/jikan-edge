@@ -1,4 +1,4 @@
-export interface OperationMetric {
+interface OperationMetric {
   route: string;
   resourceType: string;
   cacheStatus: 'hit' | 'miss' | 'stale';

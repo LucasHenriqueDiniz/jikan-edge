@@ -1,4 +1,4 @@
-export interface StatusStats {
+interface StatusStats {
   inProgress: number | null;
   completed: number | null;
   onHold: number | null;
@@ -7,7 +7,7 @@ export interface StatusStats {
   total: number | null;
 }
 
-export interface ScoreStat {
+interface ScoreStat {
   score: number;
   votes: number;
   percentage: number;

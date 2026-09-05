@@ -34,7 +34,7 @@ function parsePromoBlocks(section: string): PromoVideoEntry[] {
   return promos;
 }
 
-export function parseEpisodeVideos(html: string): EpisodeVideoEntry[] {
+function parseEpisodeVideos(html: string): EpisodeVideoEntry[] {
   const section = sectionSlice(html, 'Episodes');
   const episodes: EpisodeVideoEntry[] = [];
   const seen = new Set<number>();

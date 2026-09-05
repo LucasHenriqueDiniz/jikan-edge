@@ -22,7 +22,7 @@ import {
 
 const MAX_QUERY_LENGTH = 64;
 
-export interface TitleSearchFilters {
+interface TitleSearchFilters {
   type?: string;
   status?: string;
   rating?: string;

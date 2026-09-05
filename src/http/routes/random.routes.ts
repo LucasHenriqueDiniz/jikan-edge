@@ -4,7 +4,7 @@ import { configFrom } from '../../config/env';
 import { errorResponse } from '../../http/errors';
 import { isStale, NO_STORE } from '../../http/caching';
 import { success } from '../../http/response';
-import type { RandomKind } from '../../domain/random';
+import { RANDOM_KINDS } from '../../domain/random';
 import type { RandomService } from '../../services/random.service';
 import type { UserService } from '../../services/user.service';
 
@@ -27,7 +27,10 @@ export function registerRandomRoutes(
   // These four are also the only reads that bypass withCache, so `stale` is worked out here from the
   // stored row's own timestamp instead of being left out. They report the same four meta fields as
   // the rest of the API rather than a lone `requestId` no other successful response carries.
-  for (const kind of ['anime', 'manga', 'characters', 'people'] as RandomKind[])
+  //
+  // The loop is driven by the domain's own `RANDOM_KINDS` rather than by a copy of those literals, so
+  // a new kind cannot be added to the domain without gaining a route here.
+  for (const kind of RANDOM_KINDS)
     app.get(`/v1/random/${kind}`, async (c) => {
       try {
         const picked = await randomService(c).pick(kind);
