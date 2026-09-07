@@ -53,8 +53,17 @@ is a decision, and undocumented is the only version of it that is wrong.
 
 ## Outcome
 
-Shipped 2026-09-04. `src/app.ts` is **197 lines**; the 93 route registrations live in twelve modules
-under `src/http/routes/`, largest 426 lines. Nothing under `src/` is over the soft limit.
+Shipped 2026-09-04. `src/app.ts` is **197 lines** (215 by the time the branch merged — the
+dependency-injection slice that followed added the twelfth service factory); the 93 route
+registrations live in twelve modules under `src/http/routes/`, largest 426 lines.
+
+⚠️ **This section first claimed "nothing under `src/` is over the soft limit". That was false when
+written and stayed false through the merge.** `src/services/anime.service.ts` is **617 lines** — it
+went from 347 to 617 in slice 2's reformat and no later commit touched its size. The mistake was the
+measurement, not the split: the check run here was
+`wc -l src/app.ts src/http/app-context.ts src/http/routes/*.ts`, which covers only the files this
+slice created. The soft limit applies to `src/` as a whole, and the one file breaching it was the one
+not in that list. Corrected 2026-09-05 and recorded as an open gap in `ARCHITECTURE.md`.
 
 `Done when` block: prints `197 src/app.ts`, the `-lt 500` test passes, unit run ends
 `Tests  355 passed (355)` and the integration run `Tests  29 passed (29)`. (355, not the 351 this

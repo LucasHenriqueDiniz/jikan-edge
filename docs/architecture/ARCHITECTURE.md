@@ -265,13 +265,29 @@ own `/v1`.
       `ListParseResult`, `SeasonParseResult`, and the two completeness-evidence shapes) stayed, and
       that was re-measured rather than assumed: nothing outside `src/parsers/` names them.
 - [x] ~~**`src/app.ts` is 558 lines.**~~ Closed 2026-09-04 by
-      [code-hygiene slice 3](../plans/code-hygiene/slice-03-split-app-ts.md). 197 lines, and the 93
-      route registrations live in twelve modules under `src/http/routes/`, none over 426 lines. The
+      [code-hygiene slice 3](../plans/code-hygiene/slice-03-split-app-ts.md). 197 lines at that
+      commit and 215 today — the ports slice that followed added the twelfth service factory — and the
+      93 route registrations live in twelve modules under `src/http/routes/`, none over 426 lines. The
       number got worse before it got better: the slice-2 reformat took the file to 1,782 — the
       handlers had been written one per line, up to 747 characters each, so nothing about it was 558
       lines' worth of code.
 - [x] ~~**The lint findings are measured but unfixed.**~~ Closed 2026-09-04 by slice 2. `pnpm lint`
       exits 0 on a clean tree and CI runs it.
+- [ ] **`src/services/anime.service.ts` is 617 lines**, the only file under `src/` over the
+      `clean-code` soft limit of 500. It went 347 → 617 in the 2026-09-04 reformat, which did not
+      inflate it so much as reveal it: the same code, with the handlers no longer written as single
+      very long lines. Well inside the 1500 hard limit, so it is a candidate and not a defect — the
+      same status `app.ts` had before it was split. The seam, if one is wanted, is visible in its 27
+      public methods: 20 are per-title reads keyed by a MyAnimeList id (`detail`, `full`,
+      `characters`, `staff`, `episodes`, `videos`, …) and **7 are catalogue-wide lists that take no
+      id at all** — `genres`, `topAnime`, `seasonNow`, `seasonUpcoming`, `seasonByYear`,
+      `seasonArchive`, `schedule`. That is the same split the route modules already make, where
+      `seasons.routes.ts` was carved out of `anime.routes.ts` for exactly this reason.
+      ⚠️ **This gap was published as closed for a day.** Slice 3's outcome, this file and the epic
+      postmortem all claimed nothing under `src/` was over the limit, because the check run after the
+      split measured only the files that slice had created. A measurement scoped to what you changed
+      cannot test a claim about what you did not — see the correction in
+      [`linter-formatter-and-app-ts.md`](../postmortem/linter-formatter-and-app-ts.md).
 - [ ] **Still no dead-code tool (`knip`), and the manual sweep showed why one is worth having.** A
       grep found 19 of 405 exports with no importer; a symbol-by-symbol audit reclassified almost all
       of them as *over-exported* rather than dead — used inside their own file, often in the signature
