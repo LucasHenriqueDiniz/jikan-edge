@@ -7,8 +7,10 @@ tags:
   - formatter
   - checkpoint-gates
   - stale-claims
+  - kind/wrong-claim
 closed: 2026-09-04
-cost: "three slices in one session; one wasted verification pass that reported success"
+corrected: 2026-09-05
+cost: "three slices in one session; one wasted verification pass that reported success; one false claim published to main"
 ---
 
 # A linter, a formatter, and an app.ts that was never 558 lines
@@ -32,11 +34,43 @@ indistinguishable.
 | files unformatted | 139 of 225 | 0 |
 | lint findings | unknown | 0, none suppressed |
 | `src/app.ts` | 558 lines | **197** |
-| largest file under `src/` | 558 | 426 (`http/routes/anime.routes.ts`) |
+| largest file under `src/` | 558 (`app.ts`) | **617** (`services/anime.service.ts`) — see the correction below |
+| largest route module | — | 426 (`http/routes/anime.routes.ts`) |
 | tests | 355 unit / 29 integration | unchanged, all passing |
 
 The sequencing worked exactly as the pitch predicted. Five commits, each reviewable on its own terms:
 config, reformat (tool-generated only), hand fixes, CI, split.
+
+## Correction, 2026-09-05
+
+> Claim: **false** · Cost: published to `main` in three documents and a merged pull request, and
+> found only when someone asked for numbers a day later.
+
+**This document, the slice-3 plan and `ARCHITECTURE.md` all said the epic left nothing under `src/`
+over the 500-line soft limit. `src/services/anime.service.ts` is 617 lines** and has been since
+slice 2's reformat — 347 before it, 617 after, unchanged by every commit that followed.
+
+The mistake was not in the split; it was in what got measured. The check run after the split was
+
+```
+wc -l src/app.ts src/http/app-context.ts src/http/routes/*.ts
+```
+
+— every file that slice created, and nothing else. The soft limit is a property of `src/`, so
+measuring only the new files can confirm the new files and can never falsify the claim actually being
+made. The one file breaching the limit was the one file guaranteed not to appear in that list.
+
+⚠️ **It is the same failure mode this document already describes twice**, in the esbuild pass that
+compared empty output to empty output and in the gate that could not fail. Writing it down did not
+prevent it, because both earlier instances were framed as *this particular command was wrong* rather
+than as the rule underneath: **a measurement scoped to what you changed cannot test a claim about
+what you did not.**
+
+What was true all along, and is now stated where it can be found: `app.ts` went 558 → 197 (215 after
+the ports slice added the twelfth factory), the largest route module is 426, and the largest file
+under `src/` is `anime.service.ts` at 617. It is well inside the 1500 hard limit, so it is a gap
+rather than a defect — but it is now in `ARCHITECTURE.md`'s known gaps instead of being contradicted
+by it.
 
 ## The mistakes, in the order they were made
 
