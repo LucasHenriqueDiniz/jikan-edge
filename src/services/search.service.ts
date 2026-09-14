@@ -1,7 +1,14 @@
 import type { RuntimeConfig } from '../config/env';
 import { CHARACTER_SEARCH_PARSER_VERSION, type CharacterSearchResult } from '../domain/character-search';
 import { PERSON_SEARCH_PARSER_VERSION, type PersonSearchResult } from '../domain/person-search';
-import { ANIME_SEARCH_PARSER_VERSION, MANGA_SEARCH_PARSER_VERSION, type SearchEntry } from '../domain/search';
+import type { AnimeDetail } from '../domain/anime';
+import {
+  ANIME_SEARCH_PARSER_VERSION,
+  type AnimeSearchEntry,
+  MANGA_SEARCH_PARSER_VERSION,
+  type SearchEntry,
+} from '../domain/search';
+import { parseAnimeDetail } from '../parsers/anime-detail.parser';
 import { USER_SEARCH_PARSER_VERSION, type UserSearchResult } from '../domain/user-search';
 import { parseCharacterSearch } from '../parsers/character-search.parser';
 import { ParserError } from '../parsers/html';
@@ -21,6 +28,28 @@ import {
 } from './cacheable';
 
 const MAX_QUERY_LENGTH = 64;
+
+// An exact-title search on MAL 303-redirects to the entity's detail page; MalClient follows the
+// redirect, so metadata.finalUrl is a detail URL like https://myanimelist.net/anime/1/Cowboy_Bebop.
+// Routing on that is more precise than the old title-string marker guard, which rejected the detail
+// page as UPSTREAM_SUSPICIOUS (issue #16). Genre-browse redirects land on /anime/genre/... — no
+// trailing id — so this pattern does not match them.
+const DETAIL_LANDING = /^https:\/\/myanimelist\.net\/(anime|manga)\/(\d+)\b/;
+
+// AnimeDetail carries every SearchEntry field; the one gap is url, which is nullable on the detail
+// but required on the entry, so it falls back to the landing URL (the canonical detail URL).
+function animeDetailToEntry(detail: AnimeDetail, landed: string): AnimeSearchEntry {
+  return {
+    malId: detail.malId,
+    url: detail.url ?? landed,
+    title: detail.title,
+    imageUrl: detail.imageUrl,
+    synopsis: detail.synopsis,
+    type: detail.type,
+    score: detail.score,
+    episodes: detail.episodes,
+  };
+}
 
 interface TitleSearchFilters {
   type?: string;
@@ -212,16 +241,37 @@ export class SearchService {
       version,
       () => this.catalog.get<SearchEntry[]>(cacheKey),
       async () => {
-        // The marker used to be `filterByType`, which the genre-browse page MAL redirected us to also
-        // contains — it has a type-filter widget of its own — so a wrong page passed the guard and the
-        // parser answered with an empty list instead of failing. The page title is the one string that
-        // separates a search from every other MAL page, and it is present even when the search
-        // legitimately matched nothing.
+        // Route on where the fetch actually landed (metadata.finalUrl), not a title-string marker.
+        // MAL redirects an exact-title search to the detail page; the old marker guard
+        // ('Search Anime - MyAnimeList.net', absent on a detail page) turned that into a 502. The
+        // landing URL tells us precisely which page we got: the search page, a detail page, or a
+        // wrong page (e.g. the genre-browse redirect the old marker existed to catch).
+        // getHtml is called with no required marker, because an exact-title match legitimately
+        // lands on the detail page (which has no search marker). The marker is instead checked
+        // below, on the results branch only, so a wrong body served at the search URL (the
+        // genre-browse page MAL used to redirect us to) is still refused rather than parsed as empty.
         const marker = type === 'anime' ? 'Search Anime - MyAnimeList.net' : 'Search Manga - MyAnimeList.net';
-        const source = await this.source.getHtml(searchUrl(type, query, page, extra), [marker]);
+        const source = await this.source.getHtml(searchUrl(type, query, page, extra), []);
         if (source.kind !== 'success') throw sourceError(source);
-        const value: SearchEntry[] =
-          type === 'anime' ? parseAnimeSearchResults(source.value) : parseMangaSearchResults(source.value);
+        const landed = source.metadata.finalUrl ?? source.metadata.url;
+        const detail = landed.match(DETAIL_LANDING);
+        let value: SearchEntry[];
+        if (detail && detail[1] === type) {
+          // An exact-title match: the body is the entity's detail page. Reuse the detail parser and
+          // map it to a single search entry — the title the user searched for.
+          const malId = Number(detail[2]);
+          if (type === 'anime') {
+            value = [animeDetailToEntry(parseAnimeDetail(source.value, malId), landed)];
+          } else {
+            // Manga parity is added in slice 03; until then a manga detail landing is not served.
+            throw sourceError({ kind: 'suspicious', reason: 'manga_detail_landing_unimplemented', metadata: source.metadata });
+          }
+        } else if (landed.includes(`/${type}.php`) && source.value.includes(marker)) {
+          value = type === 'anime' ? parseAnimeSearchResults(source.value) : parseMangaSearchResults(source.value);
+        } else {
+          // Neither a detail page nor a genuine search page — e.g. the /anime/genre/... browse page.
+          throw sourceError({ kind: 'suspicious', reason: 'unexpected_search_landing', metadata: source.metadata });
+        }
         const fetchedAt = new Date().toISOString();
         await this.catalog.put(cacheKey, value, fetchedAt, version);
         return value;
