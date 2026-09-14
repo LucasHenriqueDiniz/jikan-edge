@@ -1,16 +1,16 @@
 #!/bin/sh
-# pre-push — run the same lint gate CI runs, before the push leaves the machine.
+# pre-push — run the same gate CI runs, before the push leaves the machine.
 #
-# Why: CI's first step is `biome check --error-on-warnings`, and a push that fails it
+# Why: CI runs lint, typecheck and the unit suite, and a push that fails any of them
 # turns the build red only after the round-trip. This catches it locally, in the one
 # place a rule cannot: a hook runs, a written note does not.
 #
-# It runs ONLY lint, deliberately — typecheck and the test suite are slower and CI
-# still gates them; the point here is the cheap check that most often trips a push.
+# It runs the full gate in CI's order — lint, then typecheck, then tests — and stops
+# at the first failure (lint is cheapest and trips most often, so it goes first).
 #
-# It BLOCKS on a lint failure (unlike commit-msg, which fixes and lets through): there
+# It BLOCKS on any failure (unlike commit-msg, which fixes and lets through): there
 # is nothing to auto-fix safely at push time, and `pnpm run lint:fix` is one command
-# away. Bypass a known-good push with `git push --no-verify`.
+# away for the lint case. Bypass a known-good push with `git push --no-verify`.
 #
 # It fails OPEN when the toolchain is absent (no pnpm / no node_modules): blocking a
 # contributor who has not installed deps helps no one, and CI is still the backstop.
@@ -34,11 +34,20 @@ command -v pnpm >/dev/null 2>&1 || {
   exit 0
 }
 
-printf 'pre-push: running lint...\n' >&2
-if pnpm run lint; then
-  exit 0
-fi
+run() {
+  label="$1"
+  shift
+  printf 'pre-push: %s...\n' "$label" >&2
+  if "$@"; then
+    return 0
+  fi
+  printf '\npre-push: %s failed — push aborted.\n' "$label" >&2
+  printf 'Fix it (lint: `pnpm run lint:fix`), or bypass with `git push --no-verify`.\n' >&2
+  exit 1
+}
 
-printf '\npre-push: lint failed — push aborted.\n' >&2
-printf 'Fix with `pnpm run lint:fix`, or bypass with `git push --no-verify`.\n' >&2
-exit 1
+# CI's order: lint (cheapest, trips most often) → typecheck → unit tests.
+run lint pnpm run lint
+run typecheck pnpm run typecheck
+run tests pnpm test
+exit 0
