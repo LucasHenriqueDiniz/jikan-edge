@@ -78,6 +78,34 @@ describe('manga search that MAL redirects to a detail page', () => {
   });
 });
 
+// Some real detail pages the search redirects to cannot be parsed (an independent detail-parser
+// gap — the direct /v1/manga/:id route fails on them too). When that happens the search route must
+// degrade like the rest of the API — 502 UPSTREAM_SUSPICIOUS — not leak the ParserError as a 500.
+describe('a detail redirect whose page cannot be parsed', () => {
+  it('answers 502 UPSTREAM_SUSPICIOUS instead of a raw 500', async () => {
+    const source: CatalogSource = {
+      getHtml: async (url: string) => ({
+        kind: 'success' as const,
+        value: `${'<html><body>'.padEnd(600, 'x')}</body></html>`, // no detail markup: parser throws
+        metadata: {
+          url,
+          finalUrl: 'https://myanimelist.net/anime/62322/Lv999_no_Murabito',
+          status: 200,
+          contentType: 'text/html',
+          durationMs: 1,
+          sizeBytes: 600,
+        },
+      }),
+    };
+    const service = new SearchService(new D1CatalogStore(stubDb()), source, { catalogTtlSeconds: 1 } as never);
+
+    await expect(service.anime('Lv999 no Murabito', 1, {}, 'req')).rejects.toMatchObject({
+      code: 'UPSTREAM_SUSPICIOUS',
+      status: 502,
+    });
+  });
+});
+
 // Neither the "User Search Results" list shape nor a single-profile redirect — an upstream page
 // this parser has never seen. Before this fix, getHtml's requiredMarkers was `[]`, so classifyHtml
 // let it through as `success`, and the raw ParserError from parseUserSearch surfaced as a generic

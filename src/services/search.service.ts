@@ -276,12 +276,21 @@ export class SearchService {
         let value: SearchEntry[];
         if (detail && detail[1] === type) {
           // An exact-title match: the body is the entity's detail page. Reuse the detail parser and
-          // map it to a single search entry — the title the user searched for.
+          // map it to a single search entry — the title the user searched for. A detail page that
+          // cannot be parsed (an independent detail-parser gap on some real pages) degrades to 502
+          // UPSTREAM_SUSPICIOUS like the rest of the API, rather than leaking a ParserError as a 500.
           const malId = Number(detail[2]);
-          value =
-            type === 'anime'
-              ? [animeDetailToEntry(parseAnimeDetail(source.value, malId), landed)]
-              : [mangaDetailToEntry(parseMangaDetail(source.value, malId), landed)];
+          try {
+            value =
+              type === 'anime'
+                ? [animeDetailToEntry(parseAnimeDetail(source.value, malId), landed)]
+                : [mangaDetailToEntry(parseMangaDetail(source.value, malId), landed)];
+          } catch (error) {
+            if (error instanceof ParserError) {
+              throw sourceError({ kind: 'suspicious', reason: `detail_parse_failed:${error.message}`, metadata: source.metadata });
+            }
+            throw error;
+          }
         } else if (landed.includes(`/${type}.php`) && source.value.includes(marker)) {
           value = type === 'anime' ? parseAnimeSearchResults(source.value) : parseMangaSearchResults(source.value);
         } else {
