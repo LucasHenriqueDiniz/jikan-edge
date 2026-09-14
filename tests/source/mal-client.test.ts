@@ -31,6 +31,24 @@ describe('MalClient redirects', () => {
     });
     expect((await client.getHtml('https://myanimelist.net/profile/a', ['Profile'])).kind).toBe('success');
   });
+  it('records the post-redirect landing URL in metadata.finalUrl', async () => {
+    let calls = 0;
+    const client = new MalClient(config, async () => {
+      calls += 1;
+      return calls === 1
+        ? new Response('', { status: 303, headers: { location: '/anime/62322/Lv999_no_Murabito' } })
+        : new Response(html, { status: 200, headers: { 'content-type': 'text/html' } });
+    });
+    const result = await client.getHtml('https://myanimelist.net/anime.php?q=x', ['Anime Stats']);
+    expect(result.kind).toBe('success');
+    expect(result.metadata.finalUrl).toBe('https://myanimelist.net/anime/62322/Lv999_no_Murabito');
+  });
+  it('sets finalUrl to the requested URL when there is no redirect', async () => {
+    const client = new MalClient(config, async () =>
+      new Response(html, { status: 200, headers: { 'content-type': 'text/html' } }));
+    const result = await client.getHtml('https://myanimelist.net/anime.php?q=x', ['Anime Stats']);
+    expect(result.metadata.finalUrl).toBe('https://myanimelist.net/anime.php?q=x');
+  });
 });
 
 // A cold cache miss (nothing stale to fall back to) used to mean a single transient network blip —

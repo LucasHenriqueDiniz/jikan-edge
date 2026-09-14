@@ -116,6 +116,7 @@ export class MalClient implements CatalogSource {
       const contentLength = Number(response.headers.get('content-length') ?? 0);
       const metadata = {
         url,
+        finalUrl: target.toString(),
         status: response.status,
         contentType: response.headers.get('content-type'),
         durationMs: Math.round(performance.now() - startedAt),

@@ -10,6 +10,7 @@
  */
 export interface SourceMetadata {
   url: string;
+  finalUrl?: string;
   status: number | null;
   contentType: string | null;
   durationMs: number;
