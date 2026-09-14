@@ -23,7 +23,10 @@ export function errorResponse(c: Context, error: unknown, requestId: string): Re
   // observable rather than hidden behind a generic upstream error.
   if (error instanceof ParserError) {
     console.error(JSON.stringify({ type: 'parser_error', requestId, message: error.message }));
-    return c.json({ error: { code: 'UPSTREAM_SUSPICIOUS', message: 'Unable to refresh this resource.', requestId } }, 502);
+    return c.json(
+      { error: { code: 'UPSTREAM_SUSPICIOUS', message: 'Unable to refresh this resource.', requestId } },
+      502,
+    );
   }
   console.error(
     JSON.stringify({ type: 'unhandled_error', requestId, message: error instanceof Error ? error.message : 'unknown' }),

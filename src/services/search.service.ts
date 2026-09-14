@@ -287,7 +287,11 @@ export class SearchService {
                 : [mangaDetailToEntry(parseMangaDetail(source.value, malId), landed)];
           } catch (error) {
             if (error instanceof ParserError) {
-              throw sourceError({ kind: 'suspicious', reason: `detail_parse_failed:${error.message}`, metadata: source.metadata });
+              throw sourceError({
+                kind: 'suspicious',
+                reason: `detail_parse_failed:${error.message}`,
+                metadata: source.metadata,
+              });
             }
             throw error;
           }

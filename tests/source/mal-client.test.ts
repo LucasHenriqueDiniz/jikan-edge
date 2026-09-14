@@ -44,8 +44,10 @@ describe('MalClient redirects', () => {
     expect(result.metadata.finalUrl).toBe('https://myanimelist.net/anime/62322/Lv999_no_Murabito');
   });
   it('sets finalUrl to the requested URL when there is no redirect', async () => {
-    const client = new MalClient(config, async () =>
-      new Response(html, { status: 200, headers: { 'content-type': 'text/html' } }));
+    const client = new MalClient(
+      config,
+      async () => new Response(html, { status: 200, headers: { 'content-type': 'text/html' } }),
+    );
     const result = await client.getHtml('https://myanimelist.net/anime.php?q=x', ['Anime Stats']);
     expect(result.metadata.finalUrl).toBe('https://myanimelist.net/anime.php?q=x');
   });
