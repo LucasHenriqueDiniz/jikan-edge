@@ -2,13 +2,16 @@ import type { RuntimeConfig } from '../config/env';
 import { CHARACTER_SEARCH_PARSER_VERSION, type CharacterSearchResult } from '../domain/character-search';
 import { PERSON_SEARCH_PARSER_VERSION, type PersonSearchResult } from '../domain/person-search';
 import type { AnimeDetail } from '../domain/anime';
+import type { MangaDetail } from '../domain/manga';
 import {
   ANIME_SEARCH_PARSER_VERSION,
   type AnimeSearchEntry,
   MANGA_SEARCH_PARSER_VERSION,
+  type MangaSearchEntry,
   type SearchEntry,
 } from '../domain/search';
 import { parseAnimeDetail } from '../parsers/anime-detail.parser';
+import { parseMangaDetail } from '../parsers/manga-detail.parser';
 import { USER_SEARCH_PARSER_VERSION, type UserSearchResult } from '../domain/user-search';
 import { parseCharacterSearch } from '../parsers/character-search.parser';
 import { ParserError } from '../parsers/html';
@@ -48,6 +51,21 @@ function animeDetailToEntry(detail: AnimeDetail, landed: string): AnimeSearchEnt
     type: detail.type,
     score: detail.score,
     episodes: detail.episodes,
+  };
+}
+
+// The manga counterpart: the middle column is volumes, not episodes (the documented anime/manga
+// search asymmetry). Same url fallback as the anime mapper.
+function mangaDetailToEntry(detail: MangaDetail, landed: string): MangaSearchEntry {
+  return {
+    malId: detail.malId,
+    url: detail.url ?? landed,
+    title: detail.title,
+    imageUrl: detail.imageUrl,
+    synopsis: detail.synopsis,
+    type: detail.type,
+    score: detail.score,
+    volumes: detail.volumes,
   };
 }
 
@@ -260,12 +278,10 @@ export class SearchService {
           // An exact-title match: the body is the entity's detail page. Reuse the detail parser and
           // map it to a single search entry — the title the user searched for.
           const malId = Number(detail[2]);
-          if (type === 'anime') {
-            value = [animeDetailToEntry(parseAnimeDetail(source.value, malId), landed)];
-          } else {
-            // Manga parity is added in slice 03; until then a manga detail landing is not served.
-            throw sourceError({ kind: 'suspicious', reason: 'manga_detail_landing_unimplemented', metadata: source.metadata });
-          }
+          value =
+            type === 'anime'
+              ? [animeDetailToEntry(parseAnimeDetail(source.value, malId), landed)]
+              : [mangaDetailToEntry(parseMangaDetail(source.value, malId), landed)];
         } else if (landed.includes(`/${type}.php`) && source.value.includes(marker)) {
           value = type === 'anime' ? parseAnimeSearchResults(source.value) : parseMangaSearchResults(source.value);
         } else {

@@ -13,6 +13,7 @@ function stubDb() {
 // A byte-real Cowboy Bebop detail page (malId 1) — the same fixture the anime-detail parser is
 // tested against, so the mapping is exercised end to end, not against invented markup.
 const animeDetailHtml = readFileSync('tests/fixtures/anime/detail-real.html', 'utf8');
+const mangaDetailHtml = readFileSync('tests/fixtures/manga/detail-real.html', 'utf8');
 
 // MAL 303-redirects an exact-title search to the entity detail page (confirmed live, see
 // docs/pitches/search-exact-match-redirect.md). MalClient follows the redirect, so the body the
@@ -44,6 +45,36 @@ describe('anime search that MAL redirects to a detail page', () => {
       url: 'https://myanimelist.net/anime/1/Cowboy_Bebop',
     });
     expect(result.data[0]).toHaveProperty('episodes');
+  });
+});
+
+describe('manga search that MAL redirects to a detail page', () => {
+  it('returns a one-entry list carrying volumes (not episodes) instead of 502', async () => {
+    const source: CatalogSource = {
+      getHtml: async (url: string) => ({
+        kind: 'success' as const,
+        value: mangaDetailHtml,
+        metadata: {
+          url,
+          finalUrl: 'https://myanimelist.net/manga/2/Berserk',
+          status: 200,
+          contentType: 'text/html',
+          durationMs: 1,
+          sizeBytes: mangaDetailHtml.length,
+        },
+      }),
+    };
+    const service = new SearchService(new D1CatalogStore(stubDb()), source, { catalogTtlSeconds: 1 } as never);
+
+    const result = await service.manga('Berserk', 1, { orderBy: 'start_date', sort: 'desc' }, 'req');
+    expect(result.data).toHaveLength(1);
+    expect(result.data[0]).toMatchObject({
+      malId: 2,
+      title: 'Berserk',
+      url: 'https://myanimelist.net/manga/2/Berserk',
+    });
+    expect(result.data[0]).toHaveProperty('volumes');
+    expect(result.data[0]).not.toHaveProperty('episodes');
   });
 });
 
