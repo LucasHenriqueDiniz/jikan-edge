@@ -6,6 +6,16 @@ Changes that matter to anyone **consuming** the API. The technical detail behind
 
 This file starts on 2026-07-30 and does not reconstruct earlier history.
 
+## 2026-09-14
+
+Published version: to be confirmed.
+
+### Fixed
+
+- **An exact-title search no longer returns `502 UPSTREAM_SUSPICIOUS`** ([issue #16](https://github.com/LucasHenriqueDiniz/jikan-edge/issues/16)). Searching for a title by its full name — e.g. `GET /v1/anime?q=Lv999+no+Murabito&order_by=start_date&sort=desc` — answered 502, while a shorter query (`q=Lv999`) worked and returned that very entry. The more precisely you asked, the more likely you were to hit the error.
+
+  The cause: MyAnimeList redirects an exact-title search straight to that title's detail page instead of showing a results list, and the API was treating the detail page as a suspicious response. It now recognizes that redirect and returns the matched title as a **one-entry list** (anime entries carry `episodes`, manga entries `volumes`, as everywhere else). Both `/v1/anime?q=` and `/v1/manga?q=` are fixed. A genuine wrong page is still refused with 502, and a detail page the parser cannot read degrades to 502 rather than a 500. No cache invalidation was needed — the old behavior was an error, which was never cached.
+
 ## 2026-08-27
 
 Published versions: `4ce71084`, `9d3445dd`, `a07e0742`, `629508ce`, `ebeba400`, `5b41891e`,
