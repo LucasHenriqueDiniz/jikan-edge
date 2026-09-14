@@ -1,0 +1,44 @@
+#!/bin/sh
+# pre-push — run the same lint gate CI runs, before the push leaves the machine.
+#
+# Why: CI's first step is `biome check --error-on-warnings`, and a push that fails it
+# turns the build red only after the round-trip. This catches it locally, in the one
+# place a rule cannot: a hook runs, a written note does not.
+#
+# It runs ONLY lint, deliberately — typecheck and the test suite are slower and CI
+# still gates them; the point here is the cheap check that most often trips a push.
+#
+# It BLOCKS on a lint failure (unlike commit-msg, which fixes and lets through): there
+# is nothing to auto-fix safely at push time, and `pnpm run lint:fix` is one command
+# away. Bypass a known-good push with `git push --no-verify`.
+#
+# It fails OPEN when the toolchain is absent (no pnpm / no node_modules): blocking a
+# contributor who has not installed deps helps no one, and CI is still the backstop.
+#
+# Install — git does not version hooks, only the path is versioned:
+#     git config core.hooksPath .githooks
+# The repo's `prepare` script sets this on install when nothing else claims it.
+set -eu
+
+# Run from the repo root so `pnpm` finds package.json regardless of where git invoked us.
+root="$(git rev-parse --show-toplevel 2>/dev/null)" || exit 0
+cd "$root" || exit 0
+
+# Fail open if the toolchain is not here — a gate you cannot run must not block the push.
+command -v pnpm >/dev/null 2>&1 || {
+  printf 'pre-push: pnpm not found, skipping lint (CI will still run it).\n' >&2
+  exit 0
+}
+[ -d node_modules ] || {
+  printf 'pre-push: node_modules missing, skipping lint (run `pnpm install`).\n' >&2
+  exit 0
+}
+
+printf 'pre-push: running lint...\n' >&2
+if pnpm run lint; then
+  exit 0
+fi
+
+printf '\npre-push: lint failed — push aborted.\n' >&2
+printf 'Fix with `pnpm run lint:fix`, or bypass with `git push --no-verify`.\n' >&2
+exit 1
