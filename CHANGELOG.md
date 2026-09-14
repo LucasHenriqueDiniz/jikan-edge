@@ -8,7 +8,8 @@ This file starts on 2026-07-30 and does not reconstruct earlier history.
 
 ## 2026-09-14
 
-Published version: to be confirmed.
+Published version: `8470d88f`. (As always, the commit that fills in this id ships in the *next*
+build — an entry can never name the version that publishes it.)
 
 ### Fixed
 
