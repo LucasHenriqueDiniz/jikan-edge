@@ -65,7 +65,11 @@ const mangaDetailSchema = z.object({
 
 export function parseMangaDetail(html: string, malId: number, fetchedAt = new Date().toISOString()): MangaDetail {
   const head = html.slice(0, 90_000);
-  const title = capture(head, /<span class="h1-title">\s*<span itemprop="name">([^<]+)<\/span>/i);
+  // The name text runs up to the first tag: for most titles that is `</span>`, but a manga with a
+  // distinct English title embeds it as `<span itemprop="name">Romaji<br><span class="title-english">
+  // English</span></span>`, so anchoring on a trailing `</span>` matched nothing and left the title
+  // empty. Stop at the first `<` instead — `capture` trims the result.
+  const title = capture(head, /<span class="h1-title">\s*<span itemprop="name">\s*([^<]+)/i);
   const imageUrl = taggedImage(head, COVER_IMAGE);
   const status = labelValue(head, 'Status');
   const detail: MangaDetail = {
