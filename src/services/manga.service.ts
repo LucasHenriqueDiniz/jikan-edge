@@ -51,6 +51,7 @@ import {
   ServiceError,
   type ServiceResponse,
   sourceError,
+  storeEmptyPage,
   type WaitUntil,
   withCache,
 } from './cacheable';
@@ -182,8 +183,7 @@ export class MangaService {
       async () => {
         const source = await this.source.getHtml(topMangaUrl(page, filter), ['ranking-list']);
         if (isPastLastPage(source, page)) {
-          await this.catalog.put(cacheKey, [], new Date().toISOString(), TOP_MANGA_PARSER_VERSION);
-          return [];
+          return storeEmptyPage(this.catalog, cacheKey, TOP_MANGA_PARSER_VERSION);
         }
         if (source.kind !== 'success') throw sourceError(source);
         const value = parseTopManga(source.value);
@@ -349,8 +349,7 @@ export class MangaService {
         ]);
         // Past the last page, manga answers 404 and anime a 303 to page 1 (measured 2026-10-11).
         if (isPastLastPage(source, page)) {
-          await this.catalog.put(cacheKey, [], new Date().toISOString(), TITLE_REVIEWS_PARSER_VERSION);
-          return [];
+          return storeEmptyPage(this.catalog, cacheKey, TITLE_REVIEWS_PARSER_VERSION);
         }
         if (source.kind !== 'success') throw sourceError(source);
         const value = landedOnAnotherPage(source, page) ? [] : parseTitleReviews(source.value);

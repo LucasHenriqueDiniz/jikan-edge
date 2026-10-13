@@ -306,7 +306,7 @@ Measured side by side against Tenrai on the 70 routes both serve, then every div
 
 **Filler rows.** A Filler or Recap episode row puts a `<span>` before the title link, and the title regex required the link to open the cell — 11 of One Piece's first 100 episodes vanished. They are kept and flagged now.
 
-**Payload shape changes** (one-way for consumers, rewritten in place by migration `0013` so the stale fallback cannot serve the old shape): `alternateNames` string → list; character `nicknames` new, taken out of `name`. The episode list's cache key gained `:page:1` (renamed in place, as `0011` did).
+**Payload shape changes** (one-way for consumers, rewritten in place by migration `0013` so the stale fallback cannot serve the old shape): `alternateNames` string → list; character `nicknames` new, taken out of `name`. The episode list's cache key gained `:page:1`; its old rows are deleted with the other old-version list rows rather than renamed, because a rename collides with the rows the new code writes before the migration runs.
 
 **Producer search** was left as it is: `/anime/producer` lists 930 producers and lacks some (Toei Video, 141). The search form's `<select name="p">` lists 2,833 — a complete public list — but only ids and names, so moving the search onto it would change the entry shape. Recorded for a later decision.
 

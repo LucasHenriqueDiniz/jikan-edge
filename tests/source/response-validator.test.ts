@@ -81,3 +81,14 @@ describe('an invalid-id page', () => {
     expect(classifyHtml(real, { ...metadata, sizeBytes: real.length }, ['title-name']).kind).toBe('success');
   });
 });
+
+// User search answers an offset past its window with a 400. It stays an upstream error, but named, so
+// the service can tell it apart without reading the status code and the client knows not to retry it.
+describe('a 400', () => {
+  it('is an upstream error with the bad_request reason', () => {
+    expect(classifyHtml(validBody, { ...metadata, status: 400 })).toMatchObject({
+      kind: 'upstream_error',
+      reason: 'bad_request',
+    });
+  });
+});

@@ -19,6 +19,7 @@ import {
   ServiceError,
   type ServiceResponse,
   sourceError,
+  storeEmptyPage,
   type WaitUntil,
   withCache,
 } from './cacheable';
@@ -76,8 +77,7 @@ export class ClubService {
       async () => {
         const source = await this.source.getHtml(clubListUrl(page), ['class="club-list"']);
         if (isPastLastPage(source, page)) {
-          await this.catalog.put(cacheKey, [], new Date().toISOString(), CLUB_LIST_PARSER_VERSION);
-          return [];
+          return storeEmptyPage(this.catalog, cacheKey, CLUB_LIST_PARSER_VERSION);
         }
         if (source.kind !== 'success') throw sourceError(source);
         const value = parseClubList(source.value);
@@ -128,8 +128,7 @@ export class ClubService {
           '<td align="center"  class="borderClass">',
         ]);
         if (isPastLastPage(source, page)) {
-          await this.catalog.put(cacheKey, [], new Date().toISOString(), CLUB_MEMBERS_PARSER_VERSION);
-          return [];
+          return storeEmptyPage(this.catalog, cacheKey, CLUB_MEMBERS_PARSER_VERSION);
         }
         if (source.kind !== 'success') throw sourceError(source);
         const value = parseClubMembers(source.value);

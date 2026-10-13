@@ -110,6 +110,17 @@ describe('MalClient retry', () => {
     expect(calls).toBe(2);
   });
 
+  it('does not retry a 400, which MAL gives the same way every time', async () => {
+    let calls = 0;
+    const client = new MalClient(config, async () => {
+      calls += 1;
+      return new Response(html, { status: 400, headers: { 'content-type': 'text/html' } });
+    });
+    const result = await client.getHtml('https://myanimelist.net/users.php?q=x&show=2400', ['Profile']);
+    expect(result).toMatchObject({ kind: 'upstream_error', reason: 'bad_request' });
+    expect(calls).toBe(1);
+  });
+
   it('does not retry a deterministic upstream response like a 404', async () => {
     let calls = 0;
     const client = new MalClient(config, async () => {

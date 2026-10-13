@@ -72,7 +72,8 @@ describe('searches that match nothing', () => {
 
   // MAL stops paginating user search altogether past some offset and answers 400 (`show=2400`).
   it('treats a 400 past page 1 of a user search as the end, and a 400 on page 1 as the error it is', async () => {
-    const badRequest = recordingSource((url) => ({ kind: 'upstream_error', metadata: meta(url, { status: 400 }) }));
+    // Through the real classifier, so the service is checked against what the validator says about a 400.
+    const badRequest = recordingSource((url) => classifyHtml('', meta(url, { status: 400 })));
     const service = new SearchService(store(), badRequest.source, config);
     expect((await service.users('xinil', 100, 'r')).data).toEqual([]);
     await expect(service.users('xinil', 1, 'r')).rejects.toMatchObject({ status: 503 });

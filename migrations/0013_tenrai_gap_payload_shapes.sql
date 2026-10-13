@@ -1,11 +1,17 @@
 -- Shape changes from the 2026-10-11 batch, applied to rows already stored. Every parser version
 -- involved was bumped, so `withCache` refetches these on the normal path. What the bump does not
 -- cover is the stale fallback, which serves a stored row whatever its version when MyAnimeList is
--- unreachable (see cacheable.ts) — and an old row there would answer with the old *shape*.
+-- unreachable (see cacheable.ts) — and an old row there would answer with the old *shape*: a string
+-- where a list is now promised, or without fields the published OpenAPI document marks required.
 --
--- Rewritten in place rather than deleted, for the reason 0010 gives: `/v1/random/*` draws from the
--- typed tables, and emptying them answers 404 NO_LOCAL_ENTRIES until traffic repopulates them.
+-- Safe to run after the deploy, which is the order it is meant for: nothing below renames a key, so
+-- rows the new code wrote in the meantime cannot collide with it. (The first draft renamed the
+-- episode-list key and failed on exactly that — `UNIQUE constraint failed` — when the new
+-- `:page:1` row already existed.)
 
+-- Typed tables: rewritten in place, not deleted, for the reason 0010 gives — `/v1/random/*` draws
+-- from them and would answer 404 NO_LOCAL_ENTRIES until traffic repopulated them.
+--
 -- `alternateNames` went from one comma-joined string to a list. SQLite has no split, so a stored
 -- string becomes a one-element list: the right shape with a degraded value, which the next refresh
 -- replaces with the real list. `birthDate` is new and starts null. The person `full` documents in
@@ -39,12 +45,29 @@ UPDATE catalog_lists SET payload_json = json_set(payload_json, '$.nicknames', js
   WHERE resource_key LIKE 'catalog:character:%:full'
     AND json_type(payload_json, '$.nicknames') IS NULL;
 
--- The episode list paginates now, and its cache key gained the `:page:N` suffix every other
--- paginated route already carries. Renamed rather than dropped, as 0011 did for reviews, so the
--- stale fallback survives the change. Both tables move together: catalog_lists holds the payload
--- and cache_entries the freshness metadata, keyed by the same string.
-UPDATE catalog_lists SET resource_key = resource_key || ':page:1'
-  WHERE resource_key LIKE 'catalog:anime:%:episodes';
+-- List payloads: deleted rather than patched. Each list entry gained fields the old rows cannot
+-- supply honestly — whether a season card is `continuing` depends on where it sat on the page, and a
+-- dropped Filler episode is not in the old row at all — so a patched row would carry invented values.
+-- These rows are cheap to rebuild (one fetch each) and `/v1/random/*` never reads them; the cost is
+-- no stale fallback for them until the next request rebuilds each one.
+--
+-- Covered: the episode list (whose cache key also gained `:page:N`, so the old rows would be
+-- orphaned anyway), season pages, anime/manga search, the review feeds, a title's reviews, a user's
+-- reviews, and single-episode pages (which cached a nonexistent episode as an all-null 200).
+-- cache_entries goes first, while catalog_lists still says which keys are affected.
+DELETE FROM cache_entries
+  WHERE resource_key LIKE 'catalog:anime:%:episodes'
+     OR resource_key IN (
+       SELECT resource_key FROM catalog_lists
+       WHERE parser_version IN (
+         'episodes-html-v2', 'episode-detail-html-v2', 'season-html-v2', 'anime-search-html-v2',
+         'manga-search-html-v2', 'review-html-v2', 'title-reviews-html-v2'
+       )
+     );
 
-UPDATE cache_entries SET resource_key = resource_key || ':page:1'
-  WHERE resource_key LIKE 'catalog:anime:%:episodes';
+DELETE FROM catalog_lists
+  WHERE resource_key LIKE 'catalog:anime:%:episodes'
+     OR parser_version IN (
+       'episodes-html-v2', 'episode-detail-html-v2', 'season-html-v2', 'anime-search-html-v2',
+       'manga-search-html-v2', 'review-html-v2', 'title-reviews-html-v2'
+     );

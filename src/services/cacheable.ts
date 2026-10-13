@@ -76,6 +76,19 @@ export function isPastLastPage(result: SourceResult<string>, page: number): bool
 }
 
 /**
+ * Records a list page as empty and answers it. An empty page is a real answer — the end of a list,
+ * or a search with no match — so it is cached like any other, under the route's own parser version.
+ */
+export async function storeEmptyPage<T>(
+  catalog: CatalogStore['catalogLists'],
+  cacheKey: string,
+  parserVersion: string,
+): Promise<T[]> {
+  await catalog.put(cacheKey, [], new Date().toISOString(), parserVersion);
+  return [];
+}
+
+/**
  * Whether a paginated fetch landed on a page other than the one asked for.
  *
  * A title's review page past the last one answers 303 to page 1, and the client follows redirects,

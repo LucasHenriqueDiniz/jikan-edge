@@ -9,6 +9,7 @@ import {
   isPastLastPage,
   type ServiceResponse,
   sourceError,
+  storeEmptyPage,
   type WaitUntil,
   withCache,
 } from './cacheable';
@@ -42,8 +43,7 @@ export class RecommendationService {
       async () => {
         const source = await this.source.getHtml(recommendationsUrl(type, page), ['recommendations-user-recs-text']);
         if (isPastLastPage(source, page)) {
-          await this.catalog.put(cacheKey, [], new Date().toISOString(), RECOMMENDATION_PARSER_VERSION);
-          return [];
+          return storeEmptyPage(this.catalog, cacheKey, RECOMMENDATION_PARSER_VERSION);
         }
         if (source.kind !== 'success') throw sourceError(source);
         const value = parseRecommendations(source.value);

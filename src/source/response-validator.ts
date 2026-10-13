@@ -11,6 +11,10 @@ export function classifyHtml(
   if (metadata.status === 429) return { kind: 'rate_limited', metadata };
   if (metadata.status === 401 || metadata.status === 403) return { kind: 'private', metadata };
   if (metadata.status === null || metadata.status >= 500) return { kind: 'upstream_error', metadata };
+  // MAL refusing the request itself — user search answers an offset past its window this way. Still an
+  // upstream error, but a deterministic one, and named so a caller can tell it apart without reading
+  // the status code (which the port keeps out of services).
+  if (metadata.status === 400) return { kind: 'upstream_error', reason: 'bad_request', metadata };
   if (metadata.status < 200 || metadata.status >= 300) return { kind: 'upstream_error', metadata };
   if (!metadata.contentType?.toLowerCase().includes('text/html'))
     return { kind: 'suspicious', reason: 'unexpected_content_type', metadata };

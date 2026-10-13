@@ -22,10 +22,13 @@ const TITLE_CELL =
   /class="episode-title[^"]*">\s*(?:<span[^>]*icon-episode-type-bg[^>]*>\s*([^<]*?)\s*<\/span>\s*)?<a href="([^"]+)"[^>]*>([^<]+)<\/a>/i;
 
 // `allowEmpty` is for pages past the first: MAL answers an offset beyond the last episode with the
-// same page and no rows, which is the end of the list rather than a broken document.
+// same page and no rows, which is the end of the list rather than a broken document. It covers only
+// that: a page that *has* rows and parses none of them is still a broken document, and answering it
+// with [] would hide the next markup change behind a 200 on every page but the first.
 export function parseEpisodes(html: string, allowEmpty = false): Episode[] {
   const episodes: Episode[] = [];
-  for (const block of html.split('class="episode-list-data"').slice(1)) {
+  const rows = html.split('class="episode-list-data"').slice(1);
+  for (const block of rows) {
     const number = numeric(block.match(/class="episode-number[^"]*"\s*data-raw="(\d+)"/i)?.[1] ?? null);
     const titleMatch = block.match(TITLE_CELL);
     if (!number || !titleMatch) continue;
@@ -47,6 +50,6 @@ export function parseEpisodes(html: string, allowEmpty = false): Episode[] {
     const parsed = episodeSchema.safeParse(candidate);
     if (parsed.success) episodes.push(parsed.data);
   }
-  if (episodes.length === 0 && !allowEmpty) throw new ParserError('empty_episodes_page');
+  if (episodes.length === 0 && (!allowEmpty || rows.length > 0)) throw new ParserError('empty_episodes_page');
   return episodes;
 }

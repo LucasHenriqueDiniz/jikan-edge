@@ -24,6 +24,7 @@ import {
   ServiceError,
   type ServiceResponse,
   sourceError,
+  storeEmptyPage,
   type WaitUntil,
   withCache,
 } from './cacheable';
@@ -256,8 +257,7 @@ export class PersonService {
           page > 1 ? ['<h1 class="h1">People'] : ['ranking-list'],
         );
         if (source.kind === 'success' && page > 1 && !source.value.includes('ranking-list')) {
-          await this.catalog.put(cacheKey, [], new Date().toISOString(), TOP_PEOPLE_PARSER_VERSION);
-          return [];
+          return storeEmptyPage(this.catalog, cacheKey, TOP_PEOPLE_PARSER_VERSION);
         }
         if (source.kind !== 'success') throw sourceError(source);
         const value = parseTopPeople(source.value);

@@ -26,6 +26,7 @@ import {
   ServiceError,
   type ServiceResponse,
   sourceError,
+  storeEmptyPage,
   type WaitUntil,
   withCache,
 } from './cacheable';
@@ -314,8 +315,7 @@ export class SearchService {
         // "No titles that matched your query were found.", the second with MAL's generic page — and both
         // mean the same thing to the caller: an empty page, not a missing resource.
         if (source.kind === 'not_found') {
-          await this.catalog.put(cacheKey, [], new Date().toISOString(), version);
-          return [];
+          return storeEmptyPage(this.catalog, cacheKey, version);
         }
         if (source.kind !== 'success') throw sourceError(source);
         const landed = source.metadata.finalUrl ?? source.metadata.url;
@@ -388,10 +388,9 @@ export class SearchService {
         // 400 (measured: `show=1008` is a 404, `show=2400` a 400), which past page 1 is the same end.
         if (
           source.kind === 'not_found' ||
-          (page > 1 && source.kind === 'upstream_error' && source.metadata.status === 400)
+          (page > 1 && source.kind === 'upstream_error' && source.reason === 'bad_request')
         ) {
-          await this.catalog.put(cacheKey, [], new Date().toISOString(), USER_SEARCH_PARSER_VERSION);
-          return [];
+          return storeEmptyPage(this.catalog, cacheKey, USER_SEARCH_PARSER_VERSION);
         }
         if (source.kind !== 'success') throw sourceError(source);
         let value: UserSearchResult[];
@@ -432,8 +431,7 @@ export class SearchService {
         const source = await this.source.getHtml(searchUrl('character', query, page), ['Search Results']);
         // "No results found" with a 404, for zero matches and past the last page alike.
         if (source.kind === 'not_found') {
-          await this.catalog.put(cacheKey, [], new Date().toISOString(), CHARACTER_SEARCH_PARSER_VERSION);
-          return [];
+          return storeEmptyPage(this.catalog, cacheKey, CHARACTER_SEARCH_PARSER_VERSION);
         }
         if (source.kind !== 'success') throw sourceError(source);
         const value = parseCharacterSearch(source.value);

@@ -52,3 +52,16 @@ describe('a page past the last episode', () => {
     expect(() => parseEpisodes(pastEnd)).toThrow('empty_episodes_page');
   });
 });
+
+// A page past the first that has rows and parses none of them is a markup change, not the end of the
+// list. Answering it with [] would hide the change behind a 200 on every page but the first.
+describe('a page whose rows no longer parse', () => {
+  const changed = readFileSync('tests/fixtures/episodes/one-piece-filler-real.html', 'utf8').replaceAll(
+    'class="episode-title',
+    'class="episode-name',
+  );
+
+  it('is still an error past page 1', () => {
+    expect(() => parseEpisodes(changed, true)).toThrow('empty_episodes_page');
+  });
+});

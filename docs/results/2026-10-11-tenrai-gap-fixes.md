@@ -11,7 +11,7 @@ Date: 2026-10-11, rebased and re-run on 2026-10-13. Branch `fix/tenrai-compariso
 | unit | `npx vitest run` | **436 / 436** after rebasing onto `origin/main` (429 / 429 before the rebase; 355 before the batch) |
 | integration | `npx vitest run --config vitest.integration.config.ts` — Workers D1, every migration applied including `0013` | **29 / 29** |
 | mutation | each fix reverted on its own, the test that should catch it run, the file restored | **26 / 26** reverts turned a test red, before and after the rebase |
-| migration | `0001`–`0012` on a fresh SQLite, ten rows seeded in the old shapes, then `0013` applied twice | old-shape rows rewritten, already-new rows untouched, second run a no-op |
+| migration | `0001`–`0012` on a fresh SQLite, old- and new-version rows seeded — including the `:page:1` episodes row the new code writes before the migration runs — then `0013` applied twice | typed rows rewritten, old list rows deleted, new rows untouched, no constraint error, second run a no-op |
 | end to end | `wrangler dev --local` (local D1, real fetches to MyAnimeList), each answer compared with the live MAL page or with Tenrai where Tenrai matched MAL, and with production as "before" | **50 / 50** on the rebased code, `cache_entries` cleared first so every route took the refresh path |
 | regression | the 73 route variations of the original comparison, local against production | **0 / 73** non-200, before and after the rebase; every count that changed is listed below |
 | contract | `site/openapi.json` linted with `@redocly/cli@2.60.0 lint --extends=minimal` | valid, **0** warnings |
@@ -79,6 +79,15 @@ short form. Every number above was re-measured after the rebase.
   turned that into `null`. It is `2027-10` now, which is also what Tenrai returns.
 - **An unknown review progress.** The parser was right to give `null` for `Preliminary (Unknown/? eps)`; the
   first test assumed every preliminary review prints a number.
+
+## What the code review caught
+
+A review of the whole PR before merging found that the first version of `0013` renamed the
+episodes key and would fail in production — `UNIQUE constraint failed`, reproduced in SQLite — if a
+single episodes request reached the new code before the migration ran, which is the order the deploy
+checklist prescribes. It also found that pages past the first answered `[]` when their rows existed
+but no longer parsed, and that a MAL 400 was retried and read as a raw status code in a service. All
+three were fixed, and each fix was checked by reverting it and watching its test go red.
 
 ## Not covered
 
