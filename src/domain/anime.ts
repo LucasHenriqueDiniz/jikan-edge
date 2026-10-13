@@ -93,13 +93,21 @@ export interface AnimeListEntry {
   members: number | null;
 }
 
+// A season page entry. `continuing` is true for the cards MAL lists under "TV (Continuing)" — shows
+// that started in an earlier season and are still airing, One Piece among them.
+export interface SeasonEntry extends AnimeListEntry {
+  continuing: boolean;
+}
+
 export interface Genre {
   malId: number;
   name: string;
   url: string;
 }
 
-export const ANIME_PARSER_VERSION = 'anime-html-v2';
+// v3: relations read the `entries-table` as well as the tiles (One Piece: 2 → 94), and the synopsis
+// is anchored instead of read from a 90 KB prefix it had outgrown.
+export const ANIME_PARSER_VERSION = 'anime-html-v3';
 
 // Deliberately separate from ANIME_PARSER_VERSION even though both read anime pages. They used to
 // share it, which meant a change to the shape of a *list* forced a refetch of every cached anime
@@ -108,4 +116,6 @@ export const ANIME_PARSER_VERSION = 'anime-html-v2';
 export const TOP_ANIME_PARSER_VERSION = 'top-anime-html-v1';
 // v2: every seasonal entry carried `type: null`, so the cached rows are all missing a field that
 // now has a value. Schedules read the same card parser and bump alongside it.
-export const SEASON_PARSER_VERSION = 'season-html-v2';
+//
+// v3: `continuing` on every season entry.
+export const SEASON_PARSER_VERSION = 'season-html-v3';

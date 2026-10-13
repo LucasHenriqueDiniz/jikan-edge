@@ -62,3 +62,16 @@ describe('media type on seasonal cards', () => {
     expect(invented.find((entry) => entry.malId === 48820)?.type).toBeNull();
   });
 });
+
+// The first card of each of the first three blocks of the real `/anime/season` page (2026-10-11):
+// TV (New), TV (Continuing), ONA — three contiguous excerpts, each from its heading to the end of
+// that card.
+describe('continuing entries', () => {
+  const sections = readFileSync('tests/fixtures/anime/season-sections-real.html', 'utf8');
+
+  it('marks the card under "TV (Continuing)" and only that one', () => {
+    const entries = parseSeasonNow(sections);
+    expect(entries).toHaveLength(3);
+    expect(entries.map((entry) => entry.continuing)).toEqual([false, true, false]);
+  });
+});

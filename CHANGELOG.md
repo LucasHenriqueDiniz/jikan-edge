@@ -6,6 +6,96 @@ Changes that matter to anyone **consuming** the API. The technical detail behind
 
 This file starts on 2026-07-30 and does not reconstruct earlier history.
 
+## 2026-10-13
+
+Published version: to be confirmed — this entry ships with the change, and an entry can never name
+the version that publishes it. Written on 2026-10-11; dated by the day it reached production.
+
+Origin: a side-by-side measurement against Tenrai (another Jikan-compatible API) on the 70 routes
+both serve, with every divergence checked against the live MyAnimeList page. Every call there
+returned 200; what it found were **200s carrying wrong or missing data**, plus a few status codes
+that described the wrong thing. The evidence is in
+[`docs/research/2026-10-11-tenrai-gap-probes/`](docs/research/2026-10-11-tenrai-gap-probes/research.md).
+
+### Fixed
+
+- **Relations were 2% complete on long-running titles.** Only the cover tiles at the top of the
+  related-entries block were read, never the table under them: One Piece answered with 2 of its 94
+  relations, and Berserk lost its Spin-Off and Other entries. Affects `/v1/anime/:id`, `/full`,
+  `/relations` and the manga equivalents. Now 94 and 9, matching the page.
+- **`synopsis` was `null` on the anime with the longest pages** — One Piece, Detective Conan and
+  Naruto Shippuuden among them — because the parser read a fixed 90 KB prefix and the synopsis now
+  starts past it.
+- **`nameKanji`, `favorites` and `about` were `null` on most popular characters.** Same cause, a
+  60 KB prefix: five of the six characters measured (Luffy, Lelouch, Zoro, Naruto, Goku) had all
+  three missing.
+- **Filler and recap episodes were silently dropped** from `/v1/anime/:id/episodes` — 11 of the 100
+  on One Piece's first page.
+- **`?type=novel` on manga search returned light novels.** It now returns novels; `lightnovel` is
+  still light novels.
+- **A title nobody has reviewed answered `502`** on `/v1/anime|manga/:id/reviews`. It is an empty
+  list now.
+- **`/v1/anime/:id/reviews?page=999` returned page 1 again**, with `hasNextPage: true` — a paginator
+  that never ended, because MAL redirects a page past the last back to the first. Past the last page
+  it is an empty list now.
+- A person's `about` no longer gets a space where an inline link was (`@ seki0908` → `@seki0908`).
+
+### Changed
+
+- **An empty result is `200` with `data: []`, not an error.** A search with no match used to answer
+  `404 NOT_FOUND` with "Unable to refresh this resource."; a page past the end of any list answered
+  `404`, and on some lists `502` or `503`. All of these are now an empty page with
+  `hasNextPage: false`: anime, manga, character and user search; the top lists; the review and
+  recommendation feeds; the club index and club members; a title's reviews; the episode list.
+  *Before:* `GET /v1/anime?q=zzqqxxyyvvkk` → `404`. *After:* `200`, `data: []`.
+- **A thing that does not exist is `404`.** `/v1/characters/99999999` answered `502
+  UPSTREAM_SUSPICIOUS`, and `/v1/anime/21/episodes/99999` answered **`200` with every field `null`**.
+  Both are `404 NOT_FOUND` now.
+- **`name` on `/v1/characters/:id` (and `/full`, `/v1/random/characters`) no longer contains the
+  nicknames.** *Before:* `Luffy "Mugiwara, Straw Hat" Monkey D.` *After:* `Luffy Monkey D.`, with
+  the nicknames in the new `nicknames` field. `top/characters` keeps MAL's family-first form
+  (`Monkey D., Luffy`): the detail page does not carry it for most characters.
+- **`alternateNames` on `/v1/people/:id` (and `/full`, `/v1/random/people`) is a list.** *Before:*
+  `"Seki Mondoya, 門戸 開, Monto Hiraku"`. *After:* `["Seki Mondoya", "門戸 開", "Monto Hiraku"]`, and
+  `[]` where there are none.
+- **A search query under three characters is searched.** MyAnimeList treats `q=86` as matching
+  nothing, so the anime called *86* could not be found; it is now sent quoted, the way MAL's own
+  search accepts it, and returns the four *86* titles. Quoted, MAL matches by substring, so a
+  short query also brings titles that merely contain it (`86` brings *GR86 x Initial D* too).
+
+### Added
+
+- **`/v1/anime/:id/episodes?page=N`**, 100 episodes a page (One Piece: 12 pages). It used to serve
+  the first page only. Each episode also carries `filler` and `recap`.
+- **`preliminary` and `spoilers` on the review routes** (`/v1/reviews/anime|manga`,
+  `/v1/anime|manga/:id/reviews`), each `true` or `false`. They map to MyAnimeList's own toggles,
+  which filter on its side. Without either you get MAL's default — preliminary reviews **in**,
+  spoiler reviews **out**, the same as before. Note that is the opposite of Jikan's preliminary
+  default; `?preliminary=false` gets Jikan's behaviour. Both used to be refused as unsupported, on
+  the claim that MAL does not separate those reviews. It does.
+- **Each review now carries `reviewId`, `url`, `isPreliminary`, `isSpoiler`, `episodesWatched` /
+  `chaptersRead`** (from the Preliminary tag, the only place MAL prints them) and **`reactions`**
+  (`overall`, `nice`, `loveIt`, `funny`, `confusing`, `informative`, `wellWritten`, `creative`;
+  `null` where the page prints none).
+- **`continuing` on season entries, and as a parameter.** Entries MAL lists under "TV
+  (Continuing)" carry `continuing: true`. `/v1/seasons/now` and `/v1/seasons/:year/:season` still
+  return them by default; `?continuing=false` drops them (165 → 120 entries on `seasons/now` the day
+  this shipped). Jikan excludes them unless asked, so a port from Jikan wants `?continuing=false`.
+- **Search results carry `startDate`, `endDate` and `members`**, plus `rating` on anime and
+  `chapters` on manga — read from the same results page, no extra request. A date MAL only partly
+  knows keeps what it knows: an announced October 2027 is `2027-10`, a year alone is `2027`. The
+  dates come from a two-digit year: up to five years ahead reads as this century, so MAL's handful
+  of titles from 1917–1931 show up in the 2000s. The detail page has the full date.
+- **New search filter values:** anime `type=cm`, `pv`, `tv_special`; manga `status=hiatus` and
+  `discontinued`.
+- **`birthDate`** on people, `YYYY-MM-DD`, only when MAL prints day, month and year. `birthday` keeps
+  MAL's own text, because many birthdays there have no year (`Sep 8`) and a date field would drop
+  them.
+- **An OpenAPI 3.1 document at [`/openapi.json`](https://jikan.lucashdo.com/openapi.json)**, one
+  path per route with its query parameters and response schema, generated from the code and checked
+  by a test so it cannot drift. The parameters this API refuses, with the reason for each, are under
+  `x-unsupported-parameters`.
+
 ## 2026-09-14
 
 Published version: `8470d88f`. (As always, the commit that fills in this id ships in the *next*

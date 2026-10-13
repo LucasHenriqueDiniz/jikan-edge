@@ -33,3 +33,33 @@ describe('character detail parser', () => {
     expect(detail.about).toContain(longAbout.trim().slice(-20));
   });
 });
+
+// A contiguous prefix of Luffy's real page (fetched through Cloudflare's network, 2026-10-11), cut
+// at the end of the About section. Its About block starts at byte 112,535 — the parser used to read
+// only the first 60,000 bytes, and production served this character with kanji, favourites and
+// About all null. Five of the six characters measured that day had the same layout.
+describe('character detail on a long page', () => {
+  const luffy = readFileSync('tests/fixtures/characters/detail-luffy-real.html', 'utf8');
+
+  it('reads the fields that sit past the old 60 KB window', () => {
+    expect(luffy.indexOf('Member Favorites:')).toBeGreaterThan(60_000);
+    const detail = parseCharacterDetail(luffy, 40, '2026-10-11T00:00:00.000Z');
+    expect(detail.nameKanji).toBe('モンキー・D・ルフィ');
+    expect(detail.favorites).toBe(150_082);
+    expect(detail.about?.length).toBeGreaterThan(1_000);
+  });
+
+  // The heading is `Luffy "Mugiwara, Straw Hat" Monkey D.`; MAL's own og:title is the name alone.
+  it('takes the nicknames out of the name', () => {
+    const detail = parseCharacterDetail(luffy, 40, '2026-10-11T00:00:00.000Z');
+    expect(detail.name).toBe('Luffy Monkey D.');
+    expect(luffy).toContain('<meta property="og:title" content="Luffy Monkey D.">');
+    expect(detail.nicknames).toEqual(['Mugiwara', 'Straw Hat']);
+  });
+
+  it('leaves a name without nicknames alone', () => {
+    const detail = parseCharacterDetail(html, 1, '2026-07-26T00:00:00.000Z');
+    expect(detail.name).toBe('Spike Spiegel');
+    expect(detail.nicknames).toEqual([]);
+  });
+});

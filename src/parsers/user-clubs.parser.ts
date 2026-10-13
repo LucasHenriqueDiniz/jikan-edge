@@ -2,7 +2,11 @@ import { z } from 'zod';
 import type { UserClub } from '../domain/user-social';
 import { decodeHtml } from './html';
 
-const clubSchema = z.object({ malId: z.number().int().positive(), name: z.string().min(1), url: z.string().url() });
+export const clubSchema = z.object({
+  malId: z.number().int().positive(),
+  name: z.string().min(1),
+  url: z.string().url(),
+});
 
 export function parseUserClubs(html: string): UserClub[] {
   const clubs: UserClub[] = [];

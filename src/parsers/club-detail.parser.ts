@@ -2,8 +2,12 @@
 import type { ClubDetail, ClubStaffMember } from '../domain/club';
 import { canonicalUrl, capture, decodeHtml, labelValue, numeric, ParserError } from './html';
 
-const staffMemberSchema = z.object({ username: z.string().min(1), url: z.string().url(), role: z.string().nullable() });
-const clubDetailSchema = z.object({
+export const staffMemberSchema = z.object({
+  username: z.string().min(1),
+  url: z.string().url(),
+  role: z.string().nullable(),
+});
+export const clubDetailSchema = z.object({
   malId: z.number().int().positive(),
   url: z.string().url().nullable(),
   title: z.string().min(1),

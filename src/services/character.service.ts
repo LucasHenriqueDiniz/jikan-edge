@@ -22,6 +22,7 @@ import {
   ServiceError,
   type ServiceResponse,
   sourceError,
+  storeEmptyPage,
   type WaitUntil,
   withCache,
 } from './cacheable';
@@ -236,7 +237,15 @@ export class CharacterService {
       TOP_CHARACTERS_PARSER_VERSION,
       () => this.catalog.get<TopCharacterEntry[]>(cacheKey),
       async () => {
-        const source = await this.source.getHtml(topCharactersUrl(page), ['ranking-list']);
+        // Past the last page MAL answers 200 with the heading and no `ranking-list` rows, so past
+        // page 1 the heading is the marker and a page without rows is the end of the ranking.
+        const source = await this.source.getHtml(
+          topCharactersUrl(page),
+          page > 1 ? ['<h1 class="h1">Characters'] : ['ranking-list'],
+        );
+        if (source.kind === 'success' && page > 1 && !source.value.includes('ranking-list')) {
+          return storeEmptyPage(this.catalog, cacheKey, TOP_CHARACTERS_PARSER_VERSION);
+        }
         if (source.kind !== 'success') throw sourceError(source);
         const value = parseTopCharacters(source.value);
         const fetchedAt = new Date().toISOString();

@@ -16,22 +16,23 @@ import {
   ParserError,
   parseDateRange,
   rankedValue,
-  richCapture,
+  richText,
+  spanBetween,
   taggedImage,
   titleSynonyms,
 } from './html';
 import { extractExternalLinks, extractRelations, extractStreaming } from './relations-links';
 
-const relationSchema = z.object({
+export const relationSchema = z.object({
   relation: z.string().min(1),
   malId: z.number().int().positive(),
   type: z.enum(['anime', 'manga']),
   title: z.string().min(1),
 });
-const externalLinkSchema = z.object({ name: z.string().min(1), url: z.string().url() });
-const streamingSchema = z.object({ name: z.string().min(1), url: z.string().url(), available: z.boolean() });
+export const externalLinkSchema = z.object({ name: z.string().min(1), url: z.string().url() });
+export const streamingSchema = z.object({ name: z.string().min(1), url: z.string().url(), available: z.boolean() });
 
-const animeDetailSchema = z.object({
+export const animeDetailSchema = z.object({
   malId: z.number().int().positive(),
   url: z.string().url().nullable(),
   title: z.string().min(1),
@@ -126,7 +127,10 @@ export function parseAnimeDetail(html: string, malId: number, fetchedAt = new Da
     imageUrl,
     images: imageVariants(imageUrl, 'anime'),
     trailer: trailer(head),
-    synopsis: richCapture(head, /<p itemprop="description">([\s\S]*?)<\/p>/i),
+    // Anchored on its own marker, not read from `head`: the synopsis is the first field in the main
+    // column, after the whole sidebar, and that sidebar alone ran past 90 KB on One Piece, Detective
+    // Conan and Naruto Shippuuden (measured 2026-10-11) — all three were served with `synopsis: null`.
+    synopsis: richText(spanBetween(html, '<p itemprop="description">', '</p>') ?? '') || null,
     background: backgroundSection(html),
     type: labelValue(head, 'Type'),
     episodes: numeric(labelValue(head, 'Episodes')),

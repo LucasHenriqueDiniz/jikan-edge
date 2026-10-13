@@ -2,7 +2,7 @@
 import type { EpisodeDetail } from '../domain/episode-detail';
 import { capture, decodeHtml, ParserError, richText } from './html';
 
-const schema = z.object({
+export const schema = z.object({
   malId: z.number().int().positive(),
   episode: z.number().int().positive(),
   title: z.string().nullable(),
@@ -20,6 +20,13 @@ function extractSynopsis(html: string): string | null {
   const end = rest.search(/<(?:div|h2|table)[ >]/i);
   const decoded = richText(rest.slice(0, end === -1 ? 8_000 : end));
   return decoded || null;
+}
+
+// MAL answers an episode number it has no page for with 200, the anime's chrome, an empty heading
+// (`#99999 - `) and this notice, so the status says nothing. The notice is what episode 1 lacks:
+// `<div class="badresult al"> Sorry, this anime doesn't seem to have any episode information yet.`
+export function isMissingEpisode(html: string): boolean {
+  return /<div class="badresult[^"]*">\s*Sorry, this anime doesn't seem to have any episode information/i.test(html);
 }
 
 export function parseEpisodeDetail(html: string, malId: number, episode: number): EpisodeDetail {

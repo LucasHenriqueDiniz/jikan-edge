@@ -3,7 +3,8 @@ import { cacheHeader } from '../app-context';
 import { errorResponse } from '../../http/errors';
 import { success } from '../../http/response';
 import { paginationMeta } from '../../domain/pagination';
-import { SEARCH_PAGE_SIZE, TITLE_REVIEWS_PAGE_SIZE, TOP_PAGE_SIZE } from '../../source/mal-urls';
+import { EPISODES_PAGE_SIZE, SEARCH_PAGE_SIZE, TITLE_REVIEWS_PAGE_SIZE, TOP_PAGE_SIZE } from '../../source/mal-urls';
+import { parseReviewFilter } from '../../services/review-filter';
 import type { AnimeService } from '../../services/anime.service';
 import type { SearchService } from '../../services/search.service';
 
@@ -237,7 +238,7 @@ export function registerAnimeRoutes(
 
   app.get('/v1/anime/:id/episodes', async (c) => {
     try {
-      const result = await animeService(c).episodes(c.req.param('id'), c.get('requestId'));
+      const result = await animeService(c).episodes(c.req.param('id'), c.get('page'), c.get('requestId'));
       cacheHeader(c, result);
       return c.json(
         success(result.data, {
@@ -245,6 +246,7 @@ export function registerAnimeRoutes(
           stale: result.stale,
           refreshFailed: result.refreshFailed,
           fetchedAt: result.fetchedAt,
+          pagination: paginationMeta(c.get('page'), EPISODES_PAGE_SIZE, result.data.length),
         }),
       );
     } catch (error) {
@@ -271,7 +273,8 @@ export function registerAnimeRoutes(
 
   app.get('/v1/anime/:id/reviews', async (c) => {
     try {
-      const result = await animeService(c).reviews(c.req.param('id'), c.get('page'), c.get('requestId'));
+      const filter = parseReviewFilter(c.req.query('preliminary'), c.req.query('spoilers'));
+      const result = await animeService(c).reviews(c.req.param('id'), c.get('page'), filter, c.get('requestId'));
       cacheHeader(c, result);
       return c.json(
         success(result.data, {

@@ -7,6 +7,7 @@ import {
   type AnimeListEntry,
   type ExternalLink,
   type RelationEntry,
+  type SeasonEntry,
   type StreamingEntry,
 } from '../domain/anime';
 import { GENRE_PARSER_VERSION, type GenreTaxonomyEntry } from '../domain/genre';
@@ -38,7 +39,7 @@ import { parseTitleRecommendations } from '../parsers/title-recommendations.pars
 import { parseTitleReviews } from '../parsers/title-reviews.parser';
 import { parseSeasonNow } from '../parsers/season-now.parser';
 import { parseTitleVideos } from '../parsers/videos.parser';
-import { parseEpisodeDetail } from '../parsers/episode-detail.parser';
+import { isMissingEpisode, parseEpisodeDetail } from '../parsers/episode-detail.parser';
 import { parseTitleUserUpdates } from '../parsers/title-userupdates.parser';
 import {
   SEASON_ARCHIVE_PARSER_VERSION,
@@ -81,15 +82,27 @@ import { parseTopFilter } from './top-filter';
 import { CHARACTER_PAGE_BUDGET, refreshLeaseSecondsFor } from '../source/fetch-policy';
 import {
   type CacheDeps,
+  isPastLastPage,
+  landedOnAnotherPage,
   ServiceError,
   type ServiceResponse,
   sourceError,
+  storeEmptyPage,
   type WaitUntil,
   withCache,
 } from './cacheable';
+import type { ReviewFilter } from './review-filter';
 import { parseGenreFilter } from './genre-filter';
 
 const GENRES_CACHE_KEY = 'catalog:genres:anime';
+
+// `?continuing=false` drops the cards MAL lists under "TV (Continuing)". Filtered on the way out, not
+// cached apart: both answers come from the same page. The default keeps them, as MAL's page does and
+// as this route always has — Jikan excludes them unless asked, and switching to that would shrink
+// `/v1/seasons/now` from 165 entries to 120 for every caller who never mentioned it.
+function filterContinuing(result: ServiceResponse<SeasonEntry[]>, continuing: boolean): ServiceResponse<SeasonEntry[]> {
+  return continuing ? result : { ...result, data: result.data.filter((entry) => !entry.continuing) };
+}
 interface AnimeCharactersAndStaff {
   characters: CharacterRole[];
   staff: StaffMember[];
@@ -341,15 +354,19 @@ export class AnimeService {
     );
   }
 
-  episodes(rawId: string, requestId: string): Promise<ServiceResponse<Episode[]>> {
+  episodes(rawId: string, page: number, requestId: string): Promise<ServiceResponse<Episode[]>> {
     const malId = this.validateMalId(rawId);
+    // Page 1 must have rows — an anime with an episode list has at least one. Past it, MAL answers an
+    // offset beyond the last episode with the same page and no rows, so the marker there is the list's
+    // own heading, which both shapes carry, and an empty page is the end of the list.
+    const pastFirst = page > 1;
     return this.perAnimeResource(
       rawId,
-      'episodes',
-      episodesUrl(malId),
-      ['episode-list-data'],
+      `episodes:page:${page}`,
+      episodesUrl(malId, page),
+      pastFirst ? ['<h2 class="h2_overwrite">Episodes</h2>'] : ['episode-list-data'],
       EPISODES_PARSER_VERSION,
-      parseEpisodes,
+      (html) => parseEpisodes(html, pastFirst),
       requestId,
     );
   }
@@ -367,9 +384,14 @@ export class AnimeService {
     );
   }
 
-  reviews(rawId: string, page: number, requestId: string): Promise<ServiceResponse<TitleReview[]>> {
+  reviews(
+    rawId: string,
+    page: number,
+    filter: ReviewFilter,
+    requestId: string,
+  ): Promise<ServiceResponse<TitleReview[]>> {
     const malId = this.validateMalId(rawId);
-    const cacheKey = `catalog:anime:${malId}:reviews:page:${page}`;
+    const cacheKey = `catalog:anime:${malId}:reviews:page:${page}${filter.key}`;
     return withCache(
       this.deps,
       cacheKey,
@@ -377,9 +399,19 @@ export class AnimeService {
       TITLE_REVIEWS_PARSER_VERSION,
       () => this.catalog.get<TitleReview[]>(cacheKey),
       async () => {
-        const source = await this.source.getHtml(titleReviewsUrl('anime', malId, page), ['review-element']);
+        // The sort/filter bar, not a review card: a title nobody has reviewed — or whose reviews the
+        // toggles exclude — is a real page with no cards, and requiring one answered 502 for every such
+        // title. The bar is on all of those, on anime and manga alike (the anime-only `<h2>` was tried
+        // first and took manga reviews down).
+        const source = await this.source.getHtml(titleReviewsUrl('anime', malId, page, filter.params), [
+          'reviews-horiznav-nav-sort-block',
+        ]);
+        // Past the last page, manga answers 404 and anime a 303 to page 1 (measured 2026-10-11).
+        if (isPastLastPage(source, page)) {
+          return storeEmptyPage(this.catalog, cacheKey, TITLE_REVIEWS_PARSER_VERSION);
+        }
         if (source.kind !== 'success') throw sourceError(source);
-        const value = parseTitleReviews(source.value);
+        const value = landedOnAnotherPage(source, page) ? [] : parseTitleReviews(source.value);
         const fetchedAt = new Date().toISOString();
         await this.catalog.put(cacheKey, value, fetchedAt, TITLE_REVIEWS_PARSER_VERSION);
         return value;
@@ -430,7 +462,10 @@ export class AnimeService {
       episodeDetailUrl(malId, episode),
       ['Synopsis'],
       EPISODE_DETAIL_PARSER_VERSION,
-      (html) => parseEpisodeDetail(html, malId, episode),
+      (html) => {
+        if (isMissingEpisode(html)) throw new ServiceError('NOT_FOUND', 404, 'This anime has no such episode.');
+        return parseEpisodeDetail(html, malId, episode);
+      },
       requestId,
     );
   }
@@ -489,6 +524,9 @@ export class AnimeService {
       () => this.catalog.get<AnimeListEntry[]>(cacheKey),
       async () => {
         const source = await this.source.getHtml(topAnimeUrl(page, filter), ['ranking-list']);
+        if (isPastLastPage(source, page)) {
+          return storeEmptyPage(this.catalog, cacheKey, TOP_ANIME_PARSER_VERSION);
+        }
         if (source.kind !== 'success') throw sourceError(source);
         const value = parseTopAnime(source.value);
         const fetchedAt = new Date().toISOString();
@@ -499,14 +537,14 @@ export class AnimeService {
     );
   }
 
-  async seasonNow(requestId: string): Promise<ServiceResponse<AnimeListEntry[]>> {
+  async seasonNow(continuing: boolean, requestId: string): Promise<ServiceResponse<SeasonEntry[]>> {
     const cacheKey = 'catalog:season:now';
-    return withCache(
+    const result = await withCache(
       this.deps,
       cacheKey,
       this.config.catalogTtlSeconds,
       SEASON_PARSER_VERSION,
-      () => this.catalog.get<AnimeListEntry[]>(cacheKey),
+      () => this.catalog.get<SeasonEntry[]>(cacheKey),
       async () => {
         const source = await this.source.getHtml(seasonNowUrl(), ['seasonal-anime']);
         if (source.kind !== 'success') throw sourceError(source);
@@ -517,13 +555,15 @@ export class AnimeService {
       },
       requestId,
     );
+    return filterContinuing(result, continuing);
   }
 
   async seasonByYear(
     rawYear: string,
     rawSeason: string,
+    continuing: boolean,
     requestId: string,
-  ): Promise<ServiceResponse<AnimeListEntry[]>> {
+  ): Promise<ServiceResponse<SeasonEntry[]>> {
     const year = Number.parseInt(rawYear, 10);
     const season = rawSeason.toLowerCase();
     if (!Number.isInteger(year) || year < 1917 || year > 2100 || String(year) !== rawYear)
@@ -531,12 +571,12 @@ export class AnimeService {
     if (!VALID_SEASONS.has(season))
       throw new ServiceError('INVALID_SEASON', 400, 'Season must be one of winter, spring, summer, fall.');
     const cacheKey = `catalog:season:${year}:${season}`;
-    return withCache(
+    const result = await withCache(
       this.deps,
       cacheKey,
       this.config.catalogTtlSeconds,
       SEASON_PARSER_VERSION,
-      () => this.catalog.get<AnimeListEntry[]>(cacheKey),
+      () => this.catalog.get<SeasonEntry[]>(cacheKey),
       async () => {
         const source = await this.source.getHtml(seasonByYearUrl(year, season), ['seasonal-anime']);
         if (source.kind !== 'success') throw sourceError(source);
@@ -547,16 +587,17 @@ export class AnimeService {
       },
       requestId,
     );
+    return filterContinuing(result, continuing);
   }
 
-  async seasonUpcoming(requestId: string): Promise<ServiceResponse<AnimeListEntry[]>> {
+  async seasonUpcoming(requestId: string): Promise<ServiceResponse<SeasonEntry[]>> {
     const cacheKey = 'catalog:season:upcoming';
     return withCache(
       this.deps,
       cacheKey,
       this.config.catalogTtlSeconds,
       SEASON_PARSER_VERSION,
-      () => this.catalog.get<AnimeListEntry[]>(cacheKey),
+      () => this.catalog.get<SeasonEntry[]>(cacheKey),
       async () => {
         const source = await this.source.getHtml(seasonUpcomingUrl(), ['seasonal-anime']);
         if (source.kind !== 'success') throw sourceError(source);

@@ -4,7 +4,7 @@ import type { ProducerFull } from '../domain/producer-full';
 import { decodeHtml, ParserError } from './html';
 import { parseProducerDetail } from './producer-detail.parser';
 
-const extraSchema = z.object({
+export const extraSchema = z.object({
   about: z.string().nullable(),
   external: z.array(z.object({ name: z.string(), url: z.string().url() })),
 });

@@ -65,3 +65,30 @@ describe('response validator', () => {
     if (result.kind === 'success') expect(result.value).toBe(validBody);
   });
 });
+
+// MAL's page for a character id that does not exist is a 200 (fetched 2026-10-11). Left to the
+// marker check it was `suspicious`, so the caller got a 502 for an id that simply does not exist.
+describe('an invalid-id page', () => {
+  const invalid = readFileSync('tests/fixtures/characters/detail-invalid-id-real.html', 'utf8');
+
+  it('is not_found, even though the page is a 200 without the required marker', () => {
+    const result = classifyHtml(invalid, { ...metadata, sizeBytes: invalid.length }, ['title-name']);
+    expect(result.kind).toBe('not_found');
+  });
+
+  it('does not swallow a real character page', () => {
+    const real = readFileSync('tests/fixtures/characters/detail-luffy-real.html', 'utf8');
+    expect(classifyHtml(real, { ...metadata, sizeBytes: real.length }, ['title-name']).kind).toBe('success');
+  });
+});
+
+// User search answers an offset past its window with a 400. It stays an upstream error, but named, so
+// the service can tell it apart without reading the status code and the client knows not to retry it.
+describe('a 400', () => {
+  it('is an upstream error with the bad_request reason', () => {
+    expect(classifyHtml(validBody, { ...metadata, status: 400 })).toMatchObject({
+      kind: 'upstream_error',
+      reason: 'bad_request',
+    });
+  });
+});

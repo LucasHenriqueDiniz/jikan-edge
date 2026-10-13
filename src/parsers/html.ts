@@ -50,6 +50,12 @@ export function decodeHtml(value: string): string {
     .trim();
 }
 
+// Phrasing tags render inline, so removing one must not add a space either. Replacing every tag with
+// a space turned `Twitter: @<a href="…">seki0908</a>` into `@ seki0908` on every profile that links a
+// handle. Block-level tags still become a space: two adjacent `<div>`s are two runs of text.
+const INLINE_TAG =
+  /<\/?(?:a|abbr|b|bdi|bdo|cite|code|em|font|i|img|kbd|mark|q|s|small|span|strike|strong|sub|sup|u|var|wbr)\b[^>]*>/gi;
+
 // Same decoding, but paragraph structure survives. MAL separates paragraphs inside a synopsis with
 // `<br>`, and `decodeHtml` flattens all of them into spaces — which is how every synopsis this API
 // served came out as one wall of text. Only the long-form fields need this.
@@ -57,6 +63,7 @@ export function richText(value: string): string {
   const withBreaks = value
     .replace(/<br\s*\/?>/gi, '\n')
     .replace(/<\/p\s*>/gi, '\n\n')
+    .replace(INLINE_TAG, '')
     .replace(/<[^>]+>/g, ' ');
   return decodeEntities(withBreaks)
     .replace(/[^\S\n]+/g, ' ') // collapse spaces/tabs, never newlines
@@ -141,6 +148,22 @@ export function capture(html: string, pattern: RegExp): string | null {
 }
 
 // `capture` for the long-form fields, where paragraph breaks are part of the content.
+/**
+ * The markup between `open` and the first `close` after it, searched over the whole document.
+ *
+ * This is the alternative to a fixed `html.slice(0, N)` prefix. The prefixes were sized against the
+ * pages measured when each parser was written, and MAL's sidebar keeps growing: on 2026-10-11 the
+ * anime synopsis started at byte 96,736 on One Piece (window 90,000), and a character's kanji name and
+ * favourites sat past 105 KB on five of six pages measured (window 60,000). Anchoring on the field's
+ * own marker costs two `indexOf` scans and no regex over the prefix, so it is also no slower.
+ */
+export function spanBetween(html: string, open: string, close: string): string | null {
+  const start = html.indexOf(open);
+  if (start === -1) return null;
+  const end = html.indexOf(close, start + open.length);
+  return end === -1 ? null : html.slice(start + open.length, end);
+}
+
 export function richCapture(html: string, pattern: RegExp): string | null {
   const match = html.match(pattern);
   if (!match?.[1]) return null;
@@ -269,7 +292,9 @@ const MONTHS: Record<string, number> = {
 // "2024", "Not available". Only a complete day/month/year is turned into a date — a partial one
 // stays `null` rather than being padded to an invented January 1st. `string` always carries what
 // the page said, so nothing is lost by being strict here.
-function isoDate(raw: string): string | null {
+// `Sep 8, 1972` (MAL pads single-digit days with a second space) as `1972-09-08`; anything with a
+// part missing is null rather than a guess.
+export function isoDate(raw: string): string | null {
   const match = raw.trim().match(/^([A-Za-z]{3})[a-z]*\s+(\d{1,2}),\s*(\d{4})$/);
   if (!match) return null;
   const month = MONTHS[match[1].toLowerCase()];

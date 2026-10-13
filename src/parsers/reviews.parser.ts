@@ -1,8 +1,9 @@
 ﻿import { z } from 'zod';
 import type { ReviewEntry } from '../domain/review';
 import { decodeHtml, numeric, originalImage, ParserError, richText } from './html';
+import { reviewMarkers, reviewMarkersShape } from './review-markers';
 
-const entrySchema = z.object({
+export const entrySchema = z.object({
   malId: z.number().int().positive(),
   title: z.string().min(1),
   imageUrl: z.string().url().nullable(),
@@ -11,6 +12,7 @@ const entrySchema = z.object({
   tag: z.string().nullable(),
   score: z.number().nullable(),
   reviewText: z.string().nullable(),
+  ...reviewMarkersShape,
 });
 
 function parseCard(chunk: string): ReviewEntry | null {
@@ -34,7 +36,7 @@ function parseCard(chunk: string): ReviewEntry | null {
     textStart === -1
       ? null
       : richText(chunk.slice(textStart + textMarker.length, textEnd === -1 ? textStart + 6_000 : textEnd)) || null;
-  const candidate = { malId, title, imageUrl, username, date, tag, score, reviewText };
+  const candidate = { malId, title, imageUrl, username, date, tag, score, reviewText, ...reviewMarkers(chunk) };
   const parsed = entrySchema.safeParse(candidate);
   return parsed.success ? parsed.data : null;
 }

@@ -15,6 +15,24 @@ describe('title reviews parser', () => {
         tag: 'Recommended',
         score: 10,
         reviewText: "People who know me know that I'm not a fan of episodic anime series.",
+        // This synthetic card has no permalink and no Preliminary/Spoiler tag; its reactions payload is
+        // real-shaped. The real cards are covered in tests/parsers/review-markers.test.ts.
+        reviewId: null,
+        url: null,
+        isPreliminary: false,
+        isSpoiler: false,
+        episodesWatched: null,
+        chaptersRead: null,
+        reactions: {
+          overall: 2284,
+          nice: 2227,
+          loveIt: 25,
+          funny: 7,
+          confusing: 2,
+          informative: 7,
+          wellWritten: 15,
+          creative: 1,
+        },
       },
     ]);
   });

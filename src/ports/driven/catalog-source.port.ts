@@ -10,6 +10,12 @@
  */
 export interface SourceMetadata {
   url: string;
+  /**
+   * Where the fetch landed after following redirects — the same as `url` when there was none. MAL
+   * answers some requests with a redirect: an exact-title search goes to the detail page, and a
+   * title's reviews past the last page go back to page 1. Only the landing URL tells those apart from
+   * the page asked for.
+   */
   finalUrl?: string;
   status: number | null;
   contentType: string | null;

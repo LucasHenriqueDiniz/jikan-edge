@@ -9,7 +9,7 @@ const voiceActorSchema = z.object({
   language: z.string().nullable(),
   imageUrl: z.string().url().nullable(),
 });
-const characterSchema = z.object({
+export const characterSchema = z.object({
   malId: z.number().int().positive(),
   name: z.string().min(1),
   imageUrl: z.string().url().nullable(),
@@ -17,7 +17,7 @@ const characterSchema = z.object({
   favorites: z.number().nullable(),
   voiceActors: z.array(voiceActorSchema),
 });
-const staffSchema = z.object({
+export const staffSchema = z.object({
   malId: z.number().int().positive(),
   name: z.string().min(1),
   imageUrl: z.string().url().nullable(),

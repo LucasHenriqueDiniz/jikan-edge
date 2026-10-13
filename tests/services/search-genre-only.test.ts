@@ -37,7 +37,9 @@ describe('the URL keeps a genre-only search on the search page', () => {
   it('page 1 of a genre-only search is no longer a single-parameter request', () => {
     const page1 = paramsFor('anime', 1, [['genre[]', '1']]);
     expect(page1.has('show')).toBe(false);
-    expect([...page1.keys()].filter((key) => key !== 'q')).toEqual(['cat', 'genre[]']);
+    // `c[]` asks for the extra result columns and is the same on every search, so it is left out of
+    // the comparison; what matters here is that `cat` rides along with the lone genre.
+    expect([...page1.keys()].filter((key) => key !== 'q' && key !== 'c[]')).toEqual(['cat', 'genre[]']);
   });
 });
 

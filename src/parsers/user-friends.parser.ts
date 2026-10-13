@@ -2,7 +2,7 @@ import { z } from 'zod';
 import type { UserFriend } from '../domain/user-social';
 import { decodeHtml, imageFrom } from './html';
 
-const friendSchema = z.object({
+export const friendSchema = z.object({
   username: z.string().min(1),
   imageUrl: z.string().url().nullable(),
   lastOnline: z.string().nullable(),

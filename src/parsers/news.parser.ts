@@ -2,7 +2,7 @@ import { z } from 'zod';
 import type { NewsItem } from '../domain/news';
 import { decodeHtml, imageFrom, ParserError } from './html';
 
-const newsSchema = z.object({
+export const newsSchema = z.object({
   malId: z.number().int().positive(),
   title: z.string().min(1),
   url: z.string().url(),

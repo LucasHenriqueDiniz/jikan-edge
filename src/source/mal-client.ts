@@ -33,6 +33,8 @@ export class MalClient implements CatalogSource {
     // won't change a challenge page), not `not_found`/`private`/`rate_limited` (deterministic
     // upstream responses a second attempt would just reproduce).
     if (first.kind !== 'upstream_error' && first.kind !== 'timeout') return first;
+    // A 400 is MAL rejecting the request, not a blip: the same request gets the same answer.
+    if (first.reason === 'bad_request') return first;
     // A timeout is only worth repeating on the default budget, where expiry plausibly means a blip
     // rather than a verdict. When a caller has already granted an extended budget and the fetch
     // still ran it out, retrying buys a low chance of recovery at the cost of doubling an already

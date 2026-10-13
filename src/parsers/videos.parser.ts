@@ -2,13 +2,13 @@ import { z } from 'zod';
 import type { EpisodeVideoEntry, PromoVideoEntry, TitleVideos } from '../domain/videos';
 import { decodeHtml, imageFrom } from './html';
 
-const episodeSchema = z.object({
+export const episodeSchema = z.object({
   episode: z.number().int().positive(),
   title: z.string().nullable(),
   url: z.string().url(),
   imageUrl: z.string().url().nullable(),
 });
-const promoSchema = z.object({
+export const promoSchema = z.object({
   title: z.string().min(1),
   videoUrl: z.string().url().nullable(),
   imageUrl: z.string().url().nullable(),

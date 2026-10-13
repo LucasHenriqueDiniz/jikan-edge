@@ -3,6 +3,7 @@ export interface CharacterDetail {
   malId: number;
   url: string | null;
   name: string;
+  nicknames: string[];
   nameKanji: string | null;
   imageUrl: string | null;
   images: ImageSet;
@@ -11,4 +12,6 @@ export interface CharacterDetail {
   fetchedAt: string;
 }
 
-export const CHARACTER_PARSER_VERSION = 'character-html-v2';
+// v3: `nameKanji`, `favorites` and `about` were null on every character page longer than the 60 KB
+// window the parser read (5 of 6 measured on 2026-10-11), and `nicknames` moved out of `name`.
+export const CHARACTER_PARSER_VERSION = 'character-html-v3';

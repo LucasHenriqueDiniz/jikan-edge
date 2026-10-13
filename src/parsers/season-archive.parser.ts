@@ -7,7 +7,10 @@ export type { SeasonArchiveEntry };
 export const SEASON_ARCHIVE_PARSER_VERSION = 'season-archive-html-v2';
 
 const SEASON_ORDER = ['winter', 'spring', 'summer', 'fall'];
-const entrySchema = z.object({ year: z.number().int().min(1900).max(2100), seasons: z.array(z.string()).min(1) });
+export const entrySchema = z.object({
+  year: z.number().int().min(1900).max(2100),
+  seasons: z.array(z.string()).min(1),
+});
 
 export function parseSeasonArchive(html: string): SeasonArchiveEntry[] {
   const byYear = new Map<number, Set<string>>();

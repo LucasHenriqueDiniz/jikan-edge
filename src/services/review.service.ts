@@ -4,7 +4,16 @@ import { parseReviews } from '../parsers/reviews.parser';
 import type { CatalogSource } from '../ports/driven/catalog-source.port';
 import type { CatalogStore } from '../ports/driven/catalog-store.port';
 import { reviewsUrl } from '../source/mal-urls';
-import { type CacheDeps, type ServiceResponse, sourceError, type WaitUntil, withCache } from './cacheable';
+import {
+  type CacheDeps,
+  isPastLastPage,
+  type ServiceResponse,
+  sourceError,
+  storeEmptyPage,
+  type WaitUntil,
+  withCache,
+} from './cacheable';
+import type { ReviewFilter } from './review-filter';
 
 export class ReviewService {
   private readonly deps: CacheDeps;
@@ -22,12 +31,13 @@ export class ReviewService {
   private async forType(
     type: 'anime' | 'manga',
     page: number,
+    filter: ReviewFilter,
     requestId: string,
   ): Promise<ServiceResponse<ReviewEntry[]>> {
     // Always suffixed, including page 1. The old special case gave the first page a key of its own
     // shape, which every other paginated route in this codebase does not do — see migration 0011,
     // which renames the four rows it left behind.
-    const cacheKey = `catalog:reviews:${type}:page:${page}`;
+    const cacheKey = `catalog:reviews:${type}:page:${page}${filter.key}`;
     return withCache(
       this.deps,
       cacheKey,
@@ -35,7 +45,10 @@ export class ReviewService {
       REVIEW_PARSER_VERSION,
       () => this.catalog.get<ReviewEntry[]>(cacheKey),
       async () => {
-        const source = await this.source.getHtml(reviewsUrl(type, page), ['review-element']);
+        const source = await this.source.getHtml(reviewsUrl(type, page, filter.params), ['review-element']);
+        if (isPastLastPage(source, page)) {
+          return storeEmptyPage(this.catalog, cacheKey, REVIEW_PARSER_VERSION);
+        }
         if (source.kind !== 'success') throw sourceError(source);
         const value = parseReviews(source.value);
         const fetchedAt = new Date().toISOString();
@@ -46,10 +59,10 @@ export class ReviewService {
     );
   }
 
-  anime(page: number, requestId: string): Promise<ServiceResponse<ReviewEntry[]>> {
-    return this.forType('anime', page, requestId);
+  anime(page: number, filter: ReviewFilter, requestId: string): Promise<ServiceResponse<ReviewEntry[]>> {
+    return this.forType('anime', page, filter, requestId);
   }
-  manga(page: number, requestId: string): Promise<ServiceResponse<ReviewEntry[]>> {
-    return this.forType('manga', page, requestId);
+  manga(page: number, filter: ReviewFilter, requestId: string): Promise<ServiceResponse<ReviewEntry[]>> {
+    return this.forType('manga', page, filter, requestId);
   }
 }

@@ -12,6 +12,7 @@ export const CLUB_MEMBERS_PAGE_SIZE = 36;
 export const RECOMMENDATIONS_PAGE_SIZE = 100;
 export const REVIEWS_PAGE_SIZE = 50;
 export const TITLE_REVIEWS_PAGE_SIZE = 20;
+export const EPISODES_PAGE_SIZE = 100;
 
 export function profileUrl(username: string): string {
   return `${BASE}/profile/${encodeURIComponent(username)}`;
@@ -142,8 +143,11 @@ export function recommendationsUrl(type: 'anime' | 'manga', page = 1): string {
   return `${BASE}/recommendations.php?s=recentrecs&t=${type}${show > 0 ? `&show=${show}` : ''}`;
 }
 
-export function reviewsUrl(type: 'anime' | 'manga', page = 1): string {
-  return `${BASE}/reviews.php?t=${type}${page > 1 ? `&p=${page}` : ''}`;
+export function reviewsUrl(type: 'anime' | 'manga', page = 1, filter: [string, string][] = []): string {
+  const params = new URLSearchParams({ t: type });
+  for (const [key, value] of filter) params.set(key, value);
+  if (page > 1) params.set('p', String(page));
+  return `${BASE}/reviews.php?${params.toString()}`;
 }
 
 export function magazinesUrl(): string {
@@ -177,8 +181,26 @@ export function forumUrl(type: 'anime' | 'manga', malId: number): string {
   return `${BASE}/${type}/${malId}/x/forum`;
 }
 
-export function titleReviewsUrl(type: 'anime' | 'manga', malId: number, page: number): string {
-  return page > 1 ? `${BASE}/${type}/${malId}/x/reviews?p=${page}` : `${BASE}/${type}/${malId}/x/reviews`;
+// With a filter, the query string is the one MAL's own pager emits —
+// `?sort=suggested&filter_check=&filter_hide=&preliminary=on&spoiler=off&p=2` — since that is the
+// form measured. A page past the last one answers 303 to page 1, which is why the services check
+// where the fetch actually landed (`metadata.finalUrl`) before trusting the cards.
+export function titleReviewsUrl(
+  type: 'anime' | 'manga',
+  malId: number,
+  page: number,
+  filter: [string, string][] = [],
+): string {
+  const params = new URLSearchParams();
+  if (filter.length > 0) {
+    params.set('sort', 'suggested');
+    params.set('filter_check', '');
+    params.set('filter_hide', '');
+    for (const [key, value] of filter) params.set(key, value);
+  }
+  if (page > 1) params.set('p', String(page));
+  const query = params.toString();
+  return `${BASE}/${type}/${malId}/x/reviews${query ? `?${query}` : ''}`;
 }
 
 export function titleRecommendationsUrl(type: 'anime' | 'manga', malId: number): string {
@@ -189,11 +211,14 @@ export function moreInfoUrl(type: 'anime' | 'manga', malId: number): string {
   return `${BASE}/${type}/${malId}/x/moreinfo`;
 }
 
-export function episodesUrl(malId: number): string {
-  // MAL paginates this page for long-running shows, but the query param format wasn't
-  // confirmed — only the first page is fetched for now (see docs/routes.md).
-  return `${BASE}/anime/${malId}/x/episode`;
+// Paginated with `?offset=N`, 100 rows a page — measured on One Piece, whose 1,180 episodes run to
+// `offset=1100`. An offset past the end answers 200 with the heading and no rows.
+export function episodesUrl(malId: number, page = 1): string {
+  const offset = (page - 1) * EPISODES_PAGE_SIZE;
+  return `${BASE}/anime/${malId}/x/episode${offset > 0 ? `?offset=${offset}` : ''}`;
 }
+
+const SEARCH_COLUMNS = ['a', 'b', 'c', 'd', 'e', 'f', 'g'];
 
 export function searchUrl(
   type: 'anime' | 'manga' | 'character' | 'people',
@@ -213,6 +238,11 @@ export function searchUrl(
   if (type === 'anime' || type === 'manga') params.set('cat', type);
   if (show > 0) params.set('show', String(show));
   for (const [key, value] of extra) params.append(key, value);
+  // Every result column the form offers, on the same request: `a`–`g` are type, the count, score,
+  // start date, end date, members, and rating (anime) or chapters (manga) — the form's own option
+  // values. Without them the table stops at type, count and score. Not part of `extra` on purpose:
+  // it is the same for every search, so it stays out of the cache key.
+  if (type === 'anime' || type === 'manga') for (const column of SEARCH_COLUMNS) params.append('c[]', column);
   return `${BASE}/${type}.php?${params.toString()}`;
 }
 

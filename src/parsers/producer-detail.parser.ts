@@ -2,7 +2,7 @@ import { z } from 'zod';
 import type { ProducerDetail } from '../domain/producer';
 import { canonicalUrl, capture, COMPANY_LOGO_IMAGE, labelValue, numeric, ParserError, taggedImage } from './html';
 
-const producerDetailSchema = z.object({
+export const producerDetailSchema = z.object({
   malId: z.number().int().positive(),
   url: z.string().url().nullable(),
   name: z.string().min(1),

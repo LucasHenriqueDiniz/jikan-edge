@@ -7,4 +7,5 @@ export interface PersonFull extends PersonDetail {
   voices: VoiceActingRole[];
 }
 
-export const PERSON_FULL_PARSER_VERSION = 'person-full-html-v2';
+// v3: carries the person-html-v3 detail fields (see PERSON_PARSER_VERSION).
+export const PERSON_FULL_PARSER_VERSION = 'person-full-html-v3';

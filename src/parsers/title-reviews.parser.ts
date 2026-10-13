@@ -1,14 +1,16 @@
 ﻿import { z } from 'zod';
 import type { TitleReview } from '../domain/title-review';
 import { decodeHtml, numeric, originalImage, ParserError, richText } from './html';
+import { reviewMarkers, reviewMarkersShape } from './review-markers';
 
-const entrySchema = z.object({
+export const entrySchema = z.object({
   username: z.string().nullable(),
   imageUrl: z.string().url().nullable(),
   date: z.string().nullable(),
   tag: z.string().nullable(),
   score: z.number().nullable(),
   reviewText: z.string().nullable(),
+  ...reviewMarkersShape,
 });
 
 // Same card markup as the global reviews list (reviews.parser.ts), except the per-title page
@@ -31,10 +33,15 @@ function parseCard(chunk: string): TitleReview | null {
     textStart === -1
       ? null
       : richText(chunk.slice(textStart + textMarker.length, textEnd === -1 ? textStart + 6_000 : textEnd)) || null;
-  const candidate = { username, imageUrl, date, tag, score, reviewText };
+  const candidate = { username, imageUrl, date, tag, score, reviewText, ...reviewMarkers(chunk) };
   const parsed = entrySchema.safeParse(candidate);
   return parsed.success ? parsed.data : null;
 }
+
+// The two ways MAL says a title's review page is legitimately empty: nothing was ever written, or
+// the preliminary/spoiler toggles excluded everything there was (One Piece with preliminary off).
+// Measured on 2026-10-11. Any other page without cards is still a broken document.
+const NO_REVIEWS = /No reviews have been submitted for this title\.|No reviews found that match this filter criteria\./;
 
 export function parseTitleReviews(html: string): TitleReview[] {
   const entries = html
@@ -42,6 +49,6 @@ export function parseTitleReviews(html: string): TitleReview[] {
     .slice(1)
     .map(parseCard)
     .filter((entry): entry is TitleReview => entry !== null);
-  if (entries.length === 0) throw new ParserError('empty_title_reviews_page');
+  if (entries.length === 0 && !NO_REVIEWS.test(html)) throw new ParserError('empty_title_reviews_page');
   return entries;
 }

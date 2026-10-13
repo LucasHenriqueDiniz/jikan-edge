@@ -2,7 +2,7 @@ import { z } from 'zod';
 import type { MediaType, UserMediaListEntry } from '../domain/list-entry';
 import { capture, numeric, ParserError } from './html';
 
-const entrySchema = z.object({
+export const entrySchema = z.object({
   username: z.string().min(1),
   mediaType: z.enum(['anime', 'manga']),
   malId: z.number().int().positive(),

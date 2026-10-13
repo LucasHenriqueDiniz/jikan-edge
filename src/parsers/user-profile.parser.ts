@@ -8,7 +8,7 @@ import {
 } from '../domain/user';
 import { capture, divContent, numeric, ParserError, richText } from './html';
 
-const profileSchema = z.object({
+export const profileSchema = z.object({
   username: z.string().min(1).max(64),
   canonicalUsername: z.string().min(1).max(64),
   profileUrl: z.string().url(),

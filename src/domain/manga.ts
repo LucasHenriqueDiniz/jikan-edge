@@ -48,7 +48,8 @@ export interface MangaListEntry {
   members: number | null;
 }
 
-export const MANGA_PARSER_VERSION = 'manga-html-v2';
+// v3: relations read the `entries-table` as well as the tiles (Berserk lost its Spin-Off and Other).
+export const MANGA_PARSER_VERSION = 'manga-html-v3';
 
 // Same reasoning as TOP_ANIME_PARSER_VERSION: the top list is a different shape from the detail,
 // and sharing one version coupled their invalidation for no reason.

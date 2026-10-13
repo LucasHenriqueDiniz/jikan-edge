@@ -4,6 +4,7 @@ import { errorResponse } from '../../http/errors';
 import { success } from '../../http/response';
 import { paginationMeta } from '../../domain/pagination';
 import { REVIEWS_PAGE_SIZE } from '../../source/mal-urls';
+import { parseReviewFilter } from '../../services/review-filter';
 import type { ReviewService } from '../../services/review.service';
 
 import type { AppContext } from '../app-context';
@@ -15,7 +16,11 @@ export function registerReviewsRoutes(app: App, deps: { reviewService: Factory<R
 
   app.get('/v1/reviews/anime', async (c) => {
     try {
-      const result = await reviewService(c).anime(c.get('page'), c.get('requestId'));
+      const result = await reviewService(c).anime(
+        c.get('page'),
+        parseReviewFilter(c.req.query('preliminary'), c.req.query('spoilers')),
+        c.get('requestId'),
+      );
       cacheHeader(c, result);
       return c.json(
         success(result.data, {
@@ -33,7 +38,11 @@ export function registerReviewsRoutes(app: App, deps: { reviewService: Factory<R
 
   app.get('/v1/reviews/manga', async (c) => {
     try {
-      const result = await reviewService(c).manga(c.get('page'), c.get('requestId'));
+      const result = await reviewService(c).manga(
+        c.get('page'),
+        parseReviewFilter(c.req.query('preliminary'), c.req.query('spoilers')),
+        c.get('requestId'),
+      );
       cacheHeader(c, result);
       return c.json(
         success(result.data, {
