@@ -49,16 +49,22 @@ export function databaseIdFrom(listOutput, name) {
  * name pattern is anchored to the start of a line so it cannot hit the `"name"` of a rate limiter.
  */
 export function configPatches({ databaseId, dbName, contact, workerName }) {
+  // Global on purpose: the config names its D1 three times — production, `preview_database_id` for
+  // `wrangler dev`, and the `previews` block for branch builds — and the upstream ids are databases a
+  // fork cannot reach. A fork starts with its one database in all three places, which is how every
+  // fork ran before Previews existed; docs/self-hosting.md says how to give previews their own.
   const patches = [
-    [/("database_id"\s*:\s*")[^"]*(")/, `$1${databaseId}$2`],
-    [/("database_name"\s*:\s*")[^"]*(")/, `$1${dbName}$2`],
+    [/("database_id"\s*:\s*")[^"]*(")/g, `$1${databaseId}$2`],
+    [/("preview_database_id"\s*:\s*")[^"]*(")/g, `$1${databaseId}$2`],
+    [/("database_name"\s*:\s*")[^"]*(")/g, `$1${dbName}$2`],
     // The upstream custom domain lives in a zone the fork does not own, and `wrangler deploy` fails
     // outright on a route it cannot claim. Emptying it leaves the fork on its own workers.dev URL.
     [/("routes"\s*:\s*)\[[^\]]*\]/, '$1[]'],
   ];
   // The user agent is what MyAnimeList sees. Left unchanged, a fork's traffic is attributed to the
   // upstream author's domain.
-  if (contact) patches.push([/("MAL_USER_AGENT"\s*:\s*")[^"]*(")/, `$1jikan-edge/0.1 (+${contact})$2`]);
+  // Both copies — production's and the one in `previews` — since Previews inherit no vars.
+  if (contact) patches.push([/("MAL_USER_AGENT"\s*:\s*")[^"]*(")/g, `$1jikan-edge/0.1 (+${contact})$2`]);
   if (workerName) patches.push([/^(\s*"name"\s*:\s*")[^"]*(")/m, `$1${workerName}$2`]);
   return patches;
 }

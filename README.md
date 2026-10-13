@@ -289,7 +289,10 @@ pnpm run benchmark    # parser p95 smoke tests
 ```
 
 Use `npm run dev` (`wrangler dev --remote`) for anything that depends on **how MyAnimeList responds
-to Cloudflare's network** — `--local` egresses from your machine and will not reproduce it.
+to Cloudflare's network** — `--local` egresses from your machine and will not reproduce it. It binds
+the `jikan-edge-preview` database (`preview_database_id` in `wrangler.jsonc`), never production's,
+and so do branch builds. A branch that adds a migration applies it there with
+`pnpm run db:migrate:preview`.
 
 Every route's accepted query parameters live in [`src/http/query-contract.ts`](src/http/query-contract.ts), and a test enumerates the router to fail if a route is missing from it. Architecture, source policy and local-dev details: [`docs/`](docs/README.md). Changes that affect consumers are listed in [`CHANGELOG.md`](CHANGELOG.md).
 

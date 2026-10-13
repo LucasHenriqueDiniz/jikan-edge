@@ -68,7 +68,8 @@ If you would rather not run the script, it is four commands and one edit:
 
 ```bash
 npx wrangler d1 create jikan-edge     # prints the database id
-# paste that id into wrangler.jsonc → d1_databases[0].database_id
+# paste that id into wrangler.jsonc everywhere a database id appears: database_id,
+# preview_database_id and previews.d1_databases[0].database_id
 pnpm run db:migrate:remote             # applies migrations to the REMOTE database
 npx wrangler deploy
 ```
@@ -144,8 +145,28 @@ pnpm run db:migrate:remote     # new migrations arrive with parser changes
 npx wrangler deploy
 ```
 
-`wrangler.jsonc` will conflict on `database_id` — keep yours. Everything else in that file should
+`wrangler.jsonc` will conflict on the database ids — keep yours. Everything else in that file should
 usually follow upstream.
+
+## Branch previews and `wrangler dev --remote`
+
+`wrangler.jsonc` names a database three times: production (`database_id`), what `wrangler dev` uses
+(`preview_database_id`), and what branch builds use (the `previews` block). `npm run setup` puts your
+one database in all three, so a remote dev session or a branch preview reads and writes your
+production data — which is how every deploy behaved before upstream separated them.
+
+To keep them apart, create a second database and point the two preview slots at it:
+
+```bash
+npx wrangler d1 create jikan-edge-preview
+# paste its id into preview_database_id and previews.d1_databases in wrangler.jsonc, and into
+# wrangler.preview-migrations.jsonc — the two files must name the same database
+pnpm run db:migrate:preview
+```
+
+Branch builds only read the `previews` block once Workers Builds runs `wrangler preview` — the
+one-time "Set up Worker Previews" switch in the dashboard, which Cloudflare documents as irreversible.
+Before it, they upload versions that run with production's bindings.
 
 Parser fixes ship with a version token that invalidates affected cache rows automatically, so you do
 not need to clear anything after an upgrade. Breaking changes to responses are listed in
