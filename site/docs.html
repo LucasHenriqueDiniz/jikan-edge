@@ -359,7 +359,8 @@ npm install</pre>
         <p class="note">Building against this API with an AI coding agent (Claude, Cursor, an MCP-connected tool,
         anything that reads context before writing code)? <code>/llms.txt</code> is a plain-text summary made for
         that: base URL, response envelope, error codes, rate limits and the known-limitations list above, all in one
-        page small enough to sit entirely in a prompt — no need to feed it this whole HTML document.</p>
+        page small enough to sit entirely in a prompt — no need to feed it this whole HTML document. For a client
+        generator, <a href="/openapi.json"><code>/openapi.json</code></a> is the same contract as OpenAPI 3.1, generated from the code.</p>
         <div class="basebar" onclick="location.href='/llms.txt'" style="cursor:pointer" title="Open /llms.txt">
           <span class="dot"></span><span>/llms.txt</span><span class="copy">open</span>
         </div>
@@ -393,13 +394,13 @@ npm install</pre>
 
   // p: path template · ex: runnable example · d: description · n: extra note (optional)
   var GROUPS = [
-    { id: 'g-anime', title: 'Anime', note: 'Search accepts <code>q</code> (1–64 chars) and server-side filters: <code>type</code> (tv/ova/movie/special/ona/music), <code>status</code> (airing/complete/upcoming), <code>rating</code> (g/pg/pg13/r17/r/rx), <code>score</code> (min, 1–10), <code>genres</code> (comma-separated ids), <code>order_by</code> (score/episodes/type). Filter-only search without <code>q</code> is valid (e.g. <code>?genres=1&amp;score=9</code>). Invalid filter values return <code>400 INVALID_FILTER</code> with the accepted list. Zero-match text queries mirror MAL’s own fallback (popular titles), not an empty list.', routes: [
+    { id: 'g-anime', title: 'Anime', note: 'Search accepts <code>q</code> (1–64 chars) and server-side filters: <code>type</code> (tv/ova/movie/special/ona/music/cm/pv/tv_special), <code>status</code> (airing/complete/upcoming), <code>rating</code> (g/pg/pg13/r17/r/rx), <code>score</code> (min, 1–10), <code>genres</code> (comma-separated ids), <code>order_by</code> (score/episodes/type). Filter-only search without <code>q</code> is valid (e.g. <code>?genres=1&amp;score=9</code>). Invalid filter values return <code>400 INVALID_FILTER</code> with the accepted list. A query with no match, or a page past the last, is <code>200</code> with an empty list. Queries under three characters are searched too (MAL ignores them unquoted). Results carry start/end date, members and rating.', routes: [
       { p: '/v1/anime?q=&page=', ex: '/v1/anime?q=cowboy+bebop', d: 'Search anime — text query, filters, or both. 50 per page.' },
       { p: '/v1/anime/:id', ex: '/v1/anime/1', d: 'Anime detail.' },
       { p: '/v1/anime/:id/full', ex: '/v1/anime/1/full', d: 'Detail plus theme songs (openings/endings).' },
       { p: '/v1/anime/:id/characters', ex: '/v1/anime/1/characters', d: 'Characters with voice actors.' },
       { p: '/v1/anime/:id/staff', ex: '/v1/anime/1/staff', d: 'Staff with positions. Derived from the characters page — no extra upstream fetch.' },
-      { p: '/v1/anime/:id/episodes', ex: '/v1/anime/1/episodes', d: 'Episode list. First MAL page only — very long series return a truncated list.' },
+      { p: '/v1/anime/:id/episodes', ex: '/v1/anime/21/episodes?page=2', d: 'Episode list, 100 per page (<code>?page=</code>), each flagged <code>filler</code>/<code>recap</code>.' },
       { p: '/v1/anime/:id/episodes/:episode', ex: '/v1/anime/1/episodes/1', d: 'Single episode: title, alt title, duration, aired date, synopsis.' },
       { p: '/v1/anime/:id/videos', ex: '/v1/anime/1/videos', d: 'Trailers/PVs, music videos and episode videos.' },
       { p: '/v1/anime/:id/videos/episodes', ex: '/v1/anime/1/videos/episodes', d: 'Episode videos only (projection of videos).' },
@@ -416,7 +417,7 @@ npm install</pre>
       { p: '/v1/anime/:id/moreinfo', ex: '/v1/anime/1/moreinfo', d: 'Curated free-text notes. Most titles have none — returns { "text": null }, not an error.' },
       { p: '/v1/anime/:id/userupdates', ex: '/v1/anime/1/userupdates', d: 'Recent member list updates (from the public stats page).' }
     ]},
-    { id: 'g-manga', title: 'Manga', note: 'Search behaves like anime search (same filters, minus <code>rating</code>; <code>type</code> accepts manga/novel/lightnovel/oneshot/doujin/manhwa/manhua; <code>order_by</code> uses volumes instead of episodes). <code>full</code> is a pure alias of detail — the MAL manga page already contains everything (no openings/streaming concept for manga).', routes: [
+    { id: 'g-manga', title: 'Manga', note: 'Search behaves like anime search (same filters, minus <code>rating</code>; <code>type</code> accepts manga/novel/lightnovel/oneshot/doujin/manhwa/manhua; <code>status</code> also takes hiatus/discontinued; <code>order_by</code> uses volumes instead of episodes). <code>full</code> is a pure alias of detail — the MAL manga page already contains everything (no openings/streaming concept for manga).', routes: [
       { p: '/v1/manga?q=&page=', ex: '/v1/manga?q=berserk', d: 'Search manga — text query, filters, or both.' },
       { p: '/v1/manga/:id', ex: '/v1/manga/2', d: 'Manga detail (includes relations and external links).' },
       { p: '/v1/manga/:id/full', ex: '/v1/manga/2/full', d: 'Alias of detail — see group note.' },

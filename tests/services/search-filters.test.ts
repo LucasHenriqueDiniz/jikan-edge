@@ -79,3 +79,49 @@ describe('date filters', () => {
     await expect(params({ endDate: '2015-01-32' })).rejects.toThrow(/not a real date/);
   });
 });
+
+// The same recorder for manga search, whose type and status vocabularies differ.
+async function mangaParams(filters: Record<string, string>): Promise<URLSearchParams> {
+  let seen: string | null = null;
+  const source: CatalogSource = {
+    getHtml: async (url: string) => {
+      seen = url;
+      throw new Error('stop after recording the URL');
+    },
+  };
+  const row = { first: async () => null, run: async () => ({ meta: { changes: 1 }, success: true }) };
+  const db = { prepare: () => ({ bind: () => row, ...row }) };
+  const service = new SearchService(new D1CatalogStore(db as never), source, { catalogTtlSeconds: 1 } as never);
+  try {
+    await service.manga('sword', 1, filters, 'req');
+  } catch (error) {
+    if (seen === null) throw error;
+  }
+  return new URL(seen as unknown as string).searchParams;
+}
+
+// Each code is the search form's own <option> value, confirmed 2026-10-11 by the type column of the
+// results (anime 7 → only CM, 8 → only PV, 9 → only TV Special; manga 2 → only Light Novel, 8 → only
+// Novel).
+describe('type and status codes', () => {
+  it('maps the three anime types that were missing', async () => {
+    expect((await params({ type: 'cm' })).get('type')).toBe('7');
+    expect((await params({ type: 'pv' })).get('type')).toBe('8');
+    expect((await params({ type: 'tv_special' })).get('type')).toBe('9');
+  });
+
+  // `novel` used to be sent as 2, which is MAL's Light Novel.
+  it('sends novel as Novel and lightnovel as Light Novel', async () => {
+    expect((await mangaParams({ type: 'novel' })).get('type')).toBe('8');
+    expect((await mangaParams({ type: 'lightnovel' })).get('type')).toBe('2');
+  });
+
+  it('maps the two statuses only manga has', async () => {
+    expect((await mangaParams({ status: 'hiatus' })).get('status')).toBe('4');
+    expect((await mangaParams({ status: 'discontinued' })).get('status')).toBe('5');
+  });
+
+  it('refuses them on anime, which has no such status', async () => {
+    await expect(params({ status: 'hiatus' })).rejects.toThrow(/status/);
+  });
+});

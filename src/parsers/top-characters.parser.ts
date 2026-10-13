@@ -3,7 +3,7 @@ import type { TopCharacterEntry, TopCharacterWorkRef } from '../domain/top-chara
 import { decodeHtml, imageFrom, numeric, ParserError } from './html';
 
 const workRefSchema = z.object({ malId: z.number().int().positive(), title: z.string().min(1) });
-const entrySchema = z.object({
+export const entrySchema = z.object({
   malId: z.number().int().positive(),
   name: z.string().min(1),
   nameKanji: z.string().nullable(),

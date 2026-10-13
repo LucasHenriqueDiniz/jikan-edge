@@ -8,4 +8,6 @@ export interface EpisodeDetail {
   synopsis: string | null;
 }
 
-export const EPISODE_DETAIL_PARSER_VERSION = 'episode-detail-html-v2';
+// v3: an episode MAL has no page for used to be cached as a 200 with every field null; it is a 404
+// now, and the bump stops those rows being served for the rest of their TTL.
+export const EPISODE_DETAIL_PARSER_VERSION = 'episode-detail-html-v3';

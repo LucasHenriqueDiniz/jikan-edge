@@ -1,4 +1,6 @@
-export interface TitleReview {
+import type { ReviewMarkers } from './review';
+
+export interface TitleReview extends ReviewMarkers {
   username: string | null;
   imageUrl: string | null;
   date: string | null;
@@ -7,4 +9,6 @@ export interface TitleReview {
   reviewText: string | null;
 }
 
-export const TITLE_REVIEWS_PARSER_VERSION = 'title-reviews-html-v2';
+// v3: review id, url, the preliminary/spoiler flags and the reactions; and a title with no reviews
+// is an empty list instead of a 502.
+export const TITLE_REVIEWS_PARSER_VERSION = 'title-reviews-html-v3';

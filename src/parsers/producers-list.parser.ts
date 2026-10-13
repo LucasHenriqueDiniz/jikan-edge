@@ -2,7 +2,7 @@ import { z } from 'zod';
 import type { ProducerListEntry } from '../domain/producer-list';
 import { decodeHtml, numeric, ParserError } from './html';
 
-const entrySchema = z.object({
+export const entrySchema = z.object({
   malId: z.number().int().positive(),
   name: z.string().min(1),
   count: z.number().int().min(0),

@@ -1,0 +1,5 @@
+# Static assets are served without invoking the Worker, so they never get the
+# `Access-Control-Allow-Origin: *` the Worker sets on /v1/*. A client generator or
+# a browser playground fetching the spec from another origin needs it.
+/openapi.json
+  Access-Control-Allow-Origin: *

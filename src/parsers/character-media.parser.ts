@@ -3,13 +3,13 @@ import type { CharacterMediaEntry } from '../domain/character-media';
 import type { VoiceActor } from '../domain/voice-actor';
 import { decodeHtml, imageFrom } from './html';
 
-const mediaSchema = z.object({
+export const mediaSchema = z.object({
   malId: z.number().int().positive(),
   title: z.string().min(1),
   imageUrl: z.string().url().nullable(),
   role: z.string().nullable(),
 });
-const voiceActorSchema = z.object({
+export const voiceActorSchema = z.object({
   malId: z.number().int().positive(),
   name: z.string().min(1),
   imageUrl: z.string().url().nullable(),

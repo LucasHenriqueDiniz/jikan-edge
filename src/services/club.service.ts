@@ -15,6 +15,7 @@ import type { CatalogStore } from '../ports/driven/catalog-store.port';
 import { clubDetailUrl, clubListUrl, clubMembersUrl } from '../source/mal-urls';
 import {
   type CacheDeps,
+  isPastLastPage,
   ServiceError,
   type ServiceResponse,
   sourceError,
@@ -74,6 +75,10 @@ export class ClubService {
       () => this.catalog.get<ClubListEntry[]>(cacheKey),
       async () => {
         const source = await this.source.getHtml(clubListUrl(page), ['class="club-list"']);
+        if (isPastLastPage(source, page)) {
+          await this.catalog.put(cacheKey, [], new Date().toISOString(), CLUB_LIST_PARSER_VERSION);
+          return [];
+        }
         if (source.kind !== 'success') throw sourceError(source);
         const value = parseClubList(source.value);
         const fetchedAt = new Date().toISOString();
@@ -122,6 +127,10 @@ export class ClubService {
         const source = await this.source.getHtml(clubMembersUrl(malId, page), [
           '<td align="center"  class="borderClass">',
         ]);
+        if (isPastLastPage(source, page)) {
+          await this.catalog.put(cacheKey, [], new Date().toISOString(), CLUB_MEMBERS_PARSER_VERSION);
+          return [];
+        }
         if (source.kind !== 'success') throw sourceError(source);
         const value = parseClubMembers(source.value);
         const fetchedAt = new Date().toISOString();

@@ -40,7 +40,11 @@ A handful of Jikan routes are not served, each for a specific, investigated reas
 - `GET /v1/users/userbyid/{id}` — depends on an internal Jikan mechanism with no public MAL page behind it.
 - Per-episode forum threads — no reliable dedicated public page per episode.
 
-Also worth knowing: `GET /v1/anime/{id}/episodes` reads only the first page MyAnimeList serves (long series aren't paginated further yet); `GET /v1/random/*` draws only from entities this specific instance has already cached locally, not MyAnimeList's full catalog; a text search with no match reflects MyAnimeList's own fallback behaviour (popular titles), not an empty result.
+Also worth knowing: `GET /v1/random/*` draws only from entities this specific instance has already cached locally, not MyAnimeList's full catalog. A search with no match, and any page past the end of a list, is `200` with `data: []` — not an error. `GET /v1/anime/{id}/episodes` paginates with `?page=` (100 per page). Review routes take `preliminary` and `spoilers` (`true`/`false`, MyAnimeList's own toggles: preliminary in and spoilers out by default — the opposite of Jikan's preliminary default); season routes take `continuing=false` to drop the shows continuing from an earlier season, which are included by default.
+
+## Machine-readable contract
+
+- OpenAPI 3.1, every route with its query parameters and response schema, generated from the code: https://jikan.lucashdo.com/openapi.json
 
 ## Optional
 

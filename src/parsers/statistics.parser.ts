@@ -15,7 +15,7 @@ const scoreSchema = z.object({
   votes: z.number().int().min(0),
   percentage: z.number(),
 });
-const statisticsSchema = z.object({
+export const statisticsSchema = z.object({
   status: statusSchema,
   scores: z.array(scoreSchema),
   fetchedAt: z.string().datetime(),

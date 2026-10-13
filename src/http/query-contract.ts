@@ -50,12 +50,12 @@ export const QUERY_CONTRACT: Record<string, readonly string[]> = {
   '/v1/anime/:id/pictures': [],
   '/v1/anime/:id/news': [],
   '/v1/anime/:id/forum': [],
-  '/v1/anime/:id/episodes': [],
+  '/v1/anime/:id/episodes': ['page'],
   '/v1/anime/:id/episodes/:episode': [],
   '/v1/anime/:id/videos': [],
   '/v1/anime/:id/videos/episodes': [],
   '/v1/anime/:id/recommendations': [],
-  '/v1/anime/:id/reviews': ['page'],
+  '/v1/anime/:id/reviews': ['page', 'preliminary', 'spoilers'],
   '/v1/anime/:id/userupdates': [],
   '/v1/anime/:id/themes': [],
   '/v1/anime/:id/moreinfo': [],
@@ -86,7 +86,7 @@ export const QUERY_CONTRACT: Record<string, readonly string[]> = {
   '/v1/manga/:id/news': [],
   '/v1/manga/:id/forum': [],
   '/v1/manga/:id/recommendations': [],
-  '/v1/manga/:id/reviews': ['page'],
+  '/v1/manga/:id/reviews': ['page', 'preliminary', 'spoilers'],
   '/v1/manga/:id/userupdates': [],
   '/v1/manga/:id/moreinfo': [],
 
@@ -130,9 +130,9 @@ export const QUERY_CONTRACT: Record<string, readonly string[]> = {
   '/v1/genres/anime': ['filter'],
   '/v1/genres/manga': ['filter'],
   '/v1/seasons': [],
-  '/v1/seasons/now': [],
+  '/v1/seasons/now': ['continuing'],
   '/v1/seasons/upcoming': [],
-  '/v1/seasons/:year/:season': [],
+  '/v1/seasons/:year/:season': ['continuing'],
   '/v1/schedules': ['filter'],
 
   // Watch / recommendations / reviews / random
@@ -142,8 +142,8 @@ export const QUERY_CONTRACT: Record<string, readonly string[]> = {
   '/v1/watch/promos/popular': [],
   '/v1/recommendations/anime': ['page'],
   '/v1/recommendations/manga': ['page'],
-  '/v1/reviews/anime': ['page'],
-  '/v1/reviews/manga': ['page'],
+  '/v1/reviews/anime': ['page', 'preliminary', 'spoilers'],
+  '/v1/reviews/manga': ['page', 'preliminary', 'spoilers'],
   '/v1/random/anime': [],
   '/v1/random/manga': [],
   '/v1/random/characters': [],
@@ -175,8 +175,12 @@ export const UNSUPPORTED_PARAMS: Record<string, string> = {
   genres_exclude:
     "Not supported: MyAnimeList's exclude flag no longer inverts a genre filter — with it set, 16 of 18 results are the same entries the un-inverted filter returns. Excluding a genre reliably would mean filtering after the fetch, which would break the page size this route reports.",
   unapproved: 'Not supported: this API reads the public pages, which list approved entries only.',
-  preliminary: 'Not supported: MyAnimeList does not separate preliminary reviews on the public pages.',
-  spoilers: 'Not supported: MyAnimeList does not separate spoiler reviews on the public pages.',
-  kids: 'Not supported: no equivalent switch on the public pages.',
-  continuing: 'Not supported: no equivalent switch on the public pages.',
+  // These two used to say MAL does not separate preliminary or spoiler reviews. It does, with toggles
+  // it filters on itself (see review-filter.ts); the review routes take both now.
+  preliminary: 'Only the review routes take it: /v1/reviews/{anime,manga} and /v1/{anime,manga}/:id/reviews.',
+  spoilers: 'Only the review routes take it: /v1/reviews/{anime,manga} and /v1/{anime,manga}/:id/reviews.',
+  kids: "Not supported yet: season cards carry MyAnimeList's own kids marker, but this API does not filter on it.",
+  // Used to read "no equivalent switch on the public pages". The season page has one — the
+  // "TV (Continuing)" block — and the season routes take it now.
+  continuing: 'Only the season routes take it: /v1/seasons/now and /v1/seasons/:year/:season.',
 };

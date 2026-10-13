@@ -2,7 +2,7 @@ import { z } from 'zod';
 import type { TopPersonEntry } from '../domain/top-person';
 import { decodeHtml, imageFrom, numeric, ParserError } from './html';
 
-const entrySchema = z.object({
+export const entrySchema = z.object({
   malId: z.number().int().positive(),
   name: z.string().min(1),
   nameKanji: z.string().nullable(),

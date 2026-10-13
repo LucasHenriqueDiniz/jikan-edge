@@ -39,8 +39,16 @@ const MAX_QUERY_LENGTH = 64;
 // trailing id — so this pattern does not match them.
 const DETAIL_LANDING = /^https:\/\/myanimelist\.net\/(anime|manga)\/(\d+)\b/;
 
+// The results table's Rated column prints the short form (`PG-13`, `R+`), the detail page the long one
+// (`PG-13 - Teens 13 or older`). An exact-title match must answer in the same form as a results row.
+function shortRating(rating: string | null): string | null {
+  const short = rating?.split(' - ')[0].trim();
+  return short && short !== 'None' ? short : null;
+}
+
 // AnimeDetail carries every SearchEntry field; the one gap is url, which is nullable on the detail
-// but required on the entry, so it falls back to the landing URL (the canonical detail URL).
+// but required on the entry, so it falls back to the landing URL (the canonical detail URL). The dates
+// are the detail's own, which are full dates or null — a results row can also carry `2027-10`.
 function animeDetailToEntry(detail: AnimeDetail, landed: string): AnimeSearchEntry {
   return {
     malId: detail.malId,
@@ -50,7 +58,11 @@ function animeDetailToEntry(detail: AnimeDetail, landed: string): AnimeSearchEnt
     synopsis: detail.synopsis,
     type: detail.type,
     score: detail.score,
+    startDate: detail.aired.from,
+    endDate: detail.aired.to,
+    members: detail.members,
     episodes: detail.episodes,
+    rating: shortRating(detail.rating),
   };
 }
 
@@ -65,7 +77,11 @@ function mangaDetailToEntry(detail: MangaDetail, landed: string): MangaSearchEnt
     synopsis: detail.synopsis,
     type: detail.type,
     score: detail.score,
+    startDate: detail.published.from,
+    endDate: detail.published.to,
+    members: detail.members,
     volumes: detail.volumes,
+    chapters: detail.chapters,
   };
 }
 
@@ -86,15 +102,30 @@ interface TitleSearchFilters {
 
 // All values verified against real anime.php/manga.php responses (server-side filtering confirmed;
 // see docs/routes.md). order_by uses the sort-column codes from the results-table header links.
-const ANIME_TYPE_MAP: Record<string, string> = { tv: '1', ova: '2', movie: '3', special: '4', ona: '5', music: '6' };
+//
+// The type codes are the search form's own `<option>` values (re-read 2026-10-11), each confirmed by
+// the type column of the results: anime `7` returns only CM, `8` only PV, `9` only TV Special; manga
+// `2` only Light Novel and `8` only Novel. `novel` used to map to `2`, so `?type=novel` returned light
+// novels.
+const ANIME_TYPE_MAP: Record<string, string> = {
+  tv: '1',
+  ova: '2',
+  movie: '3',
+  special: '4',
+  ona: '5',
+  music: '6',
+  cm: '7',
+  pv: '8',
+  tv_special: '9',
+};
 const MANGA_TYPE_MAP: Record<string, string> = {
   manga: '1',
-  novel: '2',
   lightnovel: '2',
   oneshot: '3',
   doujin: '4',
   manhwa: '5',
   manhua: '6',
+  novel: '8',
 };
 const STATUS_MAP: Record<string, string> = {
   airing: '1',
@@ -103,6 +134,8 @@ const STATUS_MAP: Record<string, string> = {
   finished: '2',
   upcoming: '3',
 };
+// Two statuses only the manga form has: "On Hiatus" and "Discontinued".
+const MANGA_ONLY_STATUS_MAP: Record<string, string> = { hiatus: '4', discontinued: '5' };
 const RATING_MAP: Record<string, string> = { g: '1', pg: '2', pg13: '3', r17: '4', r: '5', rx: '6' };
 // The `o=` column codes, each checked against the live results rather than taken from Jikan's
 // legacy builder: `episodes` sorts 500/293/220, `id` sorts 64614/64501/64487, `members` puts Naruto
@@ -130,8 +163,10 @@ function buildTitleSearchParams(type: 'anime' | 'manga', filters: TitleSearchFil
     const map = type === 'anime' ? ANIME_TYPE_MAP : MANGA_TYPE_MAP;
     extra.push(['type', map[filters.type.toLowerCase()] ?? fail('type', Object.keys(map))]);
   }
-  if (filters.status)
-    extra.push(['status', STATUS_MAP[filters.status.toLowerCase()] ?? fail('status', Object.keys(STATUS_MAP))]);
+  if (filters.status) {
+    const map = type === 'manga' ? { ...STATUS_MAP, ...MANGA_ONLY_STATUS_MAP } : STATUS_MAP;
+    extra.push(['status', map[filters.status.toLowerCase()] ?? fail('status', Object.keys(map))]);
+  }
   if (filters.rating) {
     if (type !== 'anime') throw new ServiceError('INVALID_FILTER', 400, '"rating" only applies to anime search.');
     extra.push(['r', RATING_MAP[filters.rating.toLowerCase()] ?? fail('rating', Object.keys(RATING_MAP))]);
@@ -269,7 +304,19 @@ export class SearchService {
         // below, on the results branch only, so a wrong body served at the search URL (the
         // genre-browse page MAL used to redirect us to) is still refused rather than parsed as empty.
         const marker = type === 'anime' ? 'Search Anime - MyAnimeList.net' : 'Search Manga - MyAnimeList.net';
-        const source = await this.source.getHtml(searchUrl(type, query, page, extra), []);
+        // MAL treats a query under three characters as matching nothing (`q=86` and `q=ab` both come
+        // back "No titles that matched"), so the anime called *86* was unreachable. Quoted, the same
+        // query is searched: `q="86"` returns the 86 titles. Quoting also switches MAL to substring
+        // matching (it brings *GR86 x Initial D* too), so longer queries are left as typed.
+        const sourceQuery = query.length > 0 && query.length < 3 ? `"${query}"` : query;
+        const source = await this.source.getHtml(searchUrl(type, sourceQuery, page, extra), []);
+        // Zero results and a page past the end are both a 404 here — the first with the search page and
+        // "No titles that matched your query were found.", the second with MAL's generic page — and both
+        // mean the same thing to the caller: an empty page, not a missing resource.
+        if (source.kind === 'not_found') {
+          await this.catalog.put(cacheKey, [], new Date().toISOString(), version);
+          return [];
+        }
         if (source.kind !== 'success') throw sourceError(source);
         const landed = source.metadata.finalUrl ?? source.metadata.url;
         const detail = landed.match(DETAIL_LANDING);
@@ -337,6 +384,15 @@ export class SearchService {
       () => this.catalog.get<UserSearchResult[]>(cacheKey),
       async () => {
         const source = await this.source.getHtml(userSearchUrl(query, page), []);
+        // "No users found" comes with a 404. Further out MAL stops paginating altogether and answers
+        // 400 (measured: `show=1008` is a 404, `show=2400` a 400), which past page 1 is the same end.
+        if (
+          source.kind === 'not_found' ||
+          (page > 1 && source.kind === 'upstream_error' && source.metadata.status === 400)
+        ) {
+          await this.catalog.put(cacheKey, [], new Date().toISOString(), USER_SEARCH_PARSER_VERSION);
+          return [];
+        }
         if (source.kind !== 'success') throw sourceError(source);
         let value: UserSearchResult[];
         try {
@@ -374,6 +430,11 @@ export class SearchService {
       () => this.catalog.get<CharacterSearchResult[]>(cacheKey),
       async () => {
         const source = await this.source.getHtml(searchUrl('character', query, page), ['Search Results']);
+        // "No results found" with a 404, for zero matches and past the last page alike.
+        if (source.kind === 'not_found') {
+          await this.catalog.put(cacheKey, [], new Date().toISOString(), CHARACTER_SEARCH_PARSER_VERSION);
+          return [];
+        }
         if (source.kind !== 'success') throw sourceError(source);
         const value = parseCharacterSearch(source.value);
         const fetchedAt = new Date().toISOString();

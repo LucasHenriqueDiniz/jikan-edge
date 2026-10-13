@@ -2,7 +2,7 @@ import { z } from 'zod';
 import type { RecommendationEntry } from '../domain/recommendation';
 import { decodeHtml, imageFrom, ParserError } from './html';
 
-const entrySchema = z.object({
+export const entrySchema = z.object({
   malId: z.number().int().positive(),
   title: z.string().min(1),
   imageUrl: z.string().url().nullable(),

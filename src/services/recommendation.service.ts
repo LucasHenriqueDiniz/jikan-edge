@@ -4,7 +4,14 @@ import { parseRecommendations } from '../parsers/recommendations.parser';
 import type { CatalogSource } from '../ports/driven/catalog-source.port';
 import type { CatalogStore } from '../ports/driven/catalog-store.port';
 import { recommendationsUrl } from '../source/mal-urls';
-import { type CacheDeps, type ServiceResponse, sourceError, type WaitUntil, withCache } from './cacheable';
+import {
+  type CacheDeps,
+  isPastLastPage,
+  type ServiceResponse,
+  sourceError,
+  type WaitUntil,
+  withCache,
+} from './cacheable';
 
 export class RecommendationService {
   private readonly deps: CacheDeps;
@@ -34,6 +41,10 @@ export class RecommendationService {
       () => this.catalog.get<RecommendationEntry[]>(cacheKey),
       async () => {
         const source = await this.source.getHtml(recommendationsUrl(type, page), ['recommendations-user-recs-text']);
+        if (isPastLastPage(source, page)) {
+          await this.catalog.put(cacheKey, [], new Date().toISOString(), RECOMMENDATION_PARSER_VERSION);
+          return [];
+        }
         if (source.kind !== 'success') throw sourceError(source);
         const value = parseRecommendations(source.value);
         const fetchedAt = new Date().toISOString();

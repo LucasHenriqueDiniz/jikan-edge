@@ -17,6 +17,11 @@ export function classifyHtml(
   if (body.trim().length < 512) return { kind: 'suspicious', reason: 'document_too_small', metadata };
   if (suspiciousMarkers.some((marker) => marker.test(body)))
     return { kind: 'suspicious', reason: 'challenge_or_login', metadata };
+  // MAL's "no such id" page for characters comes back as a 200 — `<h1 class="h1">Invalid</h1>` over
+  // `<div class="badresult">Invalid ID provided.</div>` — where the other entities answer 404. Left to
+  // the marker check below it failed as `required_structure_missing` and reached the caller as a
+  // 502, telling them MAL was misbehaving when the id simply does not exist.
+  if (/<div class="badresult">\s*Invalid ID provided\./i.test(body)) return { kind: 'not_found', metadata };
   if (requiredMarkers.some((marker) => !body.includes(marker)))
     return { kind: 'suspicious', reason: 'required_structure_missing', metadata };
   return { kind: 'success', value: body, metadata };

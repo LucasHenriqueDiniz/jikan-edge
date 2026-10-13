@@ -2,7 +2,7 @@ import { z } from 'zod';
 import type { TitleUserUpdate } from '../domain/title-userupdates';
 import { decodeHtml, numeric, originalImage } from './html';
 
-const schema = z.object({
+export const schema = z.object({
   username: z.string().min(1),
   imageUrl: z.string().url().nullable(),
   score: z.number().nullable(),

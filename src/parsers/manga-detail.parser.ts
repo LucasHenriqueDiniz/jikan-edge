@@ -16,21 +16,22 @@ import {
   ParserError,
   parseDateRange,
   rankedValue,
-  richCapture,
+  richText,
+  spanBetween,
   taggedImage,
   titleSynonyms,
 } from './html';
 import { extractExternalLinks, extractRelations } from './relations-links';
 
-const relationSchema = z.object({
+export const relationSchema = z.object({
   relation: z.string().min(1),
   malId: z.number().int().positive(),
   type: z.enum(['anime', 'manga']),
   title: z.string().min(1),
 });
-const externalLinkSchema = z.object({ name: z.string().min(1), url: z.string().url() });
+export const externalLinkSchema = z.object({ name: z.string().min(1), url: z.string().url() });
 
-const mangaDetailSchema = z.object({
+export const mangaDetailSchema = z.object({
   malId: z.number().int().positive(),
   url: z.string().url().nullable(),
   title: z.string().min(1),
@@ -81,7 +82,9 @@ export function parseMangaDetail(html: string, malId: number, fetchedAt = new Da
     titleSynonyms: titleSynonyms(head),
     imageUrl,
     images: imageVariants(imageUrl, 'manga'),
-    synopsis: richCapture(head, /<span itemprop="description">([\s\S]*?)<\/span>/i),
+    // Anchored for the same reason as the anime synopsis, which outgrew its 90 KB window. Manga pages
+    // still had 40 KB of margin when measured, but the sidebar is the part of the page that grows.
+    synopsis: richText(spanBetween(html, '<span itemprop="description">', '</span>') ?? '') || null,
     background: backgroundSection(html),
     type: labelValue(head, 'Type'),
     volumes: numeric(labelValue(head, 'Volumes')),

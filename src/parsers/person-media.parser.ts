@@ -2,19 +2,19 @@ import { z } from 'zod';
 import type { PublishedManga, StaffPosition, VoiceActingRole } from '../domain/person-media';
 import { decodeHtml, imageFrom } from './html';
 
-const staffSchema = z.object({
+export const staffSchema = z.object({
   animeId: z.number().int().positive(),
   animeTitle: z.string().min(1),
   imageUrl: z.string().url().nullable(),
   positions: z.array(z.string()),
 });
-const mangaSchema = z.object({
+export const mangaSchema = z.object({
   mangaId: z.number().int().positive(),
   mangaTitle: z.string().min(1),
   imageUrl: z.string().url().nullable(),
   positions: z.array(z.string()),
 });
-const voiceSchema = z.object({
+export const voiceSchema = z.object({
   animeId: z.number().int().positive(),
   animeTitle: z.string().min(1),
   animeImageUrl: z.string().url().nullable(),

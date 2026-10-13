@@ -2,7 +2,7 @@ import { z } from 'zod';
 import type { WatchPromoEntry } from '../domain/watch';
 import { decodeHtml, ParserError } from './html';
 
-const entrySchema = z.object({
+export const entrySchema = z.object({
   animeId: z.number().int().positive(),
   animeTitle: z.string().min(1),
   imageUrl: z.string().url().nullable(),

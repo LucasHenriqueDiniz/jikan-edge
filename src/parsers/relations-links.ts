@@ -1,6 +1,35 @@
 import type { ExternalLink, RelationEntry, StreamingEntry } from '../domain/anime';
 import { decodeHtml } from './html';
 
+// MAL renders related entries in two layouts on the same page: a few tiles with a cover (usually
+// the adaptation), then an `entries-table` with every other relation, one row per kind. Reading
+// only the tiles served 2 of One Piece's 94 relations and lost Berserk's Spin-Off and Other rows
+// (measured 2026-10-11). The table's label cell ends in a colon (`Side Story:`) and its entries
+// are `<li><a href="…/anime/466/…">Title</a> (OVA)</li>`, including the ones MAL hides behind a
+// "more" toggle with `hide-entry`.
+function tableRelations(html: string): RelationEntry[] {
+  const start = html.indexOf('class="entries-table"');
+  if (start === -1) return [];
+  const end = html.indexOf('</table>', start);
+  const table = html.slice(start, end === -1 ? undefined : end);
+  const relations: RelationEntry[] = [];
+  for (const row of table.split('<tr').slice(1)) {
+    const relation = decodeHtml(row.match(/<td[^>]*>([^<]+?):?\s*<\/td>/i)?.[1] ?? '').replace(/:$/, '');
+    if (!relation) continue;
+    for (const link of row.matchAll(
+      /<a href="https:\/\/myanimelist\.net\/(anime|manga)\/(\d+)\/[^"]*">([^<]+)<\/a>/gi,
+    )) {
+      relations.push({
+        relation,
+        type: link[1] === 'manga' ? 'manga' : 'anime',
+        malId: Number(link[2]),
+        title: decodeHtml(link[3]),
+      });
+    }
+  }
+  return relations;
+}
+
 export function extractRelations(html: string): RelationEntry[] {
   const relations: RelationEntry[] = [];
   for (const block of html.split('class="entry borderClass').slice(1)) {
@@ -16,7 +45,7 @@ export function extractRelations(html: string): RelationEntry[] {
       title: decodeHtml(linkMatch[3]),
     });
   }
-  return relations;
+  return [...relations, ...tableRelations(html)];
 }
 
 export function extractExternalLinks(html: string): ExternalLink[] {

@@ -2,7 +2,7 @@ import { z } from 'zod';
 import type { ForumThread } from '../domain/forum';
 import { decodeHtml, numeric, ParserError } from './html';
 
-const threadSchema = z.object({
+export const threadSchema = z.object({
   topicId: z.number().int().positive(),
   title: z.string().min(1),
   startedBy: z.string().nullable(),

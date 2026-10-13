@@ -2,7 +2,7 @@ import { z } from 'zod';
 import { GENRE_KINDS, type GenreKind, type GenreTaxonomyEntry } from '../domain/genre';
 import { decodeHtml, ParserError } from './html';
 
-const entrySchema = z.object({
+export const entrySchema = z.object({
   malId: z.number().int().positive(),
   name: z.string().min(1),
   url: z.string().url(),

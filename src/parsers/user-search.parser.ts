@@ -3,7 +3,7 @@ import type { UserSearchResult } from '../domain/user-search';
 import { decodeHtml, imageFrom, ParserError } from './html';
 import { parseUserProfile } from './user-profile.parser';
 
-const entrySchema = z.object({
+export const entrySchema = z.object({
   username: z.string().min(1).max(64),
   url: z.string().url(),
   avatarUrl: z.string().url().nullable(),

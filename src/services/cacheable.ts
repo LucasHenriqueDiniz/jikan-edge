@@ -63,6 +63,31 @@ export function sourceError(result: Exclude<SourceResult<string>, { kind: 'succe
 }
 
 /**
+ * Whether a list page MAL answered `not_found` is simply past the end of the list.
+ *
+ * MAL's paginated listings — search, rankings, the review and recommendation feeds, the club
+ * index and its member pages — answer a page beyond the last with its generic 404 (measured
+ * 2026-10-11 on every one of them). That 404 used to reach the caller as `NOT_FOUND`, which reads
+ * as "this resource does not exist" when the honest answer is an empty page. Only past page 1: a
+ * listing whose *first* page 404s is not a short list, it is a broken URL.
+ */
+export function isPastLastPage(result: SourceResult<string>, page: number): boolean {
+  return result.kind === 'not_found' && page > 1;
+}
+
+/**
+ * Whether a paginated fetch landed on a page other than the one asked for.
+ *
+ * A title's review page past the last one answers 303 to page 1, and the client follows redirects,
+ * so without this check `?page=999` served page 1's twenty reviews with `hasNextPage: true` — a
+ * paginator that never ends.
+ */
+export function landedOnAnotherPage(result: SourceResult<string>, page: number): boolean {
+  if (page <= 1 || !result.metadata.finalUrl) return false;
+  return new URL(result.metadata.finalUrl).searchParams.get('p') !== String(page);
+}
+
+/**
  * Keeps work alive after the response is sent. On Workers this is `ExecutionContext.waitUntil`; the
  * runtime is free to tear the isolate down once a response is returned, so a promise that is merely
  * left unawaited may never finish. Optional throughout: without it every refresh runs inline, which

@@ -9,7 +9,7 @@ const themeSongSchema = z.object({
   artist: z.string().nullable(),
   episodes: z.string().nullable(),
 });
-const themeSongsSchema = z.object({ openings: z.array(themeSongSchema), endings: z.array(themeSongSchema) });
+export const themeSongsSchema = z.object({ openings: z.array(themeSongSchema), endings: z.array(themeSongSchema) });
 
 function extractSongs(block: string): ThemeSong[] {
   const songs: ThemeSong[] = [];

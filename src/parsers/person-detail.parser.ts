@@ -5,6 +5,7 @@ import {
   capture,
   imageSetSchema,
   imageVariants,
+  isoDate,
   numeric,
   ParserError,
   richCapture,
@@ -12,14 +13,15 @@ import {
   VOICE_ACTOR_IMAGE,
 } from './html';
 
-const personDetailSchema = z.object({
+export const personDetailSchema = z.object({
   malId: z.number().int().positive(),
   url: z.string().url().nullable(),
   name: z.string().min(1),
   givenName: z.string().nullable(),
   familyName: z.string().nullable(),
-  alternateNames: z.string().nullable(),
+  alternateNames: z.array(z.string().min(1)),
   birthday: z.string().nullable(),
+  birthDate: z.string().nullable(),
   website: z.string().nullable(),
   imageUrl: z.string().url().nullable(),
   images: imageSetSchema,
@@ -46,14 +48,20 @@ export function parsePersonDetail(html: string, malId: number, fetchedAt = new D
   const head = html.slice(0, 60_000);
   const name = capture(head, /<h1[^>]*class="title-name[^"]*"[^>]*>\s*<strong>([^<]+)<\/strong>/i);
   const imageUrl = taggedImage(head, VOICE_ACTOR_IMAGE);
+  const birthday = tightLabelValue(head, 'Birthday');
   const detail: PersonDetail = {
     malId,
     url: canonicalUrl(head),
     name: name ?? '',
     givenName: tightLabelValue(head, 'Given name'),
     familyName: tightLabelValue(head, 'Family name'),
-    alternateNames: tightLabelValue(head, 'Alternate names'),
-    birthday: tightLabelValue(head, 'Birthday'),
+    // `Seki Mondoya, 門戸 開, Monto Hiraku`: one string on the page, a list of names in fact.
+    alternateNames: (tightLabelValue(head, 'Alternate names') ?? '')
+      .split(',')
+      .map((alias) => alias.trim())
+      .filter(Boolean),
+    birthday,
+    birthDate: birthday ? isoDate(birthday) : null,
     website: extractWebsite(head),
     imageUrl,
     images: imageVariants(imageUrl, 'person'),

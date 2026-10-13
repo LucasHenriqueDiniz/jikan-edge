@@ -46,12 +46,15 @@ import {
 import { CHARACTER_PAGE_BUDGET, refreshLeaseSecondsFor } from '../source/fetch-policy';
 import {
   type CacheDeps,
+  isPastLastPage,
+  landedOnAnotherPage,
   ServiceError,
   type ServiceResponse,
   sourceError,
   type WaitUntil,
   withCache,
 } from './cacheable';
+import type { ReviewFilter } from './review-filter';
 import { parseGenreFilter } from './genre-filter';
 
 const GENRES_CACHE_KEY = 'catalog:genres:manga';
@@ -178,6 +181,10 @@ export class MangaService {
       () => this.catalog.get<MangaListEntry[]>(cacheKey),
       async () => {
         const source = await this.source.getHtml(topMangaUrl(page, filter), ['ranking-list']);
+        if (isPastLastPage(source, page)) {
+          await this.catalog.put(cacheKey, [], new Date().toISOString(), TOP_MANGA_PARSER_VERSION);
+          return [];
+        }
         if (source.kind !== 'success') throw sourceError(source);
         const value = parseTopManga(source.value);
         const fetchedAt = new Date().toISOString();
@@ -318,9 +325,14 @@ export class MangaService {
     );
   }
 
-  reviews(rawId: string, page: number, requestId: string): Promise<ServiceResponse<TitleReview[]>> {
+  reviews(
+    rawId: string,
+    page: number,
+    filter: ReviewFilter,
+    requestId: string,
+  ): Promise<ServiceResponse<TitleReview[]>> {
     const malId = this.validateMalId(rawId);
-    const cacheKey = `catalog:manga:${malId}:reviews:page:${page}`;
+    const cacheKey = `catalog:manga:${malId}:reviews:page:${page}${filter.key}`;
     return withCache(
       this.deps,
       cacheKey,
@@ -328,9 +340,20 @@ export class MangaService {
       TITLE_REVIEWS_PARSER_VERSION,
       () => this.catalog.get<TitleReview[]>(cacheKey),
       async () => {
-        const source = await this.source.getHtml(titleReviewsUrl('manga', malId, page), ['review-element']);
+        // The sort/filter bar, not a review card: a title nobody has reviewed — or whose reviews the
+        // toggles exclude — is a real page with no cards, and requiring one answered 502 for every such
+        // title. The bar is on all of those, on anime and manga alike (the anime-only `<h2>` was tried
+        // first and took manga reviews down).
+        const source = await this.source.getHtml(titleReviewsUrl('manga', malId, page, filter.params), [
+          'reviews-horiznav-nav-sort-block',
+        ]);
+        // Past the last page, manga answers 404 and anime a 303 to page 1 (measured 2026-10-11).
+        if (isPastLastPage(source, page)) {
+          await this.catalog.put(cacheKey, [], new Date().toISOString(), TITLE_REVIEWS_PARSER_VERSION);
+          return [];
+        }
         if (source.kind !== 'success') throw sourceError(source);
-        const value = parseTitleReviews(source.value);
+        const value = landedOnAnotherPage(source, page) ? [] : parseTitleReviews(source.value);
         const fetchedAt = new Date().toISOString();
         await this.catalog.put(cacheKey, value, fetchedAt, TITLE_REVIEWS_PARSER_VERSION);
         return value;

@@ -1,8 +1,8 @@
 import { z } from 'zod';
-import type { AnimeListEntry } from '../domain/anime';
+import type { AnimeListEntry, SeasonEntry } from '../domain/anime';
 import { decodeHtml, imageFrom, numeric, ParserError } from './html';
 
-const entrySchema = z.object({
+export const entrySchema = z.object({
   malId: z.number().int().positive(),
   title: z.string().min(1),
   imageUrl: z.string().url().nullable(),
@@ -20,8 +20,8 @@ interface SeasonCompletenessEvidence {
   duplicateIds: number[];
 }
 type SeasonParseResult =
-  | { kind: 'complete'; items: AnimeListEntry[]; evidence: SeasonCompletenessEvidence }
-  | { kind: 'partial'; items: AnimeListEntry[]; reason: string; evidence: SeasonCompletenessEvidence }
+  | { kind: 'complete'; items: SeasonEntry[]; evidence: SeasonCompletenessEvidence }
+  | { kind: 'partial'; items: SeasonEntry[]; reason: string; evidence: SeasonCompletenessEvidence }
   | { kind: 'invalid'; reason: string; evidence: SeasonCompletenessEvidence };
 
 const CARD_MARKER = 'js-seasonal-anime';
@@ -76,14 +76,35 @@ function parseCard(chunk: string): AnimeListEntry | null {
   return parsed.success ? parsed.data : null;
 }
 
+// A season page groups its cards under `<div class="anime-header">` blocks — TV (New), TV
+// (Continuing), ONA, OVA, Movie, Special — and the continuing block is the one fact here the cards
+// do not carry themselves. (On `/anime/season`, 2026-10-11: 45 of 165 cards, One Piece among them.)
+// The type is still read from the card's class, not from these headings; see TYPE_BY_ID for why.
+const CONTINUING_HEADER = '<div class="anime-header">TV (Continuing)</div>';
+
+function continuingRanges(html: string): [number, number][] {
+  const ranges: [number, number][] = [];
+  let at = html.indexOf(CONTINUING_HEADER);
+  while (at !== -1) {
+    const next = html.indexOf('<div class="anime-header">', at + CONTINUING_HEADER.length);
+    ranges.push([at, next === -1 ? html.length : next]);
+    at = html.indexOf(CONTINUING_HEADER, at + CONTINUING_HEADER.length);
+  }
+  return ranges;
+}
+
 export function parseSeasonNowSnapshot(html: string): SeasonParseResult {
-  const entries = new Map<number, AnimeListEntry>();
+  const entries = new Map<number, SeasonEntry>();
+  const continuing = continuingRanges(html);
   let matched = 0;
+  let offset = html.indexOf(CARD_MARKER);
   for (const chunk of cardChunks(html)) {
+    const at = offset;
+    offset += chunk.length + CARD_MARKER.length;
     const parsed = parseCard(chunk);
     if (!parsed) continue;
     matched += 1;
-    entries.set(parsed.malId, parsed);
+    entries.set(parsed.malId, { ...parsed, continuing: continuing.some(([start, end]) => at > start && at < end) });
   }
   const duplicateIds = matched === entries.size ? [] : [...entries.keys()];
   const evidence: SeasonCompletenessEvidence = {
@@ -98,7 +119,7 @@ export function parseSeasonNowSnapshot(html: string): SeasonParseResult {
   return { kind: 'complete', items: [...entries.values()], evidence };
 }
 
-export function parseSeasonNow(html: string): AnimeListEntry[] {
+export function parseSeasonNow(html: string): SeasonEntry[] {
   const result = parseSeasonNowSnapshot(html);
   if (result.kind !== 'complete') throw new ParserError(result.reason);
   return result.items;
