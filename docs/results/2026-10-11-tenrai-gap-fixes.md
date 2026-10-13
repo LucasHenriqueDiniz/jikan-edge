@@ -89,9 +89,40 @@ checklist prescribes. It also found that pages past the first answered `[]` when
 but no longer parsed, and that a MAL 400 was retried and read as a raw status code in a service. All
 three were fixed, and each fix was checked by reverting it and watching its test go red.
 
+## In production (2026-10-13)
+
+Merged as `306ca16` and published by its build as version `a0004e26`; `wrangler versions view` reads
+`env.DB` back as `71f8a596-…`, production's database.
+
+| check | result |
+| --- | --- |
+| `0013` on the production D1 | applied: 38,059 list rows deleted, 7,240 people and 18,968 characters rewritten. After: 0 rows at an old list version, 7,240 of 7,240 `alternateNames` lists, 18,972 of 18,972 characters with `nicknames` |
+| `0013` on the preview D1 | applied, nothing pending |
+| the 50 end-to-end checks, against `jikan.lucashdo.com` | 50 of 50 |
+| the 73 route variations | 0 non-200. The only `stale: true` were `random/*`, which draw stored rows without refreshing them (`refreshFailed: false`) |
+| cpuTime of 9 cache misses (`wrangler tail`) | p50 12 / p95 34 / max 34 ms: anime detail 12–16, character 7, person 11–34 |
+
+The production migration answered `7429` (`D1 DB storage operation exceeded timeout`) and had applied
+anyway — the note on it is in `.claude/CLAUDE.md`. The end-to-end checks went out through Cloudflare's
+network this time, since the Worker fetched MyAnimeList from the edge.
+
+The cpuTime above cannot separate this batch from what came before it: since 2026-08-10 a detail miss
+also parses its sibling routes' shapes. So the parsers were timed head to head as well, `0f1d059`
+against `306ca16`, on four full real pages (151 KB to 1.15 MB), median of 200 runs each:
+
+| page | before | after |
+| --- | --- | --- |
+| anime 21 (One Piece) | 0.92 ms | 1.01 ms |
+| anime 20 (Naruto) | 0.99 ms | 1.03 ms |
+| character 40 (Luffy) | 0.19 ms | 0.27 ms |
+| person 118 (Hiroshi Kamiya) | 0.88 ms | 0.88 ms |
+
+On those same pages the old parsers returned `null` for One Piece's synopsis and for Luffy's kanji,
+favourites and About; the new ones return 1,111 characters, `モンキー・D・ルフィ`, 150,107 and 3,975
+characters. Reading from the marker costs under 0.1 ms a page. This ran on Node on the development
+machine, not in workerd, so the difference is the result, not the absolute numbers.
+
 ## Not covered
 
-- Production. Nothing here was deployed, and `wrangler dev --remote` was deliberately not used for the app: it
-  writes to the production D1. The end-to-end run went through the machine's network, not Cloudflare's; the
-  research had already shown the pages involved arrive the same way at the edge, in one colo.
-- The CPU cost of reading fields from their own marker instead of a fixed prefix, on the Free plan's 10 ms.
+- The Free plan's 10 ms. The misses measured above go over it on anime detail and on the heavier people
+  pages, as `docs/self-hosting.md` already says. This batch did not move that line.

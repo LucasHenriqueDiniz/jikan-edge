@@ -8,8 +8,9 @@ This file starts on 2026-07-30 and does not reconstruct earlier history.
 
 ## 2026-10-13
 
-Published version: to be confirmed — this entry ships with the change, and an entry can never name
-the version that publishes it. Written on 2026-10-11; dated by the day it reached production.
+Published version: `a0004e26`. (As always, the commit that fills in this id ships in the *next*
+build — an entry can never name the version that publishes it.) Written on 2026-10-11; dated by the
+day it reached production.
 
 Origin: a side-by-side measurement against Tenrai (another Jikan-compatible API) on the 70 routes
 both serve, with every divergence checked against the live MyAnimeList page. Every call there
