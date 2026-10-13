@@ -42,6 +42,16 @@ describe('patching wrangler.jsonc', () => {
     expect(patched({})).toMatch(new RegExp(`"database_id":\\s*"${ID}"`));
   });
 
+  // The config names a database three times: production, `preview_database_id` (wrangler dev) and the
+  // `previews` block (branch builds). An upstream id left in any of them points a fork at a database
+  // in someone else's account.
+  it('leaves no upstream database id anywhere, preview ones included', () => {
+    const result = patched({});
+    expect(result).not.toMatch(/"(preview_)?database_id":\s*"(?!11111111-)/);
+    expect(result).toMatch(new RegExp(`"preview_database_id":\\s*"${ID}"`));
+    expect(result.match(new RegExp(`"database_id":\\s*"${ID}"`, 'g'))).toHaveLength(2);
+  });
+
   it('leaves the rest of the config, including its comments, intact', () => {
     const result = patched({});
     expect(result).toContain('"binding": "DB"');
@@ -67,8 +77,10 @@ describe('patching wrangler.jsonc', () => {
     expect(result).toContain('"name": "API_BURST_LIMIT"');
   });
 
-  it('points the MyAnimeList user agent at the fork', () => {
-    expect(patched({ contact: 'https://mine.workers.dev' })).toContain('"MAL_USER_AGENT": "jikan-edge/0.1 (+https://mine.workers.dev)"');
+  it('points the MyAnimeList user agent at the fork, in production and in previews', () => {
+    const result = patched({ contact: 'https://mine.workers.dev' });
+    expect(result.match(/"MAL_USER_AGENT": "jikan-edge\/0\.1 \(\+https:\/\/mine\.workers\.dev\)"/g)).toHaveLength(2);
+    expect(result).not.toContain('jikan.lucashdo.com)"');
   });
 
   it('leaves the user agent alone when no contact is given', () => {

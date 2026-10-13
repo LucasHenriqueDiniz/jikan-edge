@@ -1,0 +1,19 @@
+// Applies `migrations/` to the D1 database Worker Previews use — `previews.d1_databases` in
+// wrangler.jsonc. A separate file because `wrangler d1 migrations apply` reads only top-level
+// `d1_databases`, and there that entry is production. This is the layout Cloudflare documents for
+// Previews (developers.cloudflare.com/workers/previews/resources/#d1-migrations).
+//
+// The id here must match `previews.d1_databases` in wrangler.jsonc: the two files name one database.
+// Run it through `pnpm run db:migrate:preview`, before a branch that adds a migration is previewed.
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "jikan-edge",
+  "d1_databases": [
+    {
+      "binding": "PREVIEW_DB",
+      "database_name": "jikan-edge-preview",
+      "database_id": "86f8a44d-560b-4074-a500-527f36325947",
+      "migrations_dir": "migrations"
+    }
+  ]
+}

@@ -27,12 +27,21 @@
     "MAX_UPSTREAM_BYTES": "5242880"
     ,"WORKER_VERSION": "jikan-edge-2026-07-19"
   },
-  // Forking this? Run `npm run setup` — it creates your own D1 and rewrites the id below.
+  // Forking this? Run `npm run setup` — it creates your own D1 and rewrites the ids below.
   "d1_databases": [
     {
       "binding": "DB",
       "database_name": "jikan-edge",
-      "database_id": "71f8a596-7855-47a5-906c-9a1cf46e12ee"
+      "database_id": "71f8a596-7855-47a5-906c-9a1cf46e12ee",
+      // What `wrangler dev` binds instead of the production database — `--remote` included, which
+      // without this read and wrote the database production serves.
+      //
+      // `wrangler deploy` prints this id in its bindings table (`env.DB (86f8a44d-…)`), and that is
+      // display only: in wrangler 4.143.1 the table shows `preview_database_id ?? database_name`,
+      // while `deployWorker` and `uploadWorkerVersion` build the real bindings with
+      // `usePreviewIds: false` and upload `database_id`. Confirm a deploy with `wrangler versions
+      // view <id>`, which reads the binding back from the API.
+      "preview_database_id": "86f8a44d-560b-4074-a500-527f36325947"
     }
   ],
   // namespace_id is an arbitrary integer scoped to your own Cloudflare account, so a fork can keep
@@ -40,5 +49,37 @@
   "ratelimits": [
     { "name": "API_RATE_LIMIT", "namespace_id": "18973", "simple": { "limit": 60, "period": 60 } },
     { "name": "API_BURST_LIMIT", "namespace_id": "18974", "simple": { "limit": 30, "period": 10 } }
-  ]
+  ],
+  // Worker Previews: what a branch build (`wrangler preview`) runs with. Nothing here is inherited
+  // from the top level — a binding or var left out is missing in the Preview, not defaulted — so the
+  // vars are repeated on purpose and must change together with the ones above.
+  //
+  // Before this block, branch builds were Version URLs, which run with production's bindings: every
+  // request to a pull request's preview read and wrote the production D1.
+  "previews": {
+    "vars": {
+      "MAL_USER_AGENT": "jikan-edge/0.1 (+https://jikan.lucashdo.com)",
+      "PROFILE_TTL_SECONDS": "21600",
+      "LIST_TTL_SECONDS": "7200",
+      "ANIME_TTL_SECONDS": "21600",
+      "CATALOG_TTL_SECONDS": "21600",
+      "SOURCE_TIMEOUT_MS": "8000",
+      "MAX_UPSTREAM_BYTES": "5242880",
+      "WORKER_VERSION": "jikan-edge-preview"
+    },
+    // Shared by every Preview. Migrate it with `pnpm run db:migrate:preview`, which reads
+    // wrangler.preview-migrations.jsonc — the two files must name the same database.
+    "d1_databases": [
+      {
+        "binding": "DB",
+        "database_name": "jikan-edge-preview",
+        "database_id": "86f8a44d-560b-4074-a500-527f36325947"
+      }
+    ],
+    // Their own counters, so testing a Preview never spends production's budget.
+    "ratelimits": [
+      { "name": "API_RATE_LIMIT", "namespace_id": "18975", "simple": { "limit": 60, "period": 60 } },
+      { "name": "API_BURST_LIMIT", "namespace_id": "18976", "simple": { "limit": 30, "period": 10 } }
+    ]
+  }
 }
