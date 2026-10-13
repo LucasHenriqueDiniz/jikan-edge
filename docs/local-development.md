@@ -6,6 +6,8 @@
    `pnpm-workspace.yaml`, whose `allowBuilds` is what lets esbuild and workerd run their postinstall.
 2. To run on **another** Cloudflare account, follow [`self-hosting.md`](self-hosting.md) — `npm run setup` creates the D1 database and writes its id into `wrangler.jsonc`. The committed configuration points at this milestone's resources; there is no longer an R2 bucket to create.
 3. Run `npm run db:migrate:local`. `npm run dev` starts a local preview with remote bindings, which is the recommended way to validate the MAL fetch; `npm run dev:local` uses the simulator for health and local D1 only.
+   - `npm run dev` binds the **preview** D1 (`jikan-edge-preview`, through `preview_database_id`), not production's. Until 2026-10-13 it bound production's, so every request in a remote dev session read and wrote the database the API serves. When your branch adds a migration, apply it there first: `pnpm run db:migrate:preview`.
+   - The local simulator keys its database by that same id, so the first `db:migrate:local` after that change starts a fresh local database; the old one stays in `.wrangler/` unused.
 4. The commit hook needs no step: `pnpm install` runs the root `prepare` script, which sets
    `core.hooksPath` to `.githooks` **only if nothing else claims it**. Git versions the hook but not
    the setting that points at it, so without that a fresh clone would have `.githooks/commit-msg` on
