@@ -21,10 +21,17 @@ export const episodeSchema = z.object({
 const TITLE_CELL =
   /class="episode-title[^"]*">\s*(?:<span[^>]*icon-episode-type-bg[^>]*>\s*([^<]*?)\s*<\/span>\s*)?<a href="([^"]+)"[^>]*>([^<]+)<\/a>/i;
 
+// MAL's own notice for a title nobody has added episodes to. It is on page 1 of a show with no episode
+// data — Pakkororin lists `(0/1,512)` — and on a page past the last episode alike. Page 1 used to
+// demand rows, so every such title answered 502 and, never cached, refetched MAL on each retry: 22k
+// of the 54k 502s measured on 2026-11-05 came from 849 titles in this state.
+const NO_EPISODES = /No episode information has been added to this title\./;
+
 // `allowEmpty` is for pages past the first: MAL answers an offset beyond the last episode with the
-// same page and no rows, which is the end of the list rather than a broken document. It covers only
-// that: a page that *has* rows and parses none of them is still a broken document, and answering it
-// with [] would hide the next markup change behind a 200 on every page but the first.
+// same page and no rows, which is the end of the list rather than a broken document. On page 1 an
+// empty list needs MAL's notice above. Either way only a page with *no* rows can be empty: one that
+// has rows and parses none of them is a broken document, and answering it with [] would hide the
+// next markup change behind a 200.
 export function parseEpisodes(html: string, allowEmpty = false): Episode[] {
   const episodes: Episode[] = [];
   const rows = html.split('class="episode-list-data"').slice(1);
@@ -50,6 +57,7 @@ export function parseEpisodes(html: string, allowEmpty = false): Episode[] {
     const parsed = episodeSchema.safeParse(candidate);
     if (parsed.success) episodes.push(parsed.data);
   }
-  if (episodes.length === 0 && (!allowEmpty || rows.length > 0)) throw new ParserError('empty_episodes_page');
+  const emptyIsValid = rows.length === 0 && (allowEmpty || NO_EPISODES.test(html));
+  if (episodes.length === 0 && !emptyIsValid) throw new ParserError('empty_episodes_page');
   return episodes;
 }

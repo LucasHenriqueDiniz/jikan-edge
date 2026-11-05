@@ -43,6 +43,43 @@ describe('characters and staff parser', () => {
     expect(parseStaff(mangaHtml)).toEqual([]);
   });
 
+  // Real pages (2026-11-05) of titles MAL has no characters for. They answered 502 before.
+  describe('a title with no characters', () => {
+    const animeNoStaff = readFileSync('tests/fixtures/characters/anime-no-characters-no-staff-real.html', 'utf8');
+    const animeWithStaff = readFileSync('tests/fixtures/characters/anime-no-characters-with-staff-real.html', 'utf8');
+    const mangaEmpty = readFileSync('tests/fixtures/characters/manga-no-characters-real.html', 'utf8');
+
+    it('is an empty cast on anime, with the staff that is there', () => {
+      expect(parseCharacters(animeNoStaff, 'anime')).toEqual([]);
+      expect(parseStaff(animeNoStaff)).toEqual([]);
+      // Anime 29955 has no characters but does have a director, which the 502 used to lose.
+      expect(parseCharacters(animeWithStaff, 'anime')).toEqual([]);
+      expect(parseStaff(animeWithStaff)).toEqual([
+        {
+          malId: 27513,
+          name: 'Okawara, Ryo',
+          imageUrl: 'https://cdn.myanimelist.net/images/voiceactors/1/55049.jpg',
+          role: 'Director',
+        },
+      ]);
+    });
+
+    it('is an empty cast on manga, whose notice is worded differently', () => {
+      expect(parseCharacters(mangaEmpty, 'manga')).toEqual([]);
+    });
+
+    // Each medium's notice is its own: the anime wording on a manga page is not MAL saying "empty".
+    it('is still an error without the notice for that medium', () => {
+      expect(() => parseCharacters(animeNoStaff, 'manga')).toThrow('empty_characters_page');
+      expect(() => parseCharacters(mangaEmpty, 'anime')).toThrow('empty_characters_page');
+    });
+
+    it('is still an error when character rows are there but none parse', () => {
+      const broken = `${animeHtml.replaceAll('h3_character_name', 'h3_renamed')}${animeNoStaff}`;
+      expect(() => parseCharacters(broken, 'anime')).toThrow('empty_characters_page');
+    });
+  });
+
   // Confirmed live against One Piece's characters page: the Staff section runs 543 KB past its
   // heading with no other heading in between (it's the last thing on the page before the footer).
   // A fixed byte budget silently dropped everything past it; this builds a section past the old

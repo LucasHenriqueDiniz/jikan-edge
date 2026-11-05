@@ -81,6 +81,13 @@ import {
 import { parseTopFilter } from './top-filter';
 import { CHARACTER_PAGE_BUDGET, refreshLeaseSecondsFor } from '../source/fetch-policy';
 import {
+  CHARACTERS_PAGE_MARKERS,
+  DETAIL_PAGE_MARKERS,
+  EPISODES_PAGE_MARKERS,
+  FORUM_PAGE_MARKERS,
+  RECOMMENDATIONS_PAGE_MARKERS,
+} from '../source/page-markers';
+import {
   type CacheDeps,
   isPastLastPage,
   landedOnAnotherPage,
@@ -147,7 +154,7 @@ export class AnimeService {
       ANIME_PARSER_VERSION,
       () => this.anime.get(malId),
       async () => {
-        const source = await this.source.getHtml(animeDetailUrl(malId), ['Score:', 'Genre']);
+        const source = await this.source.getHtml(animeDetailUrl(malId), DETAIL_PAGE_MARKERS);
         if (source.kind !== 'success') throw sourceError(source);
         const fetchedAt = new Date().toISOString();
         const detail = parseAnimeDetail(source.value, malId, fetchedAt);
@@ -169,7 +176,7 @@ export class AnimeService {
       ANIME_FULL_PARSER_VERSION,
       () => this.catalog.get<AnimeFull>(cacheKey),
       async () => {
-        const source = await this.source.getHtml(animeDetailUrl(malId), ['Score:', 'Genre']);
+        const source = await this.source.getHtml(animeDetailUrl(malId), DETAIL_PAGE_MARKERS);
         if (source.kind !== 'success') throw sourceError(source);
         const fetchedAt = new Date().toISOString();
         const full = parseAnimeFull(source.value, malId, fetchedAt);
@@ -249,7 +256,7 @@ export class AnimeService {
       async () => {
         const source = await this.source.getHtml(
           charactersUrl('anime', malId),
-          ['js-anime-character-table'],
+          CHARACTERS_PAGE_MARKERS.anime,
           CHARACTER_PAGE_BUDGET,
         );
         if (source.kind !== 'success') throw sourceError(source);
@@ -347,7 +354,7 @@ export class AnimeService {
       rawId,
       'forum',
       forumUrl('anime', malId),
-      ['data-topic-id'],
+      FORUM_PAGE_MARKERS,
       FORUM_PARSER_VERSION,
       parseForum,
       requestId,
@@ -356,15 +363,15 @@ export class AnimeService {
 
   episodes(rawId: string, page: number, requestId: string): Promise<ServiceResponse<Episode[]>> {
     const malId = this.validateMalId(rawId);
-    // Page 1 must have rows — an anime with an episode list has at least one. Past it, MAL answers an
-    // offset beyond the last episode with the same page and no rows, so the marker there is the list's
-    // own heading, which both shapes carry, and an empty page is the end of the list.
+    // Past page 1, MAL answers an offset beyond the last episode with the same page and no rows: an
+    // empty page there is the end of the list. On page 1 it is only empty with MAL's "no episode
+    // information" notice, which the parser checks — the marker is the heading every shape carries.
     const pastFirst = page > 1;
     return this.perAnimeResource(
       rawId,
       `episodes:page:${page}`,
       episodesUrl(malId, page),
-      pastFirst ? ['<h2 class="h2_overwrite">Episodes</h2>'] : ['episode-list-data'],
+      EPISODES_PAGE_MARKERS,
       EPISODES_PARSER_VERSION,
       (html) => parseEpisodes(html, pastFirst),
       requestId,
@@ -377,7 +384,7 @@ export class AnimeService {
       rawId,
       'recommendations',
       titleRecommendationsUrl('anime', malId),
-      ['picSurround'],
+      RECOMMENDATIONS_PAGE_MARKERS,
       TITLE_RECOMMENDATIONS_PARSER_VERSION,
       (html) => parseTitleRecommendations(html, 'anime'),
       requestId,

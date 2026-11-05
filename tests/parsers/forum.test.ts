@@ -18,4 +18,24 @@ describe('forum parser', () => {
       },
     ]);
   });
+
+  // Real pages (2026-11-05): anime 38099 and manga 175006, which have no topics. 502 before.
+  describe('a title with no topics', () => {
+    const anime = readFileSync('tests/fixtures/forum/anime-no-topics-real.html', 'utf8');
+    const manga = readFileSync('tests/fixtures/forum/manga-no-topics-real.html', 'utf8');
+
+    it('is an empty list on anime and manga', () => {
+      expect(parseForum(anime)).toEqual([]);
+      expect(parseForum(manga)).toEqual([]);
+    });
+
+    it('is still an error without the notice', () => {
+      expect(() => parseForum(anime.replace('No discussion topic was found.', ''))).toThrow('empty_forum_page');
+    });
+
+    it('is still an error when topic rows are there but none parse', () => {
+      const broken = `${html.replaceAll('topicid=', 'thread=')}${anime}`;
+      expect(() => parseForum(broken)).toThrow('empty_forum_page');
+    });
+  });
 });

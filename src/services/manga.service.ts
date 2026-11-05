@@ -45,6 +45,12 @@ import {
 } from '../source/mal-urls';
 import { CHARACTER_PAGE_BUDGET, refreshLeaseSecondsFor } from '../source/fetch-policy';
 import {
+  CHARACTERS_PAGE_MARKERS,
+  DETAIL_PAGE_MARKERS,
+  FORUM_PAGE_MARKERS,
+  RECOMMENDATIONS_PAGE_MARKERS,
+} from '../source/page-markers';
+import {
   type CacheDeps,
   isPastLastPage,
   landedOnAnotherPage,
@@ -92,7 +98,7 @@ export class MangaService {
       MANGA_PARSER_VERSION,
       () => this.manga.get(malId),
       async () => {
-        const source = await this.source.getHtml(mangaDetailUrl(malId), ['Score:', 'Genre']);
+        const source = await this.source.getHtml(mangaDetailUrl(malId), DETAIL_PAGE_MARKERS);
         if (source.kind !== 'success') throw sourceError(source);
         const fetchedAt = new Date().toISOString();
         const detail = parseMangaDetail(source.value, malId, fetchedAt);
@@ -132,7 +138,7 @@ export class MangaService {
       async () => {
         const source = await this.source.getHtml(
           charactersUrl('manga', malId),
-          ['js-manga-character-table'],
+          CHARACTERS_PAGE_MARKERS.manga,
           CHARACTER_PAGE_BUDGET,
         );
         if (source.kind !== 'success') throw sourceError(source);
@@ -305,7 +311,7 @@ export class MangaService {
       rawId,
       'forum',
       forumUrl('manga', malId),
-      ['data-topic-id'],
+      FORUM_PAGE_MARKERS,
       FORUM_PARSER_VERSION,
       parseForum,
       requestId,
@@ -318,7 +324,7 @@ export class MangaService {
       rawId,
       'recommendations',
       titleRecommendationsUrl('manga', malId),
-      ['picSurround'],
+      RECOMMENDATIONS_PAGE_MARKERS,
       TITLE_RECOMMENDATIONS_PARSER_VERSION,
       (html) => parseTitleRecommendations(html, 'manga'),
       requestId,

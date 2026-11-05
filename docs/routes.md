@@ -310,6 +310,28 @@ Measured side by side against Tenrai on the 70 routes both serve, then every div
 
 **Producer search** was left as it is: `/anime/producer` lists 930 producers and lacks some (Toei Video, 141). The search form's `<select name="p">` lists 2,833 — a complete public list — but only ids and names, so moving the search onto it would change the entry shape. Recorded for a later decision.
 
+## Empty title pages answered 502 (2026-11-05)
+
+Found in production analytics, not by a sweep: on 2026-11-04/05, 53.6k of the 331k requests that reached the Worker answered `502 UPSTREAM_SUSPICIOUS`. Every one checked was a title where MAL has nothing to show — 12 of 12 random episode ids carried "No episode information has been added to this title.", 10 of 10 random `full` ids had no `Genre` label. Deterministic per title (no id got both a 502 and a 200 that day), and never cached, so a client retrying a title (one did, ~26 times a day per id) refetched MAL every time.
+
+**The cause was the required markers, not the parsers.** A marker passed to `getHtml` decides whether the page is the right one; a missing marker is `required_structure_missing` → 502. The markers were taken from the rows — `episode-list-data`, `js-anime-character-table`, `picSurround`, `data-topic-id` — or, on the detail page, from the `Genre` label, all absent exactly when the list is empty. They now live in `src/source/page-markers.ts`, each one checked on a full page and on an empty one, anime and manga: the section heading for episodes and characters, the "Make a recommendation" link for recommendations (the heading markup differs between anime and manga), `class="page-forum"` for the forum, and `Score:` + `<h2>Information</h2>` for the detail page. The detail parsers already handled a title with no genres (`genres: []`); only the marker refused it.
+
+**An empty list needs MAL's notice.** Each parser accepts zero items only when the page has no rows *and* carries MAL's own wording — the same rule as a title's reviews since 2026-10-11:
+
+| Page | Notice |
+| --- | --- |
+| episodes | `No episode information has been added to this title.` (page 1 and past the last page alike) |
+| anime characters | `No characters or voice actors have been added to this title` |
+| manga characters | `No characters for this manga have been added to this title` |
+| recommendations (anime and manga) | `No recommendations have been made for this title.` |
+| forum (anime and manga) | `No discussion topic was found.` |
+
+A page that has rows and parses none of them is still an error. On the anime characters page the Staff section stays below the notice, and it is real: anime 29955 has no characters and one director, which the 502 used to lose with the rest. With no staff either, the heading is `<h2 id="staff">Staff</h2>` and `parseStaff` answers `[]`.
+
+**No parser-version bump**: no response that used to succeed changes, and the 502s were never cached.
+
+**Left as it is: `/v1/anime/:id/news`** on a title with no news still answers 502. The empty page (`/anime/38099/x/news`) has the `<h2 class="mb8">News</h2>` heading and no items, with no notice — an empty list there could not be told from a markup change.
+
 ## Health and configuration errors
 
 `/health` started including `data.checks.database` on 2026-07-30 (an **additional** field, nothing removed):

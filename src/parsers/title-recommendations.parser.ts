@@ -25,13 +25,15 @@ function parseCard(chunk: string): TitleRecommendation | null {
   return parsed.success ? parsed.data : null;
 }
 
+// The same notice on anime and manga (measured 2026-11-05 on anime 6891 and manga 175006). Only a
+// page with no cards and this notice is an empty list; cards that no longer parse are a broken page.
+const NO_RECOMMENDATIONS = /No recommendations have been made for this title\./;
+
 export function parseTitleRecommendations(html: string, type: 'anime' | 'manga'): TitleRecommendation[] {
   const marker = `class="picSurround"><a href="https://myanimelist.net/${type}/`;
-  const entries = html
-    .split(marker)
-    .slice(1)
-    .map(parseCard)
-    .filter((entry): entry is TitleRecommendation => entry !== null);
-  if (entries.length === 0) throw new ParserError('empty_title_recommendations_page');
+  const cards = html.split(marker).slice(1);
+  const entries = cards.map(parseCard).filter((entry): entry is TitleRecommendation => entry !== null);
+  const emptyIsValid = cards.length === 0 && NO_RECOMMENDATIONS.test(html);
+  if (entries.length === 0 && !emptyIsValid) throw new ParserError('empty_title_recommendations_page');
   return entries;
 }

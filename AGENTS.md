@@ -155,6 +155,14 @@ Origin: a side-by-side sweep against Tenrai (a Jikan-compatible API over a pre-c
 - **To see how MAL answers Cloudflare, prefer a throwaway Worker that only proxies the HTML** (the method in the research note): it returns the raw page, which the app never does. This batch was measured that way because `wrangler dev --remote` still wrote to the production D1 at the time; since #18 it binds `jikan-edge-preview`, so the `jikan-edge-remote` config is safe for exercising the app too.
 - Recorded, not done: `<select name="p">` on `/anime.php` lists 2,833 producers (the `/anime/producer` directory 930), so producer search could become complete — at the cost of changing its entry shape.
 
+### Empty title pages, and the 504 that was not (2026-11-05)
+
+Origin: an investigation of production errors on `jikan.lucashdo.com`. Detail in `docs/routes.md`, consumer-facing entry in `CHANGELOG.md`.
+
+- **A required marker has to be on the empty shape of the page too.** Markers taken from the rows (`episode-list-data`, `picSurround`, `data-topic-id`, the character table) or from an optional label (`Genre`) are absent exactly when MAL has nothing to list, and they turned 16% of a day's traffic into 502s. The markers live in `src/source/page-markers.ts` now, and an empty list is the parser's call, made only on MAL's own notice. When adding a route, fetch a title with nothing on that page before choosing the marker — obscure Chinese or Japanese kids' shows such as `38099` (Pakkororin) usually have nothing anywhere. `news` is still open: its empty page carries no notice.
+- **The 504s in zone analytics are Early Hints, not the Worker.** `httpRequestsAdaptiveGroups` showed ~111k 504s a day on this host. Every one had `requestSource = earlyHintsCache` (user agent `nginx-ssl early hints`, ~107 bytes), and none reached the Worker: zone requests minus Worker invocations matched the 504 count to within one. Filter on `requestSource: "eyeball"` before reading any status breakdown. Real 504s that day: 3.
+- **Reading production errors without the dashboard.** The wrangler OAuth token has no `workers_observability` scope (the Observability API answers `no_access_to_workers_observability`), but it does reach the GraphQL Analytics API — zone `httpRequestsAdaptiveGroups` by status and path, account `workersInvocationsAdaptive` — and `wrangler tail --format json`. The zone is on the Free plan, so latency, query-string and ASN fields are refused. The `operation_metric` log records `refreshResult: 502` but not the suspicious reason, so telling a marker failure from a challenge page takes the MAL page itself.
+
 ## Unimplemented routes (consolidated list)
 
 Each one was investigated against the real MAL pages; the detailed evidence is in `docs/routes.md`. **Do not reopen any of them without new evidence** — the reason for each block is on record:

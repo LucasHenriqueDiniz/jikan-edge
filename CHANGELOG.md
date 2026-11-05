@@ -6,6 +6,44 @@ Changes that matter to anyone **consuming** the API. The technical detail behind
 
 This file starts on 2026-07-30 and does not reconstruct earlier history.
 
+## 2026-11-05
+
+Published version: to be confirmed.
+
+Origin: one day of production traffic (2026-11-04/05). 16% of the requests that reached the API —
+53.6k of 331k — answered `502 UPSTREAM_SUSPICIOUS`, and every one of them was a title where
+MyAnimeList simply has nothing to show. The same title failed every time (no id got both a 502 and
+a 200 that day), and a 502 is never cached, so each retry fetched the MAL page again.
+
+### Fixed
+
+- **A list MyAnimeList has nothing in answered `502`; it is `200` with `data: []` now.** MAL shows a
+  notice on these pages ("No episode information has been added to this title.", "No characters or
+  voice actors have been added…", "No recommendations have been made…", "No discussion topic was
+  found."), and the check that the page was the right one looked for the list's rows — absent
+  exactly when the list is empty. Affects:
+  - `/v1/anime/:id/episodes` on page 1 — long-running shows MAL lists without episode data, e.g.
+    Pakkororin (`38099`, 1,512 episodes, none listed). 22k of the day's 502s, on 849 titles.
+  - `/v1/anime/:id/characters` and `/staff`, `/v1/manga/:id/characters`. **`/staff` was lost too**:
+    a title with no characters can have staff — anime `29955` has a director — and the whole page
+    used to fail.
+  - `/v1/anime/:id/recommendations`, `/v1/manga/:id/recommendations`.
+  - `/v1/anime/:id/forum`, `/v1/manga/:id/forum`.
+
+  *Before:* `GET /v1/anime/38099/episodes` → `502`. *After:* `200`, `data: []`.
+- **An anime with no genres answered `502` on `/v1/anime/:id`, `/full`, `/relations`, `/external`
+  and the other routes derived from the detail page.** The page check required the word "Genre", which
+  is not on the page when MAL lists no genres (274 titles that day, e.g. `38099`, `45824`). The
+  response itself always supported it: those titles now answer with `genres: []`. The manga detail
+  page had the same check; no manga without genres was found to reproduce it, and it was changed with
+  the anime one.
+
+A page that is genuinely broken still answers `502`: an empty list needs MAL's own notice, and a page
+whose rows exist but no longer parse is still an error.
+
+Not changed: `/v1/anime/:id/news` on a title with no news still answers `502`. That page carries no
+"nothing here" notice to tell an empty list from a broken one.
+
 ## 2026-10-13
 
 Published version: `a0004e26`. (As always, the commit that fills in this id ships in the *next*

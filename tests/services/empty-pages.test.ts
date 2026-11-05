@@ -264,3 +264,58 @@ describe('seasons', () => {
     expect(result.data.every((entry) => !entry.continuing)).toBe(true);
   });
 });
+
+// Titles MAL has nothing listed for. Each page is a 200 with the section's heading and a notice, and
+// each answered 502 until 2026-11-05: the required marker came from the rows (or, on the detail page,
+// the Genre label), so it was missing exactly when the list was empty. 53.6k of the day's requests.
+// Through the real classifier, so the marker each route asks for is checked against the real page.
+describe('a title MAL has nothing listed for', () => {
+  const fixture = (path: string) => readFileSync(`tests/fixtures/${path}`, 'utf8');
+  const page = (excerpt: string) => `<html><body>${excerpt}${' '.repeat(600)}</body></html>`;
+  const anime = (body: string) => new AnimeService(store(), serving(body).source, config);
+  const manga = (body: string) => new MangaService(store(), serving(body).source, config);
+
+  it('answers detail and full for an anime without genres', async () => {
+    const body = fixture('anime/detail-no-genres-real.html');
+    const detail = await anime(body).detail('38099', 'r');
+    expect(detail.data).toMatchObject({ malId: 38099, title: 'Pakkororin', genres: [], episodes: 1512 });
+    expect((await anime(body).full('38099', 'r')).data).toMatchObject({ title: 'Pakkororin', genres: [] });
+  });
+
+  it('answers an empty episode list on page 1', async () => {
+    const { source, calls } = serving(page(fixture('episodes/no-episode-info-real.html')));
+    expect((await new AnimeService(store(), source, config).episodes('38099', 1, 'r')).data).toEqual([]);
+    expect(calls[0].markers).toEqual(['<h2 class="h2_overwrite">Episodes</h2>']);
+  });
+
+  it('answers an empty cast, and the staff that is there', async () => {
+    const body = page(fixture('characters/anime-no-characters-with-staff-real.html'));
+    expect((await anime(body).characters('29955', 'r')).data).toEqual([]);
+    expect((await anime(body).staff('29955', 'r')).data).toMatchObject([{ name: 'Okawara, Ryo', role: 'Director' }]);
+    expect(
+      (await manga(page(fixture('characters/manga-no-characters-real.html'))).characters('175006', 'r')).data,
+    ).toEqual([]);
+  });
+
+  it('answers empty recommendations and forum, on anime and manga', async () => {
+    expect(
+      (await anime(page(fixture('recommendations/anime-no-recs-real.html'))).recommendations('6891', 'r')).data,
+    ).toEqual([]);
+    expect(
+      (await manga(page(fixture('recommendations/manga-no-recs-real.html'))).recommendations('175006', 'r')).data,
+    ).toEqual([]);
+    expect((await anime(page(fixture('forum/anime-no-topics-real.html'))).forum('38099', 'r')).data).toEqual([]);
+    expect((await manga(page(fixture('forum/manga-no-topics-real.html'))).forum('175006', 'r')).data).toEqual([]);
+  });
+
+  // The marker still has a job: a page that is not the one asked for stays a 502.
+  it('is still a 502 when the section heading is missing', async () => {
+    const notTheEpisodesPage = page(fixture('episodes/no-episode-info-real.html').replace('h2_overwrite', 'h2'));
+    await expect(anime(notTheEpisodesPage).episodes('38099', 1, 'r')).rejects.toMatchObject({
+      code: 'UPSTREAM_SUSPICIOUS',
+      status: 502,
+    });
+    const notADetailPage = fixture('anime/detail-no-genres-real.html').replace('<h2>Information</h2>', '');
+    await expect(anime(notADetailPage).detail('38099', 'r')).rejects.toMatchObject({ status: 502 });
+  });
+});

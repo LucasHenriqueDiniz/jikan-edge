@@ -43,10 +43,20 @@ function extractVoiceActors(block: string): VoiceActor[] {
   return actors;
 }
 
+// MAL's notice for a title with no characters, worded differently per medium (measured 2026-11-05 on
+// anime 46298 and manga 175006). Without it an empty page is a broken document, not an empty cast.
+// The anime page keeps its Staff section below the notice, and that staff is real — Ryo Okawara
+// directs anime 29955, which has no characters — so a 502 here lost the staff with it.
+const NO_CHARACTERS = {
+  anime: /No characters or voice actors have been added to this title/,
+  manga: /No characters for this manga have been added to this title/,
+};
+
 export function parseCharacters(html: string, mediaType: 'anime' | 'manga'): CharacterRole[] {
   const marker = `class="js-${mediaType}-character-table"`;
   const characters: CharacterRole[] = [];
-  for (const block of html.split(marker).slice(1)) {
+  const blocks = html.split(marker).slice(1);
+  for (const block of blocks) {
     const malId = Number(block.match(/href="https:\/\/myanimelist\.net\/character\/(\d+)\//i)?.[1]);
     const nameMatch = block.match(/<h3 class="h3_character_name">([^<]*)<\/h3>/i);
     if (!malId || !nameMatch) continue;
@@ -61,7 +71,8 @@ export function parseCharacters(html: string, mediaType: 'anime' | 'manga'): Cha
     const parsed = characterSchema.safeParse(candidate);
     if (parsed.success) characters.push(parsed.data);
   }
-  if (characters.length === 0) throw new ParserError('empty_characters_page');
+  const emptyIsValid = blocks.length === 0 && NO_CHARACTERS[mediaType].test(html);
+  if (characters.length === 0 && !emptyIsValid) throw new ParserError('empty_characters_page');
   return characters;
 }
 

@@ -48,8 +48,26 @@ describe('a page past the last episode', () => {
     expect(parseEpisodes(pastEnd, true)).toEqual([]);
   });
 
-  it('is still an error on a first page, where an empty list means a broken document', () => {
-    expect(() => parseEpisodes(pastEnd)).toThrow('empty_episodes_page');
+  // The past-end page carries MAL's "no episode information" notice too, and the notice is what makes
+  // an empty first page legitimate — see the next block.
+  it('is an empty list on a first page too, where it carries the notice', () => {
+    expect(parseEpisodes(pastEnd)).toEqual([]);
+  });
+});
+
+// `/anime/38099/x/episode` (Pakkororin): a TV show listed as `(0/1,512)` — 1,512 episodes and none
+// added to MAL. Page 1, the heading, the notice, no rows. It answered 502 until 2026-11-05.
+describe('a title with no episode information', () => {
+  const noEpisodes = readFileSync('tests/fixtures/episodes/no-episode-info-real.html', 'utf8');
+
+  it('is an empty list on page 1', () => {
+    expect(parseEpisodes(noEpisodes)).toEqual([]);
+  });
+
+  // Without the notice, an empty first page is still a broken document.
+  it('is still an error on page 1 once the notice is gone', () => {
+    const withoutNotice = noEpisodes.replace('No episode information has been added to this title.', '');
+    expect(() => parseEpisodes(withoutNotice)).toThrow('empty_episodes_page');
   });
 });
 

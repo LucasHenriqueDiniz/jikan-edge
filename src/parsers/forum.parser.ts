@@ -11,9 +11,13 @@ export const threadSchema = z.object({
   lastPostBy: z.string().nullable(),
 });
 
+// The same notice on anime and manga (measured 2026-11-05 on anime 38099 and manga 175006).
+const NO_TOPICS = /No discussion topic was found\./;
+
 export function parseForum(html: string): ForumThread[] {
   const threads: ForumThread[] = [];
-  for (const block of html.split('data-topic-id="').slice(1)) {
+  const blocks = html.split('data-topic-id="').slice(1);
+  for (const block of blocks) {
     const idMatch = block.match(/^(\d+)"/);
     if (!idMatch) continue;
     const topicId = Number(idMatch[1]);
@@ -35,6 +39,7 @@ export function parseForum(html: string): ForumThread[] {
     const parsed = threadSchema.safeParse(candidate);
     if (parsed.success) threads.push(parsed.data);
   }
-  if (threads.length === 0) throw new ParserError('empty_forum_page');
+  const emptyIsValid = blocks.length === 0 && NO_TOPICS.test(html);
+  if (threads.length === 0 && !emptyIsValid) throw new ParserError('empty_forum_page');
   return threads;
 }
