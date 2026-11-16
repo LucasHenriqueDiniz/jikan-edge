@@ -12,6 +12,7 @@ import { RandomRepository } from '../repositories/random.repository';
 import { RefreshLockRepository } from '../repositories/refresh-lock.repository';
 import { UpdatesRepository } from '../repositories/updates.repository';
 import { UserRepository } from '../repositories/user.repository';
+import { D1_RETRY_POLICY, type D1RetryPolicy, retryingD1 } from './d1-retry';
 
 /**
  * The D1 adapter for the store port: the one place that turns a `D1Database` binding into the
@@ -29,6 +30,11 @@ import { UserRepository } from '../repositories/user.repository';
  *
  * Construction still happens per request, which is what it was before: a D1 binding is a handle,
  * not a connection pool, so there is nothing to reuse across requests and nothing to tear down.
+ *
+ * Every repository gets the binding wrapped in `retryingD1`, so a database that is overloaded or
+ * restarting is retried here, inside the adapter, and reaches the core only as a
+ * `StoreUnavailableError` once the request's retry window is spent. Per request on purpose: the
+ * window is the request's budget, and building the store per request is what scopes it.
  */
 export class D1CatalogStore implements CatalogStore {
   readonly cacheEntries: CacheRepository;
@@ -45,7 +51,8 @@ export class D1CatalogStore implements CatalogStore {
   readonly randomPicks: RandomRepository;
   readonly catalogLists: CatalogListRepository;
 
-  constructor(db: D1Database) {
+  constructor(binding: D1Database, retryPolicy: D1RetryPolicy = D1_RETRY_POLICY) {
+    const db = retryingD1(binding, retryPolicy);
     this.cacheEntries = new CacheRepository(db);
     this.refreshLeases = new RefreshLockRepository(db);
     this.anime = new AnimeRepository(db);

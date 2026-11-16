@@ -23,3 +23,20 @@ export class ServiceError extends Error {
     super(message);
   }
 }
+
+/**
+ * The store could not answer for longer than one request is allowed to wait, for a reason that is
+ * the store's and not the request's: the database was overloaded or restarting.
+ *
+ * The store adapter throws it once its own retries are spent, so the HTTP layer can tell a passing
+ * outage (503, retry later) from a bug (500). It is an error of its own rather than a ServiceError
+ * because the store raises it, not a use case, and because the caller is owed a `Retry-After` that a
+ * code and a status cannot carry. Measured on 2026-11-16: 984 production 500s in a week, every one a
+ * `D1 DB is overloaded` that answered `INTERNAL_ERROR` — indistinguishable from a bug.
+ */
+export class StoreUnavailableError extends Error {
+  constructor(message: string, options?: { cause?: unknown }) {
+    super(message, options);
+    this.name = 'StoreUnavailableError';
+  }
+}

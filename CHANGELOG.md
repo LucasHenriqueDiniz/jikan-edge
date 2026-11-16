@@ -6,6 +6,30 @@ Changes that matter to anyone **consuming** the API. The technical detail behind
 
 This file starts on 2026-07-30 and does not reconstruct earlier history.
 
+## 2026-11-16
+
+Published version: to be confirmed.
+
+Origin: a WeebProfile card lost to `500 INTERNAL_ERROR` on `/v1/users/:username/favorites` during
+its 03:07 UTC cron. Every 500 of that week — 984 of them — was the D1 database refusing a query as
+overloaded: not a bug, and not MyAnimeList.
+
+### Fixed
+
+- **A briefly overloaded database is waited out inside the request.** A query D1 refuses as
+  overloaded, or while it restarts, is retried for up to 12 s, so a stall that clears in time
+  answers normally. *Before:* `500 INTERNAL_ERROR`, in under a second. *After:* the usual `200`, a
+  few seconds later (4–10 s measured against a blocked test database).
+
+### Changed
+
+- **New error: `503 DATABASE_UNAVAILABLE` with `Retry-After: 10`**, when the database stays
+  overloaded through the whole retry window. It replaces the `500 INTERNAL_ERROR` the same condition
+  gave before, so a client can tell a passing outage from a bug. Unlike an upstream failure, no stale
+  copy can be served here: it lives in the database that is down.
+- **`X-Cache-Status` is `error` on every error response**, where it used to be `unknown`. Successful
+  responses are unchanged (`hit`, `miss`, `stale`, `local`).
+
 ## 2026-11-05
 
 Published version: to be confirmed.

@@ -332,6 +332,49 @@ A page that has rows and parses none of them is still an error. On the anime cha
 
 **Left as it is: `/v1/anime/:id/news`** on a title with no news still answers 502. The empty page (`/anime/38099/x/news`) has the `<h2 class="mb8">News</h2>` heading and no items, with no notice — an empty list there could not be told from a markup change.
 
+## D1 overload: retried inside the request, then 503 (2026-11-16)
+
+Origin: the WeebProfile cron of 2026-11-16 lost a card to `500 INTERNAL_ERROR` on `/v1/users/ElectroHeavenVN/favorites` (requestId `6348a36f-f8d9-45a3-bffa-b77a968223ff`, 03:07:28 UTC).
+
+**What the logs showed.** The request's only error log was `unhandled_error` with `D1_ERROR: D1 DB is overloaded. Requests queued for too long.`, after 9 ms of wall time: the first D1 read was refused and MyAnimeList was never reached. `/statistics` for the same user failed the same way 1 ms later. D1 analytics show no statement executed between 03:07:23 and 03:07:37 UTC, then a burst of 73 at 03:07:38. Over the week, counted per UTC day (exact; a 7-day query is sampled):
+
+| day (UTC) | 500s | of which 03:00–03:15 |
+| --- | --- | --- |
+| 11-09, 11-10 | 0 | 0 |
+| 11-11 | 88 | 0 |
+| 11-12 | 147 | 0 |
+| 11-13 | 145 | 0 |
+| 11-14 | 160 | 0 |
+| 11-15 | 331 — 331 `unhandled_error`, all `queued for too long` | 2 |
+| 11-16 (to 13:30) | 113, of which 20 caused by a diagnostic scan | 14, all 03:07:26–34 |
+
+By route: `/v1/anime/:id/episodes` 648 (66%), `/v1/anime/:id/full` 54, `/v1/characters/:id/full` 45, `/v1/anime/:id/recommendations` 43; user routes 9.
+
+**What it was not.** Not the cache: the favorites row had been refreshed at 2026-11-15T03:07:21Z and nothing deletes expired rows, so a 24-hour-old copy existed — in the database that refused. Not the upstream: this API never calls `api.jikan.moe`, and when MyAnimeList fails a stale row is already served (`200`, `meta.stale: true`, `refreshFailed: true`, measured below).
+
+**What changed.**
+
+- `src/adapters/d1-retry.ts` wraps the binding inside `D1CatalogStore`. A statement refused with `D1 DB is overloaded` (any variant) or `Internal error while starting up D1 DB storage` is retried with exponential backoff and equal jitter (200 ms base, 2 s cap) within a **12 s window that belongs to the request**. Nothing else is retried: `Network connection lost` may follow a committed write, and the lease upsert is not idempotent.
+- Once the window is spent the adapter throws `StoreUnavailableError` (domain), and `errorResponse` answers **`503 DATABASE_UNAVAILABLE`** with `Retry-After: 10`, logged as `database_unavailable`. A recovery is logged as `d1_retry_recovered`, with the retry count and the time waited.
+- Every error response carries `X-Cache-Status: error` instead of the `unknown` the middleware filled in.
+
+**Measured on `wrangler dev --remote` against the preview D1**, blocked by a CPU-bound `WITH RECURSIVE` count:
+
+| scenario | before | after |
+| --- | --- | --- |
+| consumer's pair fired at the end of a 5.7 s block | 500 ×2 in 0.64 s, `unknown` | 200 ×2 in 4.4–5.7 s and 10.3–10.5 s (two runs, 4–9 retries) |
+| same, plus 30 concurrent requests | 31× 500, 1× 429 | no 500: pair 200; extras 18× 200, 9× 404 from MAL, 3× 429 |
+| ~11 s block | 500 ×2 in 8.2 s | 200 ×2 in ~10 s in one run, 503 in 10.6–11.9 s in another |
+| ~25 s block | not run | 503 `DATABASE_UNAVAILABLE` ×2 in ~21.8 s, `Retry-After: 10` |
+| MAL timing out, 24-hour row | 200 stale | 200 stale |
+| MAL timing out, no row | 504, `unknown` | 504, `error` |
+
+**The window is counted from the request, and that was measured, not assumed.** The first version opened it at the first refusal. On the ~25 s block a read waited ~21 s in D1's queue and succeeded, the write after it was refused, and the retry stretched the request to 32.4 s, where the code without retries fell back to its stale copy at ~23 s. What no window can fix: a statement D1 keeps queued for ~20 s costs ~20 s, with or without retries.
+
+**Lab notes.** At 3.3 s and 4.5 s of CPU, requests only waited in the queue. From ~5.7 s, D1 answered `Too many resources consumed within a 10 second window` until the burst left its trailing 10-second window, ~7–10 s after the block; how long varied by run. Production's variant was `Requests queued for too long` (a full queue under real traffic, refused at once). Both take the same code path.
+
+**Still open.** Why D1 overloads 88–331 times a day while it spends ~0.4% of the time executing statements. The 03:07 stall had no visible slow statement, and GraphQL `d1QueriesAdaptiveGroups` omits queries issued through the API (a 7.8 s diagnostic scan never appeared there). The known heavy statement is `ORDER BY RANDOM()` on `/v1/random/*`: 7.3M rows read in 125 calls, p99 1.6 s.
+
 ## Health and configuration errors
 
 `/health` started including `data.checks.database` on 2026-07-30 (an **additional** field, nothing removed):
