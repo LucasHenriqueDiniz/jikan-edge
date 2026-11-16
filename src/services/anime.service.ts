@@ -280,6 +280,9 @@ export class AnimeService {
     return { ...result, data: result.data.staff };
   }
 
+  // `whenMissing` decides what a 404 from MAL means for this resource. Absent, it is the caller's 404;
+  // a route whose page MAL leaves out for titles that do exist passes one that answers for them, and
+  // what it returns is cached like a parsed page, so the 404 is not fetched again on every request.
   private async perAnimeResource<T>(
     rawId: string,
     resource: string,
@@ -288,6 +291,7 @@ export class AnimeService {
     parserVersion: string,
     parse: (html: string) => T,
     requestId: string,
+    whenMissing?: () => Promise<T>,
   ): Promise<ServiceResponse<T>> {
     const malId = this.validateMalId(rawId);
     const cacheKey = `catalog:anime:${malId}:${resource}`;
@@ -299,8 +303,10 @@ export class AnimeService {
       () => this.catalog.get<T>(cacheKey),
       async () => {
         const source = await this.source.getHtml(url, requiredMarkers);
-        if (source.kind !== 'success') throw sourceError(source);
-        const value = parse(source.value);
+        let value: T;
+        if (source.kind === 'success') value = parse(source.value);
+        else if (source.kind === 'not_found' && whenMissing) value = await whenMissing();
+        else throw sourceError(source);
         const fetchedAt = new Date().toISOString();
         await this.catalog.put(cacheKey, value, fetchedAt, parserVersion);
         return value;
@@ -375,7 +381,25 @@ export class AnimeService {
       EPISODES_PARSER_VERSION,
       (html) => parseEpisodes(html, pastFirst),
       requestId,
+      () => this.noEpisodePage(malId),
     );
+  }
+
+  /**
+   * MAL answers 404 for the episode page of a title with a single episode — a movie, an OVA, a
+   * special — and the same 404 for an id with no title at all: the two pages are identical, down to
+   * the visible text (measured 2026-11-16, ids 28851 and 99999999). Only the title's own page tells
+   * them apart (200 against 404), so that is what is asked, unparsed: existence is the whole question.
+   *
+   * Before, the 404 reached the caller as NOT_FOUND and was not cached, so every request for a
+   * movie's episodes fetched MAL again — ~500 an hour from browsers on 2026-11-16, 0.8–1.7 s each.
+   * An empty list is what a list route answers when there is nothing to list, and it is cached.
+   */
+  private async noEpisodePage(malId: number): Promise<Episode[]> {
+    if (await this.anime.get(malId)) return [];
+    const title = await this.source.getHtml(animeDetailUrl(malId), DETAIL_PAGE_MARKERS);
+    if (title.kind !== 'success') throw sourceError(title);
+    return [];
   }
 
   recommendations(rawId: string, requestId: string): Promise<ServiceResponse<TitleRecommendation[]>> {

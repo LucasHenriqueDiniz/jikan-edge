@@ -176,6 +176,12 @@ Origin: a WeebProfile card died on `500 INTERNAL_ERROR` (`/v1/users/:username/fa
 - **`X-Worker-Version` is a static var (`jikan-edge-2026-07-19`), not the deployed version** — the incident ran on `4f505cd5`. Not fixed in this batch.
 - **The source of the overload is still open.** D1 spent ~0.4% of the week executing statements, and the 03:07:23–37 stall had no visible slow one. The known heavy statement is `ORDER BY RANDOM()` on `/v1/random/*` (7.3M rows read in 125 calls, p99 1.6 s).
 
+### Single-episode titles have no episode page (2026-11-16)
+
+- **MAL 404s the episode page of a movie, OVA or special with the same page it serves for an id with no title** — identical visible text, measured on `28851` against `99999999`. Only the title's own page tells them apart (200 against 404). `episodes` now answers that 404 with a cached `200 []` when the title exists (the stored detail row first, then the title page, unparsed) and keeps `404` otherwise. Before: ~500 uncached MAL fetches an hour for the same handful of titles. Detail in `docs/routes.md`.
+- **`perAnimeResource` takes an optional `whenMissing`, and it runs on `not_found` only.** Never widen it to timeouts or upstream errors: the empty list it returns is cached for the whole TTL, and on a real title that would hide every episode it has.
+- **The anime-detail benchmark (`tests/benchmarks/parsers.test.ts`, p95 under 8 ms of wall clock) flakes under load.** It failed on unchanged `main` (10.3 ms) during this batch and passed on the next runs. A rerun is not a fix; it needs a CPU-time measure or a looser bound.
+
 ## Unimplemented routes (consolidated list)
 
 Each one was investigated against the real MAL pages; the detailed evidence is in `docs/routes.md`. **Do not reopen any of them without new evidence** — the reason for each block is on record:

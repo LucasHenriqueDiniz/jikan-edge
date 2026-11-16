@@ -8,11 +8,12 @@ This file starts on 2026-07-30 and does not reconstruct earlier history.
 
 ## 2026-11-16
 
-Published version: to be confirmed.
+Published versions: `ea5847b0` (the database retry and `DATABASE_UNAVAILABLE`); the `episodes` fix:
+to be confirmed.
 
 Origin: a WeebProfile card lost to `500 INTERNAL_ERROR` on `/v1/users/:username/favorites` during
 its 03:07 UTC cron. Every 500 of that week — 984 of them — was the D1 database refusing a query as
-overloaded: not a bug, and not MyAnimeList.
+overloaded: not a bug, and not MyAnimeList. The check after that deploy found the `episodes` item.
 
 ### Fixed
 
@@ -20,6 +21,13 @@ overloaded: not a bug, and not MyAnimeList.
   overloaded, or while it restarts, is retried for up to 12 s, so a stall that clears in time
   answers normally. *Before:* `500 INTERNAL_ERROR`, in under a second. *After:* the usual `200`, a
   few seconds later (4–10 s measured against a blocked test database).
+- **`/v1/anime/:id/episodes` of a single-episode title answers `200` with `data: []`.** MyAnimeList
+  has no episode page for a movie, an OVA or a special, and answers it with the same 404 it gives an
+  id with no title, so the route answered `404 NOT_FOUND` — uncached, fetching MyAnimeList again on
+  every request (~500 an hour on 2026-11-16). The title's own page now tells the two apart, and the
+  empty list is cached like any other page. *Before:* `GET /v1/anime/28851/episodes` → `404`, every
+  time. *After:* `200`, `data: []`, then `X-Cache-Status: hit`. An id with no title is still
+  `404 NOT_FOUND`.
 
 ### Changed
 

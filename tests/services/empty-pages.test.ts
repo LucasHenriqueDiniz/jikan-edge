@@ -226,6 +226,85 @@ describe('episodes', () => {
     expect(result.data).toHaveLength(5);
   });
 
+  // A single-episode title (a movie, an OVA, a special) has no episode page: MAL answers it with the
+  // same 404 page it gives an id with no title at all — measured 2026-11-16 on 28851 and 99999999,
+  // identical down to the visible text. Only the title's own page tells them apart.
+  describe('for a title MAL keeps no episode page for', () => {
+    const detailPage = readFileSync('tests/fixtures/anime/detail-real.html', 'utf8');
+    const episodesUrl = 'https://myanimelist.net/anime/28851/x/episode';
+    const titleUrl = 'https://myanimelist.net/anime/28851';
+
+    // Answers every read with nothing, except the anime row when `storedTitle`, and records writes.
+    function recordingDb(storedTitle: boolean) {
+      const writes: { sql: string; args: unknown[] }[] = [];
+      const statement = (sql: string, args: unknown[]) => ({
+        first: async () =>
+          storedTitle && sql.includes('FROM anime WHERE') ? { payload_json: '{"malId":28851}' } : null,
+        run: async () => {
+          writes.push({ sql, args });
+          return { meta: { changes: 1 }, success: true };
+        },
+      });
+      const db = { prepare: (sql: string) => ({ bind: (...args: unknown[]) => statement(sql, args) }) };
+      const episodesWrite = () =>
+        writes.find(
+          (w) => w.sql.includes('INSERT INTO catalog_lists') && w.args[0] === 'catalog:anime:28851:episodes:page:1',
+        );
+      return { db: db as never, episodesWrite };
+    }
+
+    const malServing = (titleExists: boolean) =>
+      recordingSource((url, markers) =>
+        url === titleUrl && titleExists
+          ? classifyHtml(detailPage, meta(url, { sizeBytes: detailPage.length }), markers)
+          : { kind: 'not_found', metadata: meta(url, { status: 404 }) },
+      );
+
+    it('is an empty list when the title exists, and that empty list is cached', async () => {
+      const { db, episodesWrite } = recordingDb(false);
+      const { source, calls } = malServing(true);
+
+      const result = await new AnimeService(new D1CatalogStore(db), source, config).episodes('28851', 1, 'r');
+
+      expect(result.data).toEqual([]);
+      expect(calls.map((call) => call.url)).toEqual([episodesUrl, titleUrl]);
+      expect(episodesWrite()?.args[1]).toBe('[]');
+    });
+
+    it('is still NOT_FOUND when MAL has no title for the id, and nothing is cached', async () => {
+      const { db, episodesWrite } = recordingDb(false);
+      const { source } = malServing(false);
+
+      await expect(
+        new AnimeService(new D1CatalogStore(db), source, config).episodes('28851', 1, 'r'),
+      ).rejects.toMatchObject({ code: 'NOT_FOUND', status: 404 });
+      expect(episodesWrite()).toBeUndefined();
+    });
+
+    // Only a 404 means "no page". A timeout on a title that has episodes must stay an error: an empty
+    // list there would be cached for the whole TTL and hide every episode the title has.
+    it('keeps an upstream failure an error, even for a title that exists', async () => {
+      const { db, episodesWrite } = recordingDb(true);
+      const { source, calls } = recordingSource((url) => ({ kind: 'timeout', metadata: meta(url, { status: 0 }) }));
+
+      await expect(
+        new AnimeService(new D1CatalogStore(db), source, config).episodes('28851', 1, 'r'),
+      ).rejects.toMatchObject({ code: 'UPSTREAM_TIMEOUT', status: 504 });
+      expect(calls.map((call) => call.url)).toEqual([episodesUrl]);
+      expect(episodesWrite()).toBeUndefined();
+    });
+
+    it('does not fetch the title page when the title is already stored', async () => {
+      const { db } = recordingDb(true);
+      const { source, calls } = malServing(true);
+
+      const result = await new AnimeService(new D1CatalogStore(db), source, config).episodes('28851', 1, 'r');
+
+      expect(result.data).toEqual([]);
+      expect(calls.map((call) => call.url)).toEqual([episodesUrl]);
+    });
+  });
+
   // `/anime/21/x/episode/99999`: a 200 with an empty heading and a notice.
   it('is a 404 for an episode MAL has no page for', async () => {
     const missing = readFileSync('tests/fixtures/episodes/episode-detail-missing-real.html', 'utf8');

@@ -375,6 +375,25 @@ By route: `/v1/anime/:id/episodes` 648 (66%), `/v1/anime/:id/full` 54, `/v1/char
 
 **Still open.** Why D1 overloads 88–331 times a day while it spends ~0.4% of the time executing statements. The 03:07 stall had no visible slow statement, and GraphQL `d1QueriesAdaptiveGroups` omits queries issued through the API (a 7.8 s diagnostic scan never appeared there). The known heavy statement is `ORDER BY RANDOM()` on `/v1/random/*`: 7.3M rows read in 125 calls, p99 1.6 s.
 
+## Single-episode titles have no episode page (2026-11-16)
+
+Found in the post-deploy check of 2026-11-16: 501 of the 1,224 `404`s between 20:00 and 21:00 UTC were `/v1/anime/:id/episodes`, from browsers (Hungary, Poland) asking for the same titles over and over — `57555` seventeen times, `28851` fourteen.
+
+**What MAL does.** A title with one episode (a movie, an OVA, a special) has no episode page: `/anime/28851/x/episode` answers 404. So does `/anime/99999999/x/episode`, an id with no title, and the two pages are identical down to the visible text (1,936 characters each). Only the title's own page differs: `/anime/28851` is 200, `/anime/99999999` is 404. Measured on `28851`, `57555` and `52742` (all "Episodes: 1") against anime `1` (26 episodes, episode page 200).
+
+**What changed.** A 404 on the episode page now asks whether the title exists — the stored detail row first, then MAL's title page, unparsed — and answers `200` with `data: []` when it does. The empty list is cached under the episodes key and parser version like any page, so the next request is a hit. An id with no title is still `404 NOT_FOUND`. Only a 404 takes this path: a timeout or an upstream error stays an error, because an empty list cached for six hours would hide a real title's episodes.
+
+**Measured on `wrangler dev --remote`:**
+
+| request | before | after |
+| --- | --- | --- |
+| `/v1/anime/28851/episodes`, first | 404 in 0.75 s | 200 `[]` in 2.05 s, `miss` |
+| same, second | 404 in 1.53 s (MAL again) | 200 `[]` in 0.17 s, `hit` |
+| `/v1/anime/99999999/episodes` | 404 in 0.72 s | 404 in 1.12 s |
+| `/v1/anime/1/episodes` | 200, 26 episodes | 200, 26 episodes |
+
+**Cost moved, not removed.** An id with no title now costs two MAL fetches (the episode page and the title page) instead of one, and is still not cached, since no 404 is. None of the repeated 404s in the sample was such an id. No parser-version bump: nothing that used to succeed changes.
+
 ## Health and configuration errors
 
 `/health` started including `data.checks.database` on 2026-07-30 (an **additional** field, nothing removed):
