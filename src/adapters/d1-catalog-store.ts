@@ -10,6 +10,7 @@ import { PersonRepository } from '../repositories/person.repository';
 import { ProducerRepository } from '../repositories/producer.repository';
 import { RandomRepository } from '../repositories/random.repository';
 import { RefreshLockRepository } from '../repositories/refresh-lock.repository';
+import { RetentionRepository } from '../repositories/retention.repository';
 import { UpdatesRepository } from '../repositories/updates.repository';
 import { UserRepository } from '../repositories/user.repository';
 import { D1_RETRY_POLICY, type D1RetryPolicy, retryingD1 } from './d1-retry';
@@ -50,6 +51,7 @@ export class D1CatalogStore implements CatalogStore {
   readonly users: UserRepository;
   readonly randomPicks: RandomRepository;
   readonly catalogLists: CatalogListRepository;
+  readonly retention: RetentionRepository;
 
   constructor(binding: D1Database, retryPolicy: D1RetryPolicy = D1_RETRY_POLICY) {
     const db = retryingD1(binding, retryPolicy);
@@ -66,5 +68,6 @@ export class D1CatalogStore implements CatalogStore {
     this.users = new UserRepository(db);
     this.randomPicks = new RandomRepository(db);
     this.catalogLists = new CatalogListRepository(db);
+    this.retention = new RetentionRepository(db);
   }
 }

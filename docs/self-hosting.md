@@ -61,6 +61,7 @@ already ran are skipped. It never deploys — publishing stays a separate, delib
 | **Static assets** (`site/`) | Included | The landing page at `/`. Deployed by `wrangler deploy` with no build step. |
 | **R2 bucket** | **No** | An unused `SNAPSHOTS_BUCKET` binding used to be required here, forcing an R2 subscription for nothing. It was removed. |
 | **Secrets / env vars** | No | The defaults in `wrangler.jsonc` are complete. Only `MAL_USER_AGENT` is worth changing. |
+| **Cron trigger** | Yes, already configured | `triggers.crons` runs the cache retention every ten minutes: cache entries that expired more than 14 days ago are deleted in small batches, so D1 does not grow toward its fixed 10 GB ceiling. Nothing to create. To turn it off, remove `triggers` from `wrangler.jsonc`; the API keeps working, the database just never shrinks. |
 
 ### Doing it by hand
 

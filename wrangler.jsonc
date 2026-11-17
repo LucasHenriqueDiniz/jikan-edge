@@ -12,6 +12,10 @@
   // Static landing site at "/" — asset-first routing keeps /v1/* and /health on the Worker.
   "assets": { "directory": "./site" },
   "observability": { "enabled": true, "head_sampling_rate": 1 },
+  // Cache retention (src/scheduled.ts): every ten minutes, delete cache entries expired more than 14
+  // days ago, in paced batches. Without it nothing is ever deleted and D1 grows toward its fixed
+  // 10 GB ceiling — 4.46 GB on 2026-11-16, most of it one scraper's friends lists.
+  "triggers": { "crons": ["*/10 * * * *"] },
   "vars": {
     "MAL_USER_AGENT": "jikan-edge/0.1 (+https://jikan.lucashdo.com)",
     "PROFILE_TTL_SECONDS": "21600",

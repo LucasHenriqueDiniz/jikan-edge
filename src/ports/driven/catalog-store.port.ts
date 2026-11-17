@@ -117,4 +117,20 @@ export interface CatalogStore {
     pick(kind: RandomKind): Promise<{ data: unknown; fetchedAt: string } | null>;
     pickUser(): Promise<{ username: string } | null>;
   };
+  /**
+   * Housekeeping, not a read path: drops the cache entries that expired before `cutoff`, oldest
+   * first, at most `limit` of them, together with the catalog payload stored under the same key. A
+   * payload kept anywhere else (the detail tables, the user lists) is left alone. Bounded per call so
+   * the caller can pace the work against a database that also serves live traffic.
+   */
+  readonly retention: {
+    pruneExpiredBefore(cutoff: string, limit: number): Promise<PrunedBatch>;
+  };
+}
+
+/** What one bounded prune removed, and how big the database is afterwards. */
+export interface PrunedBatch {
+  cacheEntries: number;
+  payloads: number;
+  databaseBytes: number;
 }

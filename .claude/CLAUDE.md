@@ -182,6 +182,14 @@ Origin: a WeebProfile card died on `500 INTERNAL_ERROR` (`/v1/users/:username/fa
 - **`perAnimeResource` takes an optional `whenMissing`, and it runs on `not_found` only.** Never widen it to timeouts or upstream errors: the empty list it returns is cached for the whole TTL, and on a real title that would hide every episode it has.
 - **The anime-detail benchmark (`tests/benchmarks/parsers.test.ts`, p95 under 8 ms of wall clock) flakes under load.** It failed on unchanged `main` (10.3 ms) during this batch and passed on the next runs. A rerun is not a fix; it needs a CPU-time measure or a looser bound.
 
+### Cache retention cron (2026-11-16)
+
+- **Nothing deleted cache rows until this cron, and D1's 10 GB ceiling cannot be raised.** Production was at 4.46 GB; more than half of `cache_entries` was friends lists one scraper requested between 2026-10-19 and 2026-11-08. `src/scheduled.ts` runs every ten minutes (`triggers.crons`) and deletes cache entries that expired more than 14 days ago with the `catalog_lists` payload under the same key — never a detail row (`/v1/random/*` draws from those) nor user list entries. Detail and measurements in `docs/routes.md`, section "Cache retention".
+- **D1 gives space back on `DELETE`, immediately** (preview: 69.8 MB of rows deleted, 1.4 MB left). Every query's `meta.size_after` is the database size, which is how the cron logs it.
+- **The cron does not retry.** Its store is built with a zero retry window, and the first failure ends the run; the loop is bounded by attempts, not successes — counting only successes, a refusing database would be asked forever (a mutant found it by hanging the test). Keep both if you touch it.
+- **To run the cron locally:** `wrangler dev --remote --test-scheduled`, then `GET /__scheduled`. `src/index.ts` exports `{ fetch, scheduled }`; HTTP tests keep importing `src/app`.
+- **Measuring the production D1 without hurting it.** `PRAGMA page_count`/`freelist_count` are refused (`SQLITE_AUTH`). Use `max(rowid)` alone (rows_read 1), windows of ~100 rowids, and primary-key `IN (...)` lookups. **`min()` and `max()` in one statement defeat SQLite's index shortcut**: on 2026-11-17 that scanned `anime` and `manga` (5.7 s), pushed D1 into its 10-second resource penalty, and cost one real request a 503 — the retry saved nine others.
+
 ## Unimplemented routes (consolidated list)
 
 Each one was investigated against the real MAL pages; the detailed evidence is in `docs/routes.md`. **Do not reopen any of them without new evidence** — the reason for each block is on record:

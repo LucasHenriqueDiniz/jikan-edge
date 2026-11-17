@@ -394,6 +394,36 @@ Found in the post-deploy check of 2026-11-16: 501 of the 1,224 `404`s between 20
 
 **Cost moved, not removed.** An id with no title now costs two MAL fetches (the episode page and the title page) instead of one, and is still not cached, since no 404 is. None of the repeated 404s in the sample was such an id. No parser-version bump: nothing that used to succeed changes.
 
+## Cache retention (2026-11-16)
+
+Nothing ever deleted a cache row. On 2026-11-16 the production database was 4.46 GB of D1's fixed 10 GB ceiling (the documented limit "cannot be further increased"), having grown from 1.90 GB on 2026-10-16 — 83 MB a day on average, ~36 MB a day in November.
+
+**What was in it.** Measured without scanning a production table (the queries that did scan caused real 500s, see the D1 overload section above): `max(rowid)` for row counts, twenty windows of 100 rowids for a uniform sample, payload sizes read by primary key.
+
+| | rows | in the sample | expired |
+| --- | --- | --- | --- |
+| `cache_entries` | 2,270,868 | 53% `user:<name>:friends` | 71% more than 7 days ago, 11.5% more than 30 |
+| `catalog_lists` | 1,961,351 | 60% friends lists; 21% character `full`/`media`/`pictures` | — |
+
+The friends lists came from one client: user agent `manga-recsys-scraper/1.0`, 1,004,800 requests to `/v1/users/:name/friends` in 30 days, 60–69 thousand a day from 2026-10-19 to 2026-10-29 and again 2026-11-04 to 2026-11-08, just under the per-IP rate limit; it stopped on 2026-11-09. Their payloads average 745 bytes (median 196, n=100), so the friends lists account for roughly 1.3 GB including their cache rows and keys.
+
+**D1 gives the space back.** Measured on the preview database, since the documentation does not say: 50,000 rows of 1 KB took it from 1.32 MB to 69.8 MB, and deleting them brought it back to 1.41 MB at once.
+
+**What runs.** `triggers.crons` in `wrangler.jsonc` calls `scheduled` (`src/scheduled.ts`) every ten minutes. `CacheRetentionService` prunes in batches of 500: `RetentionRepository.pruneExpiredBefore` deletes the oldest cache entries that expired before the cutoff (now minus 14 days) through `idx_cache_entries_expiry`, and in the same `batch()` the `catalog_lists` payloads stored under the same keys. A payload kept anywhere else — the detail tables, which `/v1/random/*` draws from, and the user list entries — stays; only its cache row goes. One run stops after 30 batches, or as soon as a batch comes back short, with a second between batches; the loop is bounded by attempts, so a refusing database is asked at most 30 times. The cron builds its store with no retry window, and the first failure ends the run: the next run is ten minutes away.
+
+**Why 14 days.** An entry is refreshed whenever it is requested after it expires, so one that expired 14 days ago has not been served fresh in two weeks. Deleting it costs only the stale copy for something nobody asked for since.
+
+**Measured.** One batch of 500 keys costs ~6 ms of SQL across both deletes on the preview database, and 1,000 rows give back ~1.15 MB. Rehearsal on `wrangler dev --remote --test-scheduled` against the preview database, with 17,000 expired rows:
+
+| run | batches | cache rows | payloads | database after | stopped by | wall time |
+| --- | --- | --- | --- | --- | --- | --- |
+| 1 | 30 | 15,000 | 15,000 | 3.8 MB (from 22.2 MB) | cap | 34.8 s |
+| 2 | 5 | 2,000 | 2,000 | 1.32 MB | drained | 4.8 s |
+
+During run 1 a cached route answered 30 of 30 requests with 200, median 0.17 s and maximum 0.30 s — the same as before the run (0.16 s). The 61 rows of the `anime` table were untouched.
+
+At this pace production's backlog (~1.6 million expired rows) clears in about a day, after which a run deletes only what expired that day. Each run logs `type: cache_retention` with the counts, the database size after the last batch and why it stopped.
+
 ## Health and configuration errors
 
 `/health` started including `data.checks.database` on 2026-07-30 (an **additional** field, nothing removed):

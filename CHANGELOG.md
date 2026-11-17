@@ -6,10 +6,26 @@ Changes that matter to anyone **consuming** the API. The technical detail behind
 
 This file starts on 2026-07-30 and does not reconstruct earlier history.
 
+## 2026-11-17
+
+Published version: to be confirmed.
+
+### Changed
+
+- **A cached resource nobody has requested for 14 days after it expired is now deleted.** Every ten
+  minutes the Worker removes cache entries that expired more than 14 days earlier, in small paced
+  batches. Nothing was ever deleted before, and the database was growing toward its fixed 10 GB
+  ceiling: 4.46 GB on 2026-11-16, most of it the friends lists one scraper requested between
+  2026-10-19 and 2026-11-08 and nobody asked for again. What a caller can notice: such a resource is
+  fetched from MyAnimeList again on its next request (`X-Cache-Status: miss`, a few seconds), and if
+  MyAnimeList is down at that moment there is no stale copy left to fall back on. Anything requested
+  within the window behaves exactly as before. Title details, which `/v1/random/*` draws from, and
+  user lists keep their data; only their cache bookkeeping is removed.
+
 ## 2026-11-16
 
-Published versions: `ea5847b0` (the database retry and `DATABASE_UNAVAILABLE`); the `episodes` fix:
-to be confirmed.
+Published versions: `ea5847b0` (the database retry and `DATABASE_UNAVAILABLE`), `af9cfec5` (the
+`episodes` fix).
 
 Origin: a WeebProfile card lost to `500 INTERNAL_ERROR` on `/v1/users/:username/favorites` during
 its 03:07 UTC cron. Every 500 of that week — 984 of them — was the D1 database refusing a query as

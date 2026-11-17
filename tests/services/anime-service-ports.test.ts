@@ -91,6 +91,7 @@ function inMemoryStore(seed: { cacheEntries?: CacheEntry[]; catalogLists?: Recor
     updates: unread('updates'),
     users: unread('users'),
     randomPicks: unread('randomPicks'),
+    retention: unread('retention'),
   };
   return { store, held, released };
 }
