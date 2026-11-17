@@ -9,7 +9,7 @@ This file starts on 2026-07-30 and does not reconstruct earlier history.
 ## 2026-11-17
 
 Published versions: `c50fb4cd` (the cache retention), `3a29cf39` (the external-link fix), `4cc1eafb`
-(the internal-error mapping), `24bdf18d` (the user updates fix); the version header: to be confirmed.
+(the internal-error mapping), `24bdf18d` (the user updates fix), `34e525fd` (the version header).
 
 ### Fixed
 
