@@ -9,7 +9,8 @@ This file starts on 2026-07-30 and does not reconstruct earlier history.
 ## 2026-11-17
 
 Published versions: `c50fb4cd` (the cache retention), `3a29cf39` (the external-link fix), `4cc1eafb`
-(the internal-error mapping), `24bdf18d` (the user updates fix), `34e525fd` (the version header).
+(the internal-error mapping), `24bdf18d` (the user updates fix), `34e525fd` (the version header); the
+Jikan-path message: to be confirmed.
 
 ### Fixed
 
@@ -60,6 +61,16 @@ Published versions: `c50fb4cd` (the cache retention), `3a29cf39` (the external-l
   where there is no deployed version (`wrangler dev --remote`, tests). *Before:*
   `X-Worker-Version: jikan-edge-2026-07-19`. *After:* e.g.
   `X-Worker-Version: 4cc1eafb-fcb4-4629-8b1e-37dd97a31029`.
+- **A Jikan v4 path says where the route lives.** `GET /v4/...` answered `404 NOT_FOUND` with
+  `Route not found.` and nothing else — about 17,000 requests a day from clients built for Jikan and
+  pointed at this host. It still answers `404 NOT_FOUND`, now with a message that names the matching
+  `/v1` path and links the migration guide. `/v4` is deliberately not an alias of `/v1`: the paths
+  mirror Jikan's but the response shape does not, and a Jikan client reading this shape would get
+  `undefined` with no error. Any path no route answers now also carries `X-Cache-Status: error` and
+  `Cache-Control: no-store`, like every other error, instead of `X-Cache-Status: unknown` and no
+  `Cache-Control`. *Before:* `{ "code": "NOT_FOUND", "message": "Route not found." }`. *After:*
+  `{ "code": "NOT_FOUND", "message": "This API is not a drop-in replacement for Jikan v4. Routes live
+  under /v1 (try /v1/anime/1), …" }`.
 
 ## 2026-11-16
 

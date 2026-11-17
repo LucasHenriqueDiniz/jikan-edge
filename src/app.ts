@@ -17,6 +17,9 @@ import { configFrom, type Env, workerVersion } from './config/env';
 import { registerQueryGuards } from './http/query-guard';
 import { probeDatabase, SETUP_HINT } from './http/diagnostics';
 import { etagFor, matchesEtag, NO_STORE } from './http/caching';
+import { errorResponse } from './http/errors';
+import { notFoundMessage } from './http/not-found';
+import { ServiceError } from './domain/errors';
 import { logMetric } from './observability/metrics';
 import { D1CatalogStore } from './adapters/d1-catalog-store';
 import { MalClient } from './source/mal-client';
@@ -209,7 +212,9 @@ registerRecommendationsRoutes(app, { recommendationService });
 registerReviewsRoutes(app, { reviewService });
 registerRandomRoutes(app, { service, randomService });
 
+// Through errorResponse like every other error, so a missing route also says `X-Cache-Status: error`
+// and `no-store` instead of `unknown` and no Cache-Control at all.
 app.notFound((c) =>
-  c.json({ error: { code: 'NOT_FOUND', message: 'Route not found.', requestId: c.get('requestId') } }, 404),
+  errorResponse(c, new ServiceError('NOT_FOUND', 404, notFoundMessage(c.req.url)), c.get('requestId')),
 );
 export default app;

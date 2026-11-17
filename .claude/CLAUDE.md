@@ -19,6 +19,7 @@ The milestone's production code is authorized for user profile, statistics and l
 ## Working rules
 
 - Treat Jikan as a functional reference, not as a full-compatibility requirement.
+- **`/v4/*` answers `404 NOT_FOUND` naming the `/v1` path and the migration guide (2026-11-17) — do not alias it to `/v1`.** Measured 2026-11-10 to 16 in zone analytics (`requestSource: eyeball`): ~17.1k requests a day, 99.9% one client (NL, empty user agent) polling a fixed list of 1,162 anime ids, plus ~8 one-off attempts a day from other clients; `/v1` had ~192k. The paths match Jikan's and the shapes do not, so an alias hands a Jikan client `undefined` with no error. A real `/v4` adapter is the decision in `docs/research/2026-07-19-jikan-compatibility-market-scope.md`: a few routes, only after demand is measured (distinct clients a day on `/v4`). The message lives in `src/http/not-found.ts`; every unmatched path goes through `errorResponse`, so it says `X-Cache-Status: error` and `no-store`.
 - Use controlled refresh, D1 and stale fallback; never replace valid data with a suspicious document.
 - Only use `https://myanimelist.net`; URLs are centralized in `src/source/mal-urls.ts`.
 - Do not use a headless browser, internal endpoints, mass scraping or client-supplied URLs.

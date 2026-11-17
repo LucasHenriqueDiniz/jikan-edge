@@ -232,6 +232,10 @@ Renaming fields is not enough to port a client: the shapes above differ too, and
 `mal_id → malId` leaves `undefined` in silence. [`docs/api.md`](docs/api.md) lists the shape changes
 one by one.
 
+For the same reason `/v4` is not an alias of `/v1`. A request to a Jikan path (`/v4/...`) answers
+`404 NOT_FOUND` with the matching `/v1` path and a link to the migration guide, rather than a
+response a Jikan client would misread.
+
 Two things this API has that Jikan does not: **user anime and manga lists**, which Jikan deprecated
 in May 2022 and gates behind a config flag, and `GET /v1/people/{id}/news`.
 
