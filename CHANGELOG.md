@@ -24,6 +24,15 @@ internal-error mapping: to be confirmed.
   is unchanged. The manga detail reads its links the same way and gets the same fix. *Before:*
   `GET /v1/anime/39948` → `502 UPSTREAM_SUSPICIOUS`, every time. *After:* `200`, with
   `{ "name": "Official Site", "url": "https://mahouritsu.com" }` in `externalLinks`.
+- **`/v1/users/:username/userupdates` returned `progress`, `total` and `score` as `null` on every
+  entry, and titles with HTML entities.** The numbers were on MyAnimeList's page all along; the parser
+  stopped reading each entry one line before them. Affects `/v1/users/:username/full` too, which
+  embeds the same feed. `total` is still `null` when MyAnimeList does not know it (`41/?`), and a
+  plan-to-watch or plan-to-read entry has no counter, so both stay `null` there. *Before:*
+  `{ "title": "I Became the Sea Guardian&#039;s Adopted Daughter", "progress": null, "total": null,
+  "score": null }`. *After:* `{ "title": "I Became the Sea Guardian's Adopted Daughter",
+  "progress": 60, "total": 60, "score": 5 }`. Cached feeds are refetched on their next request.
+  *Published version: to be confirmed.*
 
 ### Changed
 

@@ -24,7 +24,9 @@ import {
   withCache,
 } from './cacheable';
 
-const UPDATES_PARSER_VERSION = `${PARSER_VERSION}:updates`;
+// `-v2`: progress, total and score were null on every entry and titles kept their HTML entities. Bumped on
+// its own so the fix refetches only the updates feed, not every cached profile.
+const UPDATES_PARSER_VERSION = `${PARSER_VERSION}:updates-v2`;
 /**
  * Bounds one user's refresh, nothing wider. The largest list measured so far is 2,354 entries (8 pages), so
  * 20 leaves real headroom — and hitting the cap now raises `LIST_TOO_LARGE` instead of quietly storing a
