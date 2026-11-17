@@ -1,5 +1,11 @@
 import { describe, expect, it, vi } from 'vitest';
-import { backoffDelay, type D1RetryPolicy, isTransientD1Failure, retryingD1 } from '../../src/adapters/d1-retry';
+import {
+  backoffDelay,
+  type D1RetryPolicy,
+  isD1PlatformFailure,
+  isTransientD1Failure,
+  retryingD1,
+} from '../../src/adapters/d1-retry';
 import { StoreUnavailableError } from '../../src/domain/errors';
 import { OVERLOADED } from '../helpers/stub-database';
 
@@ -187,12 +193,54 @@ describe('isTransientD1Failure', () => {
     'Network connection lost.',
     'D1_ERROR: no such table: cache_entries: SQLITE_ERROR',
     'D1_ERROR: string or blob too big: SQLITE_TOOBIG',
-  ])('leaves %s alone, since it may have run or is a bug', (message) => {
+  ])('does not retry %s, since it may have run or is a bug', (message) => {
     expect(isTransientD1Failure(new Error(message))).toBe(false);
   });
 
   it('ignores anything that is not an Error', () => {
     expect(isTransientD1Failure(OVERLOADED)).toBe(false);
+  });
+});
+
+// The 2026-11-16 19:30 UTC outage answered the first of these in ~10 ms, 88 times, as 500
+// INTERNAL_ERROR. They are the database's failures, so they are reported as such — but not retried:
+// D1 does not say whether a statement that failed this way ran, and the lease upsert must not run twice.
+const INTERNAL_ERRORS = [
+  'D1_ERROR: internal error; reference = 266snuice9ovn8g7c47fkh36',
+  'D1_ERROR: Internal error in D1 DB storage caused object to be reset; reference = u624rojg0481d46iicg',
+];
+
+describe('a D1 internal error', () => {
+  it.each(INTERNAL_ERRORS)('becomes StoreUnavailableError on the first attempt, with no retry: %s', async (message) => {
+    const clock = fakeClock(12_000);
+    const d1 = scriptedD1([{ fail: message }, { value: 'never reached' }], clock.advance);
+
+    const failure = await retryingD1(d1.db, clock.policy)
+      .prepare('INSERT 1')
+      .run()
+      .catch((error: unknown) => error);
+
+    expect(failure).toBeInstanceOf(StoreUnavailableError);
+    expect(((failure as Error).cause as Error).message).toBe(message);
+    expect(d1.calls()).toBe(1);
+    expect(clock.slept).toEqual([]);
+  });
+});
+
+describe('isD1PlatformFailure', () => {
+  it.each(INTERNAL_ERRORS)('recognises %s, also when the binding nests it', (message) => {
+    expect(isD1PlatformFailure(new Error(message))).toBe(true);
+    expect(isD1PlatformFailure(new Error('D1_ERROR', { cause: new Error(message) }))).toBe(true);
+  });
+
+  it.each([
+    OVERLOADED,
+    'D1_ERROR: Internal error while starting up D1 DB storage caused object to be reset; reference = 2dan349j2',
+    'Network connection lost.',
+    'D1_ERROR: no such column: x: SQLITE_ERROR',
+    'D1_ERROR: string or blob too big: SQLITE_TOOBIG',
+  ])('leaves %s to the other paths', (message) => {
+    expect(isD1PlatformFailure(new Error(message))).toBe(false);
   });
 });
 

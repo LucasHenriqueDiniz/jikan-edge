@@ -21,11 +21,38 @@ import { StoreUnavailableError } from '../domain/errors';
  */
 const NEVER_RAN = /D1 DB is overloaded|Internal error while starting up D1 DB storage/;
 
-export function isTransientD1Failure(error: unknown): boolean {
-  if (!(error instanceof Error)) return false;
+/**
+ * D1 failures that are the platform's but may have happened mid-statement, so they are not retried —
+ * only reported for what they are: the database being unavailable, not a bug in this code.
+ *
+ * Why (2026-11-16): from 19:30:43 to 19:31:28 UTC the production database executed nothing, and 88
+ * requests failed in ~10 ms with `D1_ERROR: internal error; reference = <id>` — 88 different ids,
+ * all answered `500 INTERNAL_ERROR`. Cloudflare's D1 documentation has no entry for that message (the
+ * nearest is API code 7500, "a platform-side storage event made the database temporarily
+ * unavailable"), and does not say whether a write that failed this way was applied, so retrying it
+ * could take a refresh lease twice. A 45-second outage would also outlast any retry window.
+ * `Internal error in D1 DB storage caused object to be reset` belongs here for the same reason: the
+ * database restarted, possibly under a statement.
+ */
+const PLATFORM_FAILURE =
+  /D1_ERROR: internal error; reference = |Internal error in D1 DB storage caused object to be reset/;
+
+function failureText(error: unknown): string {
+  if (!(error instanceof Error)) return '';
   const cause = error.cause instanceof Error ? error.cause.message : '';
-  return NEVER_RAN.test(`${error.message} ${cause}`);
+  return `${error.message} ${cause}`;
 }
+
+export function isTransientD1Failure(error: unknown): boolean {
+  return error instanceof Error && NEVER_RAN.test(failureText(error));
+}
+
+export function isD1PlatformFailure(error: unknown): boolean {
+  return error instanceof Error && PLATFORM_FAILURE.test(failureText(error));
+}
+
+const unavailable = (error: unknown) =>
+  new StoreUnavailableError(error instanceof Error ? error.message : String(error), { cause: error });
 
 export interface D1RetryPolicy {
   /**
@@ -96,10 +123,10 @@ export function retryingD1(db: D1Database, policy: D1RetryPolicy = D1_RETRY_POLI
         if (retries > 0) console.warn(JSON.stringify({ type: 'd1_retry_recovered', retries, waitedMs }));
         return result;
       } catch (error) {
+        if (isD1PlatformFailure(error)) throw unavailable(error);
         if (!isTransientD1Failure(error)) throw error;
         const delay = backoffDelay(retries, policy, policy.random());
-        if (policy.now() + delay >= windowEnd)
-          throw new StoreUnavailableError(error instanceof Error ? error.message : String(error), { cause: error });
+        if (policy.now() + delay >= windowEnd) throw unavailable(error);
         await policy.sleep(delay);
         retries += 1;
         waitedMs += delay;

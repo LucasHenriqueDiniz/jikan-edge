@@ -70,7 +70,7 @@ describe('errorResponse', () => {
     expect(await response.json()).toEqual({
       error: {
         code: 'DATABASE_UNAVAILABLE',
-        message: 'The database is temporarily overloaded. Retry after the number of seconds in Retry-After.',
+        message: 'The database is temporarily unavailable. Retry after the number of seconds in Retry-After.',
         requestId: 'req-1',
       },
     });

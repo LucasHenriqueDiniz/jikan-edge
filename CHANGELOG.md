@@ -8,7 +8,8 @@ This file starts on 2026-07-30 and does not reconstruct earlier history.
 
 ## 2026-11-17
 
-Published versions: `c50fb4cd` (the cache retention); the external-link fix: to be confirmed.
+Published versions: `c50fb4cd` (the cache retention), `3a29cf39` (the external-link fix); the
+internal-error mapping: to be confirmed.
 
 ### Fixed
 
@@ -35,6 +36,14 @@ Published versions: `c50fb4cd` (the cache retention); the external-link fix: to 
   MyAnimeList is down at that moment there is no stale copy left to fall back on. Anything requested
   within the window behaves exactly as before. Title details, which `/v1/random/*` draws from, and
   user lists keep their data; only their cache bookkeeping is removed.
+- **An internal error of the database answers `503 DATABASE_UNAVAILABLE` with `Retry-After: 10`,
+  not `500 INTERNAL_ERROR`.** On 2026-11-16, from 19:30:43 to 19:31:28 UTC, the database executed
+  nothing and 88 requests failed with D1's `internal error` — an outage on Cloudflare's side that
+  reached callers as if it were a bug in this API. Unlike an overload it is not retried inside the
+  request, because the platform does not say whether a write that failed this way was applied. The
+  same `503` message now reads "temporarily unavailable" instead of "temporarily overloaded"; the
+  code and status are unchanged. Other database failures (a lost connection, an SQL error) are still
+  `500`.
 
 ## 2026-11-16
 

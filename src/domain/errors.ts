@@ -25,8 +25,9 @@ export class ServiceError extends Error {
 }
 
 /**
- * The store could not answer for longer than one request is allowed to wait, for a reason that is
- * the store's and not the request's: the database was overloaded or restarting.
+ * The store could not answer, for a reason that is the store's and not the request's: the database
+ * stayed overloaded or restarting for longer than one request is allowed to wait, or failed with an
+ * internal error of its own.
  *
  * The store adapter throws it once its own retries are spent, so the HTTP layer can tell a passing
  * outage (503, retry later) from a bug (500). It is an error of its own rather than a ServiceError

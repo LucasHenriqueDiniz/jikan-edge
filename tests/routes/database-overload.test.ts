@@ -46,3 +46,28 @@ describe('a D1 that is overloaded', () => {
       expect(body.error.requestId).toBe(response.headers.get('x-request-id'));
     });
 });
+
+// The 19:30 UTC outage of 2026-11-16, through the real app: every statement fails at once with D1's
+// internal error. It must read as the database being unavailable, and must not be retried.
+describe('a D1 that fails with an internal error', () => {
+  afterEach(() => vi.restoreAllMocks());
+
+  it('answers 503 DATABASE_UNAVAILABLE and tries each statement once', async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    let attempts = 0;
+    const answer = async () => {
+      attempts += 1;
+      throw new Error('D1_ERROR: internal error; reference = 266snuice9ovn8g7c47fkh36');
+    };
+    const statement = { bind: () => statement, first: answer, run: answer, all: answer };
+    const DB = { prepare: () => statement } as unknown as D1Database;
+
+    const response = await app.request('http://localhost/v1/users/ElectroHeavenVN/favorites', undefined, { DB });
+
+    expect(response.status).toBe(503);
+    expect(response.headers.get('retry-after')).toBe('10');
+    expect(((await response.json()) as { error: { code: string } }).error.code).toBe('DATABASE_UNAVAILABLE');
+    // withCache starts two reads in parallel (the cache entry and the payload); each is tried once.
+    expect(attempts).toBe(2);
+  });
+});

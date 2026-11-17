@@ -23,9 +23,12 @@ export function errorResponse(c: Context, error: unknown, requestId: string): Re
   c.header('X-Cache-Status', 'error');
   if (error instanceof ServiceError)
     return c.json({ error: { code: error.code, message: error.message, requestId } }, error.status);
-  // The store retried and gave up: an outage of the database, not a bug and not the caller's doing.
-  // 503 with Retry-After so a client can tell it from a 500 and knows when to come back. Logged under
-  // its own type so these stay countable apart from `unhandled_error`.
+  // The store gave up — overloaded through the whole retry window, or failing internally — so this is
+  // an outage of the database, not a bug and not the caller's doing. 503 with Retry-After so a client
+  // can tell it from a 500 and knows when to come back. Logged under its own type, with D1's message
+  // (an internal error carries a reference id), so these stay countable apart from `unhandled_error`.
+  // The wording says "unavailable", not "overloaded": since 2026-11-17 an internal error lands here
+  // too, and calling that an overload would send whoever reads it after the wrong cause.
   if (error instanceof StoreUnavailableError) {
     console.error(JSON.stringify({ type: 'database_unavailable', requestId, message: error.message }));
     c.header('Retry-After', String(DATABASE_RETRY_AFTER_SECONDS));
@@ -33,7 +36,7 @@ export function errorResponse(c: Context, error: unknown, requestId: string): Re
       {
         error: {
           code: 'DATABASE_UNAVAILABLE',
-          message: 'The database is temporarily overloaded. Retry after the number of seconds in Retry-After.',
+          message: 'The database is temporarily unavailable. Retry after the number of seconds in Retry-After.',
           requestId,
         },
       },
