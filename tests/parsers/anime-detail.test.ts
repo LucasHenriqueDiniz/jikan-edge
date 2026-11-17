@@ -7,6 +7,9 @@ const singularLabelsHtml = readFileSync('tests/fixtures/anime/detail-singular-la
 // Captured verbatim from myanimelist.net/anime/1 — the trimmed synthetic fixture above carries
 // none of the markup the newer fields live in (og:url, Premiered, ratingCount, Background).
 const realHtml = readFileSync('tests/fixtures/anime/detail-real.html', 'utf8');
+// The first 60,395 bytes of myanimelist.net/anime/39948, fetched 2026-11-16 and cut right after the
+// related entries: every field parses to the same value as from the whole page (checked one by one).
+const bareHostHtml = readFileSync('tests/fixtures/anime/detail-external-bare-host-real.html', 'utf8');
 
 describe('anime detail parser', () => {
   it('normalizes a public anime detail page', () => {
@@ -119,5 +122,21 @@ describe('anime detail parser', () => {
     expect(detail.genres.map((ref) => ref.name)).toEqual(['Drama', 'Fantasy']);
     expect(detail.studios.map((ref) => ref.name)).toEqual(['Kyoto Animation']);
     expect(detail.themes).toEqual([]);
+  });
+});
+
+// MAL writes this title's official site as `href="mahouritsu.com"`, with no scheme. That one link
+// failed the schema, and the detail, /full, /external, /relations and /streaming all answered 502.
+describe('a title whose official site link has no scheme', () => {
+  it('is served, with the link completed to https', () => {
+    expect(bareHostHtml).toContain('<a href="mahouritsu.com"');
+    const detail = parseAnimeDetail(bareHostHtml, 39948, '2026-11-16T00:00:00.000Z');
+    expect(detail.title).toBe('Muhyo to Rouji no Mahouritsu Soudan Jimusho 2nd Season');
+    expect(detail.externalLinks).toHaveLength(4);
+    expect(detail.externalLinks[0]).toEqual({ name: 'Official Site', url: 'https://mahouritsu.com' });
+    expect(detail.externalLinks[1]).toEqual({
+      name: 'AniDB',
+      url: 'https://anidb.net/perl-bin/animedb.pl?show=anime&aid=14953',
+    });
   });
 });

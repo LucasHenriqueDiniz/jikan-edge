@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { parseAnimeDetail } from '../../src/parsers/anime-detail.parser';
-import { extractRelations } from '../../src/parsers/relations-links';
+import { extractExternalLinks, extractRelations } from '../../src/parsers/relations-links';
 
 // Both fixtures are contiguous excerpts of the real pages, fetched through Cloudflare's network on
 // 2026-10-11. The One Piece one is the page's first 132 KB, cut right after the relations table.
@@ -71,5 +71,32 @@ describe('anime synopsis on a long page', () => {
     expect(detail.synopsis).toMatch(/^Barely surviving in a barrel after passing through a terrible whirlpool at sea/);
     expect(detail.title).toBe('One Piece');
     expect(detail.relations).toHaveLength(94);
+  });
+});
+
+describe('external links', () => {
+  // Byte-for-byte from the live pages on 2026-11-16: each title's official-site block, with only the
+  // href swapped per test, and 39948's AniDB link as the neighbour that must survive.
+  const officialSite = (href: string) =>
+    `<div class="external_links"><a href="${href}" target="_blank" class="link ga-click" data-ga-click-type="external-links-anime-pc-official-site"><i class="link_icon fas fa-link"></i><div class="caption">Official Site</div></a></div>`;
+  const anidb =
+    '<a href="https://anidb.net/perl-bin/animedb.pl?show=anime&amp;aid=14953" target="_blank" class="link ga-click" data-ga-click-type="external-links-anime-pc-anidb"><img src="https://cdn.myanimelist.net/img/common/external_links/200.png" class="link_icon" alt="icon"><div class="caption">AniDB</div></a>';
+
+  it('drops a link it cannot turn into a URL and keeps the rest (32816)', () => {
+    const html = officialSite('てーきゅう　５期　ＴＶ未放送オリジナルエピソードアニメ ') + anidb;
+    expect(extractExternalLinks(html)).toEqual([
+      { name: 'AniDB', url: 'https://anidb.net/perl-bin/animedb.pl?show=anime&aid=14953' },
+    ]);
+  });
+
+  it('drops two schemes run together (44156)', () => {
+    const html = officialSite('http:// https://baike.baidu.com/item/%E8%B5%9B%E5%B0%94%E5%8F%B7/19508192');
+    expect(extractExternalLinks(html)).toEqual([]);
+  });
+
+  it('completes a bare host (38778)', () => {
+    expect(extractExternalLinks(officialSite('aochan-anime.com'))).toEqual([
+      { name: 'Official Site', url: 'https://aochan-anime.com' },
+    ]);
   });
 });

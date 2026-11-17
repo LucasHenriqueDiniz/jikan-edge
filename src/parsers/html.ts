@@ -353,6 +353,34 @@ export function canonicalUrl(html: string): string | null {
   return url?.startsWith('https://myanimelist.net/') ? url : null;
 }
 
+// The same test the schemas' `z.string().url()` applies, so a value this accepts never fails there.
+function isAbsoluteUrl(value: string): boolean {
+  try {
+    new URL(value);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+// A host name with a dot and a letters-only TLD, at the start, followed by the end or by a path,
+// query or fragment.
+const BARE_HOST = /^[a-z0-9-]+(?:\.[a-z0-9-]+)*\.[a-z]{2,}(?=[/?#]|$)/i;
+
+// External links on a title page are typed in by MAL users and written into the href unchecked.
+// Most are absolute; some are a bare host ("mahouritsu.com", "www.ctv.co.jp/nyandafull/"), which a
+// browser resolves against MAL's own page, so the link is dead on MAL too; a few are not a URL at
+// all (a Japanese title, "http:// https://…"). One such link failed the whole detail schema, and
+// 22 anime answered 502 on every request in one day of production traffic (2026-11-16).
+//
+// A bare host gets `https://`: MAL gives no scheme, so the scheme is our choice, not MAL's. What
+// cannot be completed is dropped — `null` — rather than guessed at.
+export function externalUrl(href: string): string | null {
+  if (isAbsoluteUrl(href)) return href;
+  const completed = `https://${href}`;
+  return BARE_HOST.test(href) && isAbsoluteUrl(completed) ? completed : null;
+}
+
 export class ParserError extends Error {
   constructor(message: string) {
     super(message);

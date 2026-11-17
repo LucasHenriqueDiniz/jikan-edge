@@ -10,6 +10,20 @@ This file starts on 2026-07-30 and does not reconstruct earlier history.
 
 Published version: to be confirmed.
 
+### Fixed
+
+- **22 anime answered `502` on `/v1/anime/:id` because of one malformed external link.** MyAnimeList
+  writes the "Available At" and "Resources" links into the page as users typed them. Most are full
+  URLs; some are a bare host with no scheme (`mahouritsu.com`), and a few are not a URL at all. One
+  such link failed the whole detail page, every time: 96 failed requests on 2026-11-16, on 22 titles
+  (e.g. `39948`, `38778`, `791`), on `/v1/anime/:id` and on every route derived from it — `/full`,
+  `/external`, `/relations`, `/streaming`, `/themes`. A bare host is now completed with `https://`
+  (MyAnimeList gives no scheme, so `https` is this API's choice), and a link that cannot be read as a
+  URL is left out of `externalLinks` instead of failing the page. A link that was already a full URL
+  is unchanged. The manga detail reads its links the same way and gets the same fix. *Before:*
+  `GET /v1/anime/39948` → `502 UPSTREAM_SUSPICIOUS`, every time. *After:* `200`, with
+  `{ "name": "Official Site", "url": "https://mahouritsu.com" }` in `externalLinks`.
+
 ### Changed
 
 - **A cached resource nobody has requested for 14 days after it expired is now deleted.** Every ten

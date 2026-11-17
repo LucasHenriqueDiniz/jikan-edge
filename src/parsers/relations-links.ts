@@ -1,5 +1,5 @@
 import type { ExternalLink, RelationEntry, StreamingEntry } from '../domain/anime';
-import { decodeHtml } from './html';
+import { decodeHtml, externalUrl } from './html';
 
 // MAL renders related entries in two layouts on the same page: a few tiles with a cover (usually
 // the adaptation), then an `entries-table` with every other relation, one row per kind. Reading
@@ -54,8 +54,8 @@ export function extractExternalLinks(html: string): ExternalLink[] {
   for (const match of html.matchAll(
     /<a href="([^"]+)" target="_blank" class="link ga-click" data-ga-click-type="external-links-[^"]*"[^>]*>(?:<i[^>]*>\s*<\/i>|<img[^>]*>)<div class="caption">([^<]+)<\/div><\/a>/gi,
   )) {
-    const url = match[1].replace(/&amp;/g, '&');
-    if (seen.has(url)) continue;
+    const url = externalUrl(match[1].replace(/&amp;/g, '&'));
+    if (url === null || seen.has(url)) continue;
     seen.add(url);
     links.push({ name: decodeHtml(match[2]), url });
   }

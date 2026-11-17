@@ -6,6 +6,7 @@ import {
   COVER_IMAGE,
   decodeHtml,
   divContent,
+  externalUrl,
   imageFrom,
   imageVariants,
   labelBlock,
@@ -284,5 +285,41 @@ describe('divContent', () => {
 
   it('returns the rest of the document rather than nothing when the div is never closed', () => {
     expect(at('<div class="target">unterminated content')).toBe('unterminated content');
+  });
+});
+
+// Every href below is copied from a real title page (anime id in the test name), where it broke the
+// whole detail schema on 2026-11-16.
+describe('externalUrl', () => {
+  it('keeps an absolute URL exactly as MAL wrote it (1)', () => {
+    expect(externalUrl('http://www.cowboy-bebop.net/')).toBe('http://www.cowboy-bebop.net/');
+  });
+
+  it('completes a bare host with https (39948)', () => {
+    expect(externalUrl('mahouritsu.com')).toBe('https://mahouritsu.com');
+  });
+
+  it('keeps the path and query of a bare host it completes (791, 13503)', () => {
+    expect(externalUrl('www.sunrise-anime.jp/sunrise-inc/works/detail.php?cid=121')).toBe(
+      'https://www.sunrise-anime.jp/sunrise-inc/works/detail.php?cid=121',
+    );
+    expect(externalUrl('www.kaeruotoko.com/works_coffy.html?')).toBe('https://www.kaeruotoko.com/works_coffy.html?');
+  });
+
+  it('completes a bare host without re-encoding a non-ASCII path (21275)', () => {
+    expect(externalUrl('ja.wikipedia.org/wiki/やわらか戦車')).toBe('https://ja.wikipedia.org/wiki/やわらか戦車');
+  });
+
+  it('drops an href that is a title, not a URL (32816)', () => {
+    expect(externalUrl('てーきゅう　５期　ＴＶ未放送オリジナルエピソードアニメ ')).toBeNull();
+  });
+
+  it('drops two schemes run together instead of guessing which one was meant (44156)', () => {
+    expect(externalUrl('http:// https://baike.baidu.com/item/%E8%B5%9B%E5%B0%94%E5%8F%B7/19508192')).toBeNull();
+  });
+
+  // Not seen on MAL: a host shaped like a domain that the URL parser still refuses (invalid punycode).
+  it('never returns a URL the schema would reject', () => {
+    expect(externalUrl('xn--a.com')).toBeNull();
   });
 });
