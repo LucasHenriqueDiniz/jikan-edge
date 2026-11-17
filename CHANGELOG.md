@@ -8,7 +8,7 @@ This file starts on 2026-07-30 and does not reconstruct earlier history.
 
 ## 2026-11-17
 
-Published version: to be confirmed.
+Published versions: `c50fb4cd` (the cache retention); the external-link fix: to be confirmed.
 
 ### Fixed
 
