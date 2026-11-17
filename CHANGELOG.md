@@ -8,8 +8,8 @@ This file starts on 2026-07-30 and does not reconstruct earlier history.
 
 ## 2026-11-17
 
-Published versions: `c50fb4cd` (the cache retention), `3a29cf39` (the external-link fix); the
-internal-error mapping: to be confirmed.
+Published versions: `c50fb4cd` (the cache retention), `3a29cf39` (the external-link fix), `24bdf18d`
+(the user updates fix); the internal-error mapping: to be confirmed.
 
 ### Fixed
 
@@ -32,7 +32,6 @@ internal-error mapping: to be confirmed.
   `{ "title": "I Became the Sea Guardian&#039;s Adopted Daughter", "progress": null, "total": null,
   "score": null }`. *After:* `{ "title": "I Became the Sea Guardian's Adopted Daughter",
   "progress": 60, "total": 60, "score": 5 }`. Cached feeds are refetched on their next request.
-  *Published version: to be confirmed.*
 
 ### Changed
 
