@@ -294,7 +294,7 @@ the `jikan-edge-preview` database (`preview_database_id` in `wrangler.jsonc`), n
 and so do branch builds. A branch that adds a migration applies it there with
 `pnpm run db:migrate:preview`.
 
-Every route's accepted query parameters live in [`src/http/query-contract.ts`](src/http/query-contract.ts), and a test enumerates the router to fail if a route is missing from it. Architecture, source policy and local-dev details: [`docs/`](docs/README.md). Changes that affect consumers are listed in [`CHANGELOG.md`](CHANGELOG.md).
+Every route's accepted query parameters live in [`src/http/query-contract.ts`](src/http/query-contract.ts), and a test enumerates the router to fail if a route is missing from it. Architecture, source policy and local-dev details: [`docs/`](docs/README.md). Changes that affect consumers are listed in [`CHANGELOG.md`](CHANGELOG.md), also published at [jikan.lucashdo.com/changelog](https://jikan.lucashdo.com/changelog).
 
 ## Landing site
 

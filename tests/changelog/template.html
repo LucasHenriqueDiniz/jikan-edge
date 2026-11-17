@@ -1,0 +1,153 @@
+<!doctype html>
+<!-- Generated from CHANGELOG.md by tests/changelog/changelog-page.test.ts. Edit CHANGELOG.md (or
+     tests/changelog/template.html), then run `pnpm vitest run tests/changelog -u` to regenerate. -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Changelog — jikan-edge</title>
+<meta name="description" content="Every change to jikan-edge that matters to people consuming the API, dated, with the Cloudflare Workers version that shipped it.">
+<link rel="canonical" href="https://jikan.lucashdo.com/changelog">
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="jikan-edge">
+<meta property="og:url" content="https://jikan.lucashdo.com/changelog">
+<meta property="og:title" content="Changelog — jikan-edge">
+<meta property="og:description" content="Every change to jikan-edge that matters to people consuming the API, dated, with the Cloudflare Workers version that shipped it.">
+<meta property="og:image" content="https://jikan.lucashdo.com/og.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="jikan-edge — 97 routes, 7 ms p50, no auth, free. An unofficial MyAnimeList API on Cloudflare Workers.">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="https://jikan.lucashdo.com/og.png">
+<meta name="twitter:title" content="Changelog — jikan-edge">
+<meta name="twitter:description" content="Every change to jikan-edge that matters to people consuming the API.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%230b0e14'/%3E%3Ctext x='32' y='44' font-size='34' text-anchor='middle' fill='%23ff4b33' font-family='serif'%3E時%3C/text%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,300..800&family=IBM+Plex+Mono:ital,wght@0,400;0,500;1,400&display=swap" rel="stylesheet">
+<style>
+:root {
+  --ink: #0b0e14;
+  --ink-2: #10141d;
+  --panel: #131826;
+  --line: #232a3a;
+  --paper: #e9e5d9;
+  --paper-dim: #9aa0ae;
+  --paper-faint: #5d6474;
+  --vermillion: #ff4b33;
+  --gold: #d8b46a;
+  --teal: #6fd3c7;
+  --mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  --display: "Bricolage Grotesque", system-ui, sans-serif;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body { background: var(--ink); color: var(--paper); font-family: var(--display); font-weight: 350; line-height: 1.6; }
+::selection { background: var(--vermillion); color: var(--ink); }
+a { color: inherit; }
+code { font-family: var(--mono); font-size: .85em; background: var(--panel); border: 1px solid var(--line); border-radius: 4px; padding: 1px 5px; color: var(--gold); overflow-wrap: anywhere; }
+.topline { height: 3px; background: linear-gradient(90deg, var(--vermillion) 0%, var(--vermillion) 30%, var(--gold) 60%, transparent 100%); }
+.wrap { max-width: 780px; margin: 0 auto; padding: 0 16px; }
+header { padding: 18px 0; border-bottom: 1px solid var(--line); }
+header .wrap { max-width: 1200px; display: flex; align-items: center; gap: 20px; flex-wrap: wrap; }
+.brand { display: flex; align-items: baseline; gap: 10px; text-decoration: none; }
+.brand .kanji { color: var(--vermillion); font-size: 20px; line-height: 1; }
+.brand .name { font-weight: 700; font-size: 17px; letter-spacing: -.02em; }
+.brand .name em { font-style: normal; color: var(--vermillion); }
+.brand .docs-tag { font-family: var(--mono); font-size: 11px; color: var(--paper-faint); letter-spacing: .15em; text-transform: uppercase; }
+header nav { margin-left: auto; display: flex; gap: 4px; flex-wrap: wrap; }
+header nav a { text-decoration: none; color: var(--paper-dim); font-size: 14px; padding: 6px 12px; border-radius: 999px; }
+header nav a:hover { color: var(--paper); background: var(--panel); }
+
+main { padding: 48px 0 80px; }
+main h1 { font-size: clamp(28px, 4vw, 38px); font-weight: 750; letter-spacing: -.02em; line-height: 1.1; }
+.lede p { color: var(--paper-dim); margin-top: 12px; max-width: 66ch; }
+.lede a, .entry a { color: var(--paper); text-decoration-color: var(--vermillion); text-underline-offset: 3px; }
+
+.gh-cta {
+  margin-top: 22px; display: inline-flex; align-items: center; gap: 10px;
+  font-family: var(--mono); font-size: 13px; color: var(--paper);
+  background: var(--ink-2); border: 1px solid var(--line); border-radius: 8px;
+  padding: 10px 16px; text-decoration: none; transition: border-color .15s;
+}
+.gh-cta:hover { border-color: var(--vermillion); }
+.gh-cta .arrow { color: var(--vermillion); }
+
+.toc { margin-top: 32px; padding: 16px 18px; background: var(--ink-2); border: 1px solid var(--line); border-radius: 10px; }
+.toc h2 { font-family: var(--mono); font-size: 10.5px; font-weight: 500; letter-spacing: .14em; text-transform: uppercase; color: var(--paper-faint); }
+.toc ul { list-style: none; display: flex; flex-wrap: wrap; gap: 6px 16px; margin-top: 10px; }
+.toc a { font-family: var(--mono); font-size: 13px; color: var(--paper-dim); text-decoration: none; }
+.toc a:hover { color: var(--vermillion); }
+
+.entry { margin-top: 48px; padding-top: 8px; border-top: 1px solid var(--line); }
+.entry h2 { font-size: 22px; font-weight: 700; letter-spacing: -.01em; margin-top: 16px; scroll-margin-top: 16px; }
+.entry h2 a { text-decoration: none; }
+.entry h2 a:hover { color: var(--vermillion); }
+.entry h3 { margin-top: 26px; }
+.entry p { color: var(--paper-dim); font-size: 14.5px; margin-top: 12px; max-width: 66ch; }
+.entry ul { margin: 8px 0 0 18px; }
+.entry li { color: var(--paper-dim); font-size: 14px; margin-top: 8px; max-width: 66ch; }
+.entry li p { font-size: 14px; margin-top: 8px; }
+.entry li > p:first-child { margin-top: 0; }
+.entry li ul { margin-top: 6px; }
+.entry strong { color: var(--paper); font-weight: 600; }
+.entry em { color: var(--paper); }
+.entry hr { border: none; border-top: 1px dashed var(--line); margin-top: 28px; }
+.group-label { display: block; font-family: var(--mono); font-size: 10.5px; font-weight: 500; letter-spacing: .14em; text-transform: uppercase; color: var(--paper-dim); }
+.group-label.breaking { color: var(--vermillion); }
+.group-label.added { color: var(--teal); }
+.group-label.fixed { color: var(--gold); }
+.group-label.changed { color: var(--paper); }
+
+footer { border-top: 1px solid var(--line); padding: 28px 0 48px; color: var(--paper-faint); font-size: 13px; margin-top: 40px; }
+footer .wrap { max-width: 1200px; display: flex; gap: 24px; flex-wrap: wrap; justify-content: space-between; }
+footer a { color: var(--paper-dim); }
+</style>
+</head>
+<body>
+<div class="topline"></div>
+
+<header>
+  <div class="wrap">
+    <a class="brand" href="/">
+      <span class="kanji">時間</span>
+      <span class="name">jikan<em>-edge</em></span>
+      <span class="docs-tag">/ changelog</span>
+    </a>
+    <nav>
+      <a href="/">Home</a>
+      <a href="/docs">Documentation</a>
+      <a href="https://github.com/LucasHenriqueDiniz/jikan-edge" target="_blank" rel="noopener">GitHub ↗</a>
+    </nav>
+  </div>
+</header>
+
+<div class="wrap">
+  <main>
+    <h1>Changelog</h1>
+    <div class="lede">
+<!-- intro -->
+    </div>
+    <a class="gh-cta" href="https://github.com/LucasHenriqueDiniz/jikan-edge/blob/main/CHANGELOG.md" target="_blank" rel="noopener">
+      CHANGELOG.md on GitHub <span class="arrow">↗</span>
+    </a>
+
+    <nav class="toc" aria-label="Releases">
+      <h2>Releases</h2>
+<!-- toc -->
+    </nav>
+
+<!-- sections -->
+  </main>
+</div>
+
+<footer>
+  <div class="wrap">
+    <span>時間 jikan-edge · MIT License · Not affiliated with MyAnimeList or Jikan.</span>
+    <span><a href="/docs">Documentation</a> ·
+    <a href="/privacy">Privacy</a> ·
+    <a href="https://github.com/LucasHenriqueDiniz/jikan-edge" target="_blank" rel="noopener">GitHub</a></span>
+  </div>
+</footer>
+</body>
+</html>

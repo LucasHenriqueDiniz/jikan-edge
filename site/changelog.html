@@ -1,16 +1,18 @@
 <!doctype html>
+<!-- Generated from CHANGELOG.md by tests/changelog/changelog-page.test.ts. Edit CHANGELOG.md (or
+     tests/changelog/template.html), then run `pnpm vitest run tests/changelog -u` to regenerate. -->
 <html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Changelog — jikan-edge</title>
-<meta name="description" content="What changed in jikan-edge, for people consuming the API — highlights here, full dated history in CHANGELOG.md.">
+<meta name="description" content="Every change to jikan-edge that matters to people consuming the API, dated, with the Cloudflare Workers version that shipped it.">
 <link rel="canonical" href="https://jikan.lucashdo.com/changelog">
 <meta property="og:type" content="article">
 <meta property="og:site_name" content="jikan-edge">
 <meta property="og:url" content="https://jikan.lucashdo.com/changelog">
 <meta property="og:title" content="Changelog — jikan-edge">
-<meta property="og:description" content="What changed in jikan-edge, for people consuming the API — highlights here, full dated history in CHANGELOG.md.">
+<meta property="og:description" content="Every change to jikan-edge that matters to people consuming the API, dated, with the Cloudflare Workers version that shipped it.">
 <meta property="og:image" content="https://jikan.lucashdo.com/og.png">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
@@ -18,7 +20,7 @@
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:image" content="https://jikan.lucashdo.com/og.png">
 <meta name="twitter:title" content="Changelog — jikan-edge">
-<meta name="twitter:description" content="What changed in jikan-edge, for people consuming the API.">
+<meta name="twitter:description" content="Every change to jikan-edge that matters to people consuming the API.">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%230b0e14'/%3E%3Ctext x='32' y='44' font-size='34' text-anchor='middle' fill='%23ff4b33' font-family='serif'%3E時%3C/text%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -43,9 +45,9 @@ html { scroll-behavior: smooth; }
 body { background: var(--ink); color: var(--paper); font-family: var(--display); font-weight: 350; line-height: 1.6; }
 ::selection { background: var(--vermillion); color: var(--ink); }
 a { color: inherit; }
-code { font-family: var(--mono); font-size: .85em; background: var(--panel); border: 1px solid var(--line); border-radius: 4px; padding: 1px 5px; color: var(--gold); }
+code { font-family: var(--mono); font-size: .85em; background: var(--panel); border: 1px solid var(--line); border-radius: 4px; padding: 1px 5px; color: var(--gold); overflow-wrap: anywhere; }
 .topline { height: 3px; background: linear-gradient(90deg, var(--vermillion) 0%, var(--vermillion) 30%, var(--gold) 60%, transparent 100%); }
-.wrap { max-width: 780px; margin: 0 auto; padding: 0 24px; }
+.wrap { max-width: 780px; margin: 0 auto; padding: 0 16px; }
 header { padding: 18px 0; border-bottom: 1px solid var(--line); }
 header .wrap { max-width: 1200px; display: flex; align-items: center; gap: 20px; flex-wrap: wrap; }
 .brand { display: flex; align-items: baseline; gap: 10px; text-decoration: none; }
@@ -53,13 +55,14 @@ header .wrap { max-width: 1200px; display: flex; align-items: center; gap: 20px;
 .brand .name { font-weight: 700; font-size: 17px; letter-spacing: -.02em; }
 .brand .name em { font-style: normal; color: var(--vermillion); }
 .brand .docs-tag { font-family: var(--mono); font-size: 11px; color: var(--paper-faint); letter-spacing: .15em; text-transform: uppercase; }
-header nav { margin-left: auto; display: flex; gap: 4px; }
+header nav { margin-left: auto; display: flex; gap: 4px; flex-wrap: wrap; }
 header nav a { text-decoration: none; color: var(--paper-dim); font-size: 14px; padding: 6px 12px; border-radius: 999px; }
 header nav a:hover { color: var(--paper); background: var(--panel); }
 
 main { padding: 48px 0 80px; }
 main h1 { font-size: clamp(28px, 4vw, 38px); font-weight: 750; letter-spacing: -.02em; line-height: 1.1; }
-main .lede { color: var(--paper-dim); margin-top: 12px; max-width: 62ch; }
+.lede p { color: var(--paper-dim); margin-top: 12px; max-width: 66ch; }
+.lede a, .entry a { color: var(--paper); text-decoration-color: var(--vermillion); text-underline-offset: 3px; }
 
 .gh-cta {
   margin-top: 22px; display: inline-flex; align-items: center; gap: 10px;
@@ -70,21 +73,31 @@ main .lede { color: var(--paper-dim); margin-top: 12px; max-width: 62ch; }
 .gh-cta:hover { border-color: var(--vermillion); }
 .gh-cta .arrow { color: var(--vermillion); }
 
-.entry { margin-top: 40px; }
-.entry .date { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; }
-.entry .date h2 { font-size: 19px; font-weight: 700; letter-spacing: -.01em; }
-.entry .date .versions { font-family: var(--mono); font-size: 11px; color: var(--paper-faint); }
-.entry .summary { color: var(--paper-dim); font-size: 14.5px; margin-top: 8px; max-width: 66ch; }
-.entry .groups { display: flex; flex-direction: column; gap: 14px; margin-top: 16px; }
-.group-label { font-family: var(--mono); font-size: 10.5px; letter-spacing: .14em; text-transform: uppercase; }
+.toc { margin-top: 32px; padding: 16px 18px; background: var(--ink-2); border: 1px solid var(--line); border-radius: 10px; }
+.toc h2 { font-family: var(--mono); font-size: 10.5px; font-weight: 500; letter-spacing: .14em; text-transform: uppercase; color: var(--paper-faint); }
+.toc ul { list-style: none; display: flex; flex-wrap: wrap; gap: 6px 16px; margin-top: 10px; }
+.toc a { font-family: var(--mono); font-size: 13px; color: var(--paper-dim); text-decoration: none; }
+.toc a:hover { color: var(--vermillion); }
+
+.entry { margin-top: 48px; padding-top: 8px; border-top: 1px solid var(--line); }
+.entry h2 { font-size: 22px; font-weight: 700; letter-spacing: -.01em; margin-top: 16px; scroll-margin-top: 16px; }
+.entry h2 a { text-decoration: none; }
+.entry h2 a:hover { color: var(--vermillion); }
+.entry h3 { margin-top: 26px; }
+.entry p { color: var(--paper-dim); font-size: 14.5px; margin-top: 12px; max-width: 66ch; }
+.entry ul { margin: 8px 0 0 18px; }
+.entry li { color: var(--paper-dim); font-size: 14px; margin-top: 8px; max-width: 66ch; }
+.entry li p { font-size: 14px; margin-top: 8px; }
+.entry li > p:first-child { margin-top: 0; }
+.entry li ul { margin-top: 6px; }
+.entry strong { color: var(--paper); font-weight: 600; }
+.entry em { color: var(--paper); }
+.entry hr { border: none; border-top: 1px dashed var(--line); margin-top: 28px; }
+.group-label { display: block; font-family: var(--mono); font-size: 10.5px; font-weight: 500; letter-spacing: .14em; text-transform: uppercase; color: var(--paper-dim); }
 .group-label.breaking { color: var(--vermillion); }
 .group-label.added { color: var(--teal); }
 .group-label.fixed { color: var(--gold); }
 .group-label.changed { color: var(--paper); }
-.entry ul { margin: 6px 0 0 18px; }
-.entry li { color: var(--paper-dim); font-size: 14px; margin-top: 6px; max-width: 66ch; }
-.entry li b { color: var(--paper); font-weight: 600; }
-hr.rule { border: none; border-top: 1px solid var(--line); margin-top: 40px; }
 
 footer { border-top: 1px solid var(--line); padding: 28px 0 48px; color: var(--paper-faint); font-size: 13px; margin-top: 40px; }
 footer .wrap { max-width: 1200px; display: flex; gap: 24px; flex-wrap: wrap; justify-content: space-between; }
@@ -112,199 +125,325 @@ footer a { color: var(--paper-dim); }
 <div class="wrap">
   <main>
     <h1>Changelog</h1>
-    <p class="lede">Highlights only, curated for people consuming the API. jikan-edge ships by continuous deploy
-    with no versioned releases, so the source of truth is dated and names the published Cloudflare Workers
-    version id for each release — that full, unabridged history lives in <code>CHANGELOG.md</code>.</p>
+    <div class="lede">
+<p>Changes that matter to anyone <strong>consuming</strong> the API. The technical detail behind each item — including the evidence each decision rests on — lives in <a href="https://github.com/LucasHenriqueDiniz/jikan-edge/blob/main/docs/routes.md" target="_blank" rel="noopener"><code>docs/routes.md</code></a>.</p>
+<p><code>jikan-edge</code> ships by continuous deploy to Cloudflare Workers, with no versioned releases, so sections are dated rather than numbered. Each one names the published version id, which is the real unit of delivery.</p>
+<p>This file starts on 2026-07-30 and does not reconstruct earlier history.</p>
+    </div>
     <a class="gh-cta" href="https://github.com/LucasHenriqueDiniz/jikan-edge/blob/main/CHANGELOG.md" target="_blank" rel="noopener">
-      Full changelog on GitHub <span class="arrow">↗</span>
+      CHANGELOG.md on GitHub <span class="arrow">↗</span>
     </a>
 
-    <div class="entry">
-      <div class="date">
-        <h2>2026-08-27 — an error message that led nowhere</h2>
-        <span class="versions">1 release</span>
-      </div>
-      <p class="summary">One line of text and nothing else. The refusal for <code>?sfw</code> was sending
-      callers after a parameter this API refuses just as firmly, so taking the advice bought a second
-      request and the same wall.</p>
-      <div class="groups">
-        <div>
-          <span class="group-label fixed">Fixed</span>
-          <ul>
-            <li><b><code>?sfw</code> recommended a parameter that also fails.</b> The
-            <code>400 UNSUPPORTED_PARAMETER</code> ended with <code>Use "genres_exclude" or "rating".</code>,
-            and <code>genres_exclude</code> answers <code>400</code> here too — it was withdrawn the day it
-            was announced. The message now names only <code>rating</code>, and says that it applies to anime
-            search (<code>GET /v1/anime</code>): MyAnimeList's manga search page carries no classification
-            field. Error text only — the same requests are accepted and refused as before.</li>
-          </ul>
-        </div>
-      </div>
-    </div>
+    <nav class="toc" aria-label="Releases">
+      <h2>Releases</h2>
+<ul>
+<li><a href="#2026-11-17">2026-11-17</a></li>
+<li><a href="#2026-11-16">2026-11-16</a></li>
+<li><a href="#2026-11-05">2026-11-05</a></li>
+<li><a href="#2026-10-13">2026-10-13</a></li>
+<li><a href="#2026-09-14">2026-09-14</a></li>
+<li><a href="#2026-08-27">2026-08-27</a></li>
+<li><a href="#2026-08-18">2026-08-18</a></li>
+<li><a href="#2026-08-16">2026-08-16</a></li>
+<li><a href="#2026-07-30-second-release-of-the-day">2026-07-30 (second release of the day)</a></li>
+<li><a href="#2026-07-30">2026-07-30</a></li>
+<li><a href="#before-2026-07-30">Before 2026-07-30</a></li>
+</ul>
+    </nav>
 
-    <hr class="rule">
+<section class="entry">
+<h2 id="2026-11-17"><a href="#2026-11-17">2026-11-17</a></h2>
+<p>Published versions: <code>c50fb4cd</code> (the cache retention), <code>3a29cf39</code> (the external-link fix), <code>4cc1eafb</code> (the internal-error mapping), <code>24bdf18d</code> (the user updates fix), <code>34e525fd</code> (the version header).</p>
+<h3 class="group-label fixed">Fixed</h3>
+<ul>
+<li><strong>22 anime answered <code>502</code> on <code>/v1/anime/:id</code> because of one malformed external link.</strong> MyAnimeList writes the &quot;Available At&quot; and &quot;Resources&quot; links into the page as users typed them. Most are full URLs; some are a bare host with no scheme (<code>mahouritsu.com</code>), and a few are not a URL at all. One such link failed the whole detail page, every time: 96 failed requests on 2026-11-16, on 22 titles (e.g. <code>39948</code>, <code>38778</code>, <code>791</code>), on <code>/v1/anime/:id</code> and on every route derived from it — <code>/full</code>, <code>/external</code>, <code>/relations</code>, <code>/streaming</code>, <code>/themes</code>. A bare host is now completed with <code>https://</code> (MyAnimeList gives no scheme, so <code>https</code> is this API's choice), and a link that cannot be read as a URL is left out of <code>externalLinks</code> instead of failing the page. A link that was already a full URL is unchanged. The manga detail reads its links the same way and gets the same fix. <em>Before:</em> <code>GET /v1/anime/39948</code> → <code>502 UPSTREAM_SUSPICIOUS</code>, every time. <em>After:</em> <code>200</code>, with <code>{ &quot;name&quot;: &quot;Official Site&quot;, &quot;url&quot;: &quot;https://mahouritsu.com&quot; }</code> in <code>externalLinks</code>.</li>
+<li><strong><code>/v1/users/:username/userupdates</code> returned <code>progress</code>, <code>total</code> and <code>score</code> as <code>null</code> on every entry, and titles with HTML entities.</strong> The numbers were on MyAnimeList's page all along; the parser stopped reading each entry one line before them. Affects <code>/v1/users/:username/full</code> too, which embeds the same feed. <code>total</code> is still <code>null</code> when MyAnimeList does not know it (<code>41/?</code>), and a plan-to-watch or plan-to-read entry has no counter, so both stay <code>null</code> there. <em>Before:</em> <code>{ &quot;title&quot;: &quot;I Became the Sea Guardian&amp;#039;s Adopted Daughter&quot;, &quot;progress&quot;: null, &quot;total&quot;: null, &quot;score&quot;: null }</code>. <em>After:</em> <code>{ &quot;title&quot;: &quot;I Became the Sea Guardian's Adopted Daughter&quot;, &quot;progress&quot;: 60, &quot;total&quot;: 60, &quot;score&quot;: 5 }</code>. Cached feeds are refetched on their next request.</li>
+</ul>
+<h3 class="group-label changed">Changed</h3>
+<ul>
+<li><strong>A cached resource nobody has requested for 14 days after it expired is now deleted.</strong> Every ten minutes the Worker removes cache entries that expired more than 14 days earlier, in small paced batches. Nothing was ever deleted before, and the database was growing toward its fixed 10 GB ceiling: 4.46 GB on 2026-11-16, most of it the friends lists one scraper requested between 2026-10-19 and 2026-11-08 and nobody asked for again. What a caller can notice: such a resource is fetched from MyAnimeList again on its next request (<code>X-Cache-Status: miss</code>, a few seconds), and if MyAnimeList is down at that moment there is no stale copy left to fall back on. Anything requested within the window behaves exactly as before. Title details, which <code>/v1/random/*</code> draws from, and user lists keep their data; only their cache bookkeeping is removed.</li>
+<li><strong>An internal error of the database answers <code>503 DATABASE_UNAVAILABLE</code> with <code>Retry-After: 10</code>, not <code>500 INTERNAL_ERROR</code>.</strong> On 2026-11-16, from 19:30:43 to 19:31:28 UTC, the database executed nothing and 88 requests failed with D1's <code>internal error</code> — an outage on Cloudflare's side that reached callers as if it were a bug in this API. Unlike an overload it is not retried inside the request, because the platform does not say whether a write that failed this way was applied. The same <code>503</code> message now reads &quot;temporarily unavailable&quot; instead of &quot;temporarily overloaded&quot;; the code and status are unchanged. Other database failures (a lost connection, an SQL error) are still <code>500</code>.</li>
+<li><strong><code>X-Worker-Version</code> carries the id of the version that answered.</strong> It was a fixed string written by hand on 2026-07-19 and never updated, so every response since then said <code>jikan-edge-2026-07-19</code> whatever code produced it — the version that served the database incident of 2026-11-16 included. It now comes from Cloudflare's version metadata: the full version id, whose first eight characters are the ones this file lists under &quot;Published versions&quot;. It reads <code>local</code> where there is no deployed version (<code>wrangler dev --remote</code>, tests). <em>Before:</em> <code>X-Worker-Version: jikan-edge-2026-07-19</code>. <em>After:</em> e.g. <code>X-Worker-Version: 4cc1eafb-fcb4-4629-8b1e-37dd97a31029</code>.</li>
+</ul>
+</section>
 
-    <div class="entry">
-      <div class="date">
-        <h2>2026-08-18 — an address of its own</h2>
-        <span class="versions">9 releases, 3 changes</span>
-      </div>
-      <p class="summary">The API has a proper domain now, and the old one keeps working. Nine releases for
-      three changes because each shipped twice — a push to <code>main</code> deploys on its own, and these
-      were deployed by hand as well.</p>
-      <div class="groups">
-        <div>
-          <span class="group-label changed">Changed</span>
-          <ul>
-            <li><b>New base URL: <code>https://jikan.lucashdo.com</code>.</b> The documentation, the landing
-            page and <code>llms.txt</code> all point there now. <b>Nothing breaks:</b>
-            <code>https://jikan-edge.lucas-hdo.workers.dev</code> still serves the same Worker on the same
-            cache — no redirect, no deprecation window, nothing to do, and no removal planned. The custom
-            domain is additive; prefer it for new work so that a later move off <code>*.workers.dev</code>
-            costs you nothing.</li>
-            <li>The API identifies itself to MyAnimeList as
-            <code>jikan-edge/0.1 (+https://jikan.lucashdo.com)</code>. Only MAL sees this; no response
-            changes.</li>
-          </ul>
-        </div>
-        <div>
-          <span class="group-label fixed">Fixed</span>
-          <ul>
-            <li><b>Self-hosting: <code>npm run setup</code> now empties the <code>routes</code> list.</b>
-            A fork was inheriting the maintainer's custom domain, and <code>wrangler deploy</code> then
-            failed on a zone it could not claim.</li>
-          </ul>
-        </div>
-      </div>
-    </div>
+<section class="entry">
+<h2 id="2026-11-16"><a href="#2026-11-16">2026-11-16</a></h2>
+<p>Published versions: <code>ea5847b0</code> (the database retry and <code>DATABASE_UNAVAILABLE</code>), <code>af9cfec5</code> (the <code>episodes</code> fix).</p>
+<p>Origin: a WeebProfile card lost to <code>500 INTERNAL_ERROR</code> on <code>/v1/users/:username/favorites</code> during its 03:07 UTC cron. Every 500 of that week — 984 of them — was the D1 database refusing a query as overloaded: not a bug, and not MyAnimeList. The check after that deploy found the <code>episodes</code> item.</p>
+<h3 class="group-label fixed">Fixed</h3>
+<ul>
+<li><strong>A briefly overloaded database is waited out inside the request.</strong> A query D1 refuses as overloaded, or while it restarts, is retried for up to 12 s, so a stall that clears in time answers normally. <em>Before:</em> <code>500 INTERNAL_ERROR</code>, in under a second. <em>After:</em> the usual <code>200</code>, a few seconds later (4–10 s measured against a blocked test database).</li>
+<li><strong><code>/v1/anime/:id/episodes</code> of a single-episode title answers <code>200</code> with <code>data: []</code>.</strong> MyAnimeList has no episode page for a movie, an OVA or a special, and answers it with the same 404 it gives an id with no title, so the route answered <code>404 NOT_FOUND</code> — uncached, fetching MyAnimeList again on every request (~500 an hour on 2026-11-16). The title's own page now tells the two apart, and the empty list is cached like any other page. <em>Before:</em> <code>GET /v1/anime/28851/episodes</code> → <code>404</code>, every time. <em>After:</em> <code>200</code>, <code>data: []</code>, then <code>X-Cache-Status: hit</code>. An id with no title is still <code>404 NOT_FOUND</code>.</li>
+</ul>
+<h3 class="group-label changed">Changed</h3>
+<ul>
+<li><strong>New error: <code>503 DATABASE_UNAVAILABLE</code> with <code>Retry-After: 10</code></strong>, when the database stays overloaded through the whole retry window. It replaces the <code>500 INTERNAL_ERROR</code> the same condition gave before, so a client can tell a passing outage from a bug. Unlike an upstream failure, no stale copy can be served here: it lives in the database that is down.</li>
+<li><strong><code>X-Cache-Status</code> is <code>error</code> on every error response</strong>, where it used to be <code>unknown</code>. Successful responses are unchanged (<code>hit</code>, <code>miss</code>, <code>stale</code>, <code>local</code>).</li>
+</ul>
+</section>
 
-    <hr class="rule">
+<section class="entry">
+<h2 id="2026-11-05"><a href="#2026-11-05">2026-11-05</a></h2>
+<p>Published version: to be confirmed.</p>
+<p>Origin: one day of production traffic (2026-11-04/05). 16% of the requests that reached the API — 53.6k of 331k — answered <code>502 UPSTREAM_SUSPICIOUS</code>, and every one of them was a title where MyAnimeList simply has nothing to show. The same title failed every time (no id got both a 502 and a 200 that day), and a 502 is never cached, so each retry fetched the MAL page again.</p>
+<h3 class="group-label fixed">Fixed</h3>
+<ul>
+<li><p><strong>A list MyAnimeList has nothing in answered <code>502</code>; it is <code>200</code> with <code>data: []</code> now.</strong> MAL shows a notice on these pages (&quot;No episode information has been added to this title.&quot;, &quot;No characters or voice actors have been added…&quot;, &quot;No recommendations have been made…&quot;, &quot;No discussion topic was found.&quot;), and the check that the page was the right one looked for the list's rows — absent exactly when the list is empty. Affects:</p>
+<ul>
+<li><code>/v1/anime/:id/episodes</code> on page 1 — long-running shows MAL lists without episode data, e.g. Pakkororin (<code>38099</code>, 1,512 episodes, none listed). 22k of the day's 502s, on 849 titles.</li>
+<li><code>/v1/anime/:id/characters</code> and <code>/staff</code>, <code>/v1/manga/:id/characters</code>. <strong><code>/staff</code> was lost too</strong>: a title with no characters can have staff — anime <code>29955</code> has a director — and the whole page used to fail.</li>
+<li><code>/v1/anime/:id/recommendations</code>, <code>/v1/manga/:id/recommendations</code>.</li>
+<li><code>/v1/anime/:id/forum</code>, <code>/v1/manga/:id/forum</code>.</li>
+</ul>
+<p><em>Before:</em> <code>GET /v1/anime/38099/episodes</code> → <code>502</code>. <em>After:</em> <code>200</code>, <code>data: []</code>.</p></li>
+<li><p><strong>An anime with no genres answered <code>502</code> on <code>/v1/anime/:id</code>, <code>/full</code>, <code>/relations</code>, <code>/external</code> and the other routes derived from the detail page.</strong> The page check required the word &quot;Genre&quot;, which is not on the page when MAL lists no genres (274 titles that day, e.g. <code>38099</code>, <code>45824</code>). The response itself always supported it: those titles now answer with <code>genres: []</code>. The manga detail page had the same check; no manga without genres was found to reproduce it, and it was changed with the anime one.</p></li>
+</ul>
+<p>A page that is genuinely broken still answers <code>502</code>: an empty list needs MAL's own notice, and a page whose rows exist but no longer parse is still an error.</p>
+<p>Not changed: <code>/v1/anime/:id/news</code> on a title with no news still answers <code>502</code>. That page carries no &quot;nothing here&quot; notice to tell an empty list from a broken one.</p>
+</section>
 
-    <div class="entry">
-      <div class="date">
-        <h2>2026-08-16 — a backlog that never shipped</h2>
-        <span class="versions">3 releases</span>
-      </div>
-      <p class="summary">Written on 2026-08-10, live only today: a stray workspace file made every Cloudflare build
-      fail while installing dependencies, so production went on serving code from 2026-07-31. These are fixes you
-      had not been getting yet, not fixes you already had.</p>
-      <div class="groups">
-        <div>
-          <span class="group-label breaking">Breaking</span>
-          <ul>
-            <li><b><code>ClubDetail.staff</code> is <code>{ username, url, role }[]</code></b>, where it was strings
-            shaped like <code>"Name (Role)"</code> — the profile link was in the markup all along, and the
-            concatenated form was ambiguous whenever a name or role contained parentheses.</li>
-          </ul>
-        </div>
-        <div>
-          <span class="group-label fixed">Fixed</span>
-          <ul>
-            <li><b>Themes came back empty.</b> <code>GET /v1/anime/:id/full</code> and <code>/themes</code> answered
-            <code>{ "openings": [], "endings": [] }</code> for titles whose widget MAL has already migrated — Frieren
-            returned nothing, Fullmetal Alchemist: Brotherhood lost half.</li>
-            <li><b>Staff stopped at the first 80 KB of the page</b> — 80 of One Piece's 542 members, dropped under a
-            <code>200</code> with nothing to indicate the list was cut.</li>
-            <li><b><code>background</code> ended with a stray "Edit"</b>, the next section's edit link read as the
-            last word of the text.</li>
-            <li><code>GET /health</code> accepted query parameters it documents as invalid; a database blip could
-            answer with the previous value while the refreshed one was already stored; user search answered
-            <code>500</code> instead of <code>502</code> on an unrecognised page.</li>
-          </ul>
-        </div>
-      </div>
-    </div>
+<section class="entry">
+<h2 id="2026-10-13"><a href="#2026-10-13">2026-10-13</a></h2>
+<p>Published version: <code>a0004e26</code>. (As always, the commit that fills in this id ships in the <em>next</em> build — an entry can never name the version that publishes it.) Written on 2026-10-11; dated by the day it reached production.</p>
+<p>Origin: a side-by-side measurement against Tenrai (another Jikan-compatible API) on the 70 routes both serve, with every divergence checked against the live MyAnimeList page. Every call there returned 200; what it found were <strong>200s carrying wrong or missing data</strong>, plus a few status codes that described the wrong thing. The evidence is in <a href="https://github.com/LucasHenriqueDiniz/jikan-edge/blob/main/docs/research/2026-10-11-tenrai-gap-probes/research.md" target="_blank" rel="noopener"><code>docs/research/2026-10-11-tenrai-gap-probes/</code></a>.</p>
+<h3 class="group-label fixed">Fixed</h3>
+<ul>
+<li><strong>Relations were 2% complete on long-running titles.</strong> Only the cover tiles at the top of the related-entries block were read, never the table under them: One Piece answered with 2 of its 94 relations, and Berserk lost its Spin-Off and Other entries. Affects <code>/v1/anime/:id</code>, <code>/full</code>, <code>/relations</code> and the manga equivalents. Now 94 and 9, matching the page.</li>
+<li><strong><code>synopsis</code> was <code>null</code> on the anime with the longest pages</strong> — One Piece, Detective Conan and Naruto Shippuuden among them — because the parser read a fixed 90 KB prefix and the synopsis now starts past it.</li>
+<li><strong><code>nameKanji</code>, <code>favorites</code> and <code>about</code> were <code>null</code> on most popular characters.</strong> Same cause, a 60 KB prefix: five of the six characters measured (Luffy, Lelouch, Zoro, Naruto, Goku) had all three missing.</li>
+<li><strong>Filler and recap episodes were silently dropped</strong> from <code>/v1/anime/:id/episodes</code> — 11 of the 100 on One Piece's first page.</li>
+<li><strong><code>?type=novel</code> on manga search returned light novels.</strong> It now returns novels; <code>lightnovel</code> is still light novels.</li>
+<li><strong>A title nobody has reviewed answered <code>502</code></strong> on <code>/v1/anime|manga/:id/reviews</code>. It is an empty list now.</li>
+<li><strong><code>/v1/anime/:id/reviews?page=999</code> returned page 1 again</strong>, with <code>hasNextPage: true</code> — a paginator that never ended, because MAL redirects a page past the last back to the first. Past the last page it is an empty list now.</li>
+<li>A person's <code>about</code> no longer gets a space where an inline link was (<code>@ seki0908</code> → <code>@seki0908</code>).</li>
+</ul>
+<h3 class="group-label changed">Changed</h3>
+<ul>
+<li><strong>An empty result is <code>200</code> with <code>data: []</code>, not an error.</strong> A search with no match used to answer <code>404 NOT_FOUND</code> with &quot;Unable to refresh this resource.&quot;; a page past the end of any list answered <code>404</code>, and on some lists <code>502</code> or <code>503</code>. All of these are now an empty page with <code>hasNextPage: false</code>: anime, manga, character and user search; the top lists; the review and recommendation feeds; the club index and club members; a title's reviews; the episode list. <em>Before:</em> <code>GET /v1/anime?q=zzqqxxyyvvkk</code> → <code>404</code>. <em>After:</em> <code>200</code>, <code>data: []</code>.</li>
+<li><strong>A thing that does not exist is <code>404</code>.</strong> <code>/v1/characters/99999999</code> answered <code>502 UPSTREAM_SUSPICIOUS</code>, and <code>/v1/anime/21/episodes/99999</code> answered <strong><code>200</code> with every field <code>null</code></strong>. Both are <code>404 NOT_FOUND</code> now.</li>
+<li><strong><code>name</code> on <code>/v1/characters/:id</code> (and <code>/full</code>, <code>/v1/random/characters</code>) no longer contains the nicknames.</strong> <em>Before:</em> <code>Luffy &quot;Mugiwara, Straw Hat&quot; Monkey D.</code> <em>After:</em> <code>Luffy Monkey D.</code>, with the nicknames in the new <code>nicknames</code> field. <code>top/characters</code> keeps MAL's family-first form (<code>Monkey D., Luffy</code>): the detail page does not carry it for most characters.</li>
+<li><strong><code>alternateNames</code> on <code>/v1/people/:id</code> (and <code>/full</code>, <code>/v1/random/people</code>) is a list.</strong> <em>Before:</em> <code>&quot;Seki Mondoya, 門戸 開, Monto Hiraku&quot;</code>. <em>After:</em> <code>[&quot;Seki Mondoya&quot;, &quot;門戸 開&quot;, &quot;Monto Hiraku&quot;]</code>, and <code>[]</code> where there are none.</li>
+<li><strong>A search query under three characters is searched.</strong> MyAnimeList treats <code>q=86</code> as matching nothing, so the anime called <em>86</em> could not be found; it is now sent quoted, the way MAL's own search accepts it, and returns the four <em>86</em> titles. Quoted, MAL matches by substring, so a short query also brings titles that merely contain it (<code>86</code> brings <em>GR86 x Initial D</em> too).</li>
+</ul>
+<h3 class="group-label added">Added</h3>
+<ul>
+<li><strong><code>/v1/anime/:id/episodes?page=N</code></strong>, 100 episodes a page (One Piece: 12 pages). It used to serve the first page only. Each episode also carries <code>filler</code> and <code>recap</code>.</li>
+<li><strong><code>preliminary</code> and <code>spoilers</code> on the review routes</strong> (<code>/v1/reviews/anime|manga</code>, <code>/v1/anime|manga/:id/reviews</code>), each <code>true</code> or <code>false</code>. They map to MyAnimeList's own toggles, which filter on its side. Without either you get MAL's default — preliminary reviews <strong>in</strong>, spoiler reviews <strong>out</strong>, the same as before. Note that is the opposite of Jikan's preliminary default; <code>?preliminary=false</code> gets Jikan's behaviour. Both used to be refused as unsupported, on the claim that MAL does not separate those reviews. It does.</li>
+<li><strong>Each review now carries <code>reviewId</code>, <code>url</code>, <code>isPreliminary</code>, <code>isSpoiler</code>, <code>episodesWatched</code> / <code>chaptersRead</code></strong> (from the Preliminary tag, the only place MAL prints them) and <strong><code>reactions</code></strong> (<code>overall</code>, <code>nice</code>, <code>loveIt</code>, <code>funny</code>, <code>confusing</code>, <code>informative</code>, <code>wellWritten</code>, <code>creative</code>; <code>null</code> where the page prints none).</li>
+<li><strong><code>continuing</code> on season entries, and as a parameter.</strong> Entries MAL lists under &quot;TV (Continuing)&quot; carry <code>continuing: true</code>. <code>/v1/seasons/now</code> and <code>/v1/seasons/:year/:season</code> still return them by default; <code>?continuing=false</code> drops them (165 → 120 entries on <code>seasons/now</code> the day this shipped). Jikan excludes them unless asked, so a port from Jikan wants <code>?continuing=false</code>.</li>
+<li><strong>Search results carry <code>startDate</code>, <code>endDate</code> and <code>members</code></strong>, plus <code>rating</code> on anime and <code>chapters</code> on manga — read from the same results page, no extra request. A date MAL only partly knows keeps what it knows: an announced October 2027 is <code>2027-10</code>, a year alone is <code>2027</code>. The dates come from a two-digit year: up to five years ahead reads as this century, so MAL's handful of titles from 1917–1931 show up in the 2000s. The detail page has the full date.</li>
+<li><strong>New search filter values:</strong> anime <code>type=cm</code>, <code>pv</code>, <code>tv_special</code>; manga <code>status=hiatus</code> and <code>discontinued</code>.</li>
+<li><strong><code>birthDate</code></strong> on people, <code>YYYY-MM-DD</code>, only when MAL prints day, month and year. <code>birthday</code> keeps MAL's own text, because many birthdays there have no year (<code>Sep 8</code>) and a date field would drop them.</li>
+<li><strong>An OpenAPI 3.1 document at <a href="https://jikan.lucashdo.com/openapi.json"><code>/openapi.json</code></a></strong>, one path per route with its query parameters and response schema, generated from the code and checked by a test so it cannot drift. The parameters this API refuses, with the reason for each, are under <code>x-unsupported-parameters</code>.</li>
+</ul>
+</section>
 
-    <hr class="rule">
+<section class="entry">
+<h2 id="2026-09-14"><a href="#2026-09-14">2026-09-14</a></h2>
+<p>Published version: <code>8470d88f</code>. (As always, the commit that fills in this id ships in the <em>next</em> build — an entry can never name the version that publishes it.)</p>
+<h3 class="group-label fixed">Fixed</h3>
+<ul>
+<li><p><strong>An exact-title search no longer returns <code>502 UPSTREAM_SUSPICIOUS</code></strong> (<a href="https://github.com/LucasHenriqueDiniz/jikan-edge/issues/16" target="_blank" rel="noopener">issue #16</a>). Searching for a title by its full name — e.g. <code>GET /v1/anime?q=Lv999+no+Murabito&amp;order_by=start_date&amp;sort=desc</code> — answered 502, while a shorter query (<code>q=Lv999</code>) worked and returned that very entry. The more precisely you asked, the more likely you were to hit the error.</p>
+<p>The cause: MyAnimeList redirects an exact-title search straight to that title's detail page instead of showing a results list, and the API was treating the detail page as a suspicious response. It now recognizes that redirect and returns the matched title as a <strong>one-entry list</strong> (anime entries carry <code>episodes</code>, manga entries <code>volumes</code>, as everywhere else). Both <code>/v1/anime?q=</code> and <code>/v1/manga?q=</code> are fixed. A genuine wrong page is still refused with 502, and a detail page the parser cannot read degrades to 502 rather than a 500. No cache invalidation was needed — the old behavior was an error, which was never cached.</p></li>
+<li><p><strong><code>GET /v1/manga/:id</code> no longer returns <code>500 INTERNAL_ERROR</code> for a manga with a distinct English title.</strong> Titles such as <code>/v1/manga/4632</code> (<em>Oyasumi Punpun</em>) failed outright: MyAnimeList embeds the English title <em>inside</em> the main title element, and the parser could not read past it, so it rejected the whole page. It now reads the title correctly. Surfaced while fixing the search redirect above (the same titles broke that route too).</p></li>
+<li><p><strong>A page the parser cannot read now answers <code>502 UPSTREAM_SUSPICIOUS</code>, not <code>500 INTERNAL_ERROR</code>.</strong> When MyAnimeList serves markup a route's parser does not recognize, that is an upstream-shaped failure, and it now carries the same <code>502</code> code as any other suspicious upstream response — consistent across every route, where before some routes leaked a generic <code>500</code>.</p></li>
+</ul>
+</section>
 
-    <div class="entry">
-      <div class="date">
-        <h2>2026-07-30 — content parity sweep</h2>
-        <span class="versions">7 releases that day</span>
-      </div>
-      <p class="summary">Every route compared side by side against the official Jikan v4. Nothing was broken —
-      all 98 answered 200 — but a lot of data was leaving thinner than the source, unusable, or silently wrong.</p>
-      <div class="groups">
-        <div>
-          <span class="group-label breaking">Breaking</span>
-          <ul>
-            <li><b>Genres, studios and authors became objects</b>, not strings —
-            <code>[{ malId, name, url }]</code> instead of <code>["Action"]</code>, so <code>?genres=1</code>
-            finally has an id to filter by that a response also hands back.</li>
-            <li><b><code>aired</code>/<code>published</code> became objects</b> — <code>{ from, to, string }</code>,
-            with <code>from</code>/<code>to</code> null when MAL's page doesn't give a full date.</li>
-            <li><b><code>GET /v1/manga?q=</code> returns <code>volumes</code>, not <code>episodes</code></b> — the
-            old field name was wrong, not just the label: manga has no episodes.</li>
-            <li><b>An unhonoured query parameter is <code>400</code> now, not a silent <code>200</code>.</b></li>
-          </ul>
-        </div>
-        <div>
-          <span class="group-label added">Added</span>
-          <ul>
-            <li><b><code>url</code> on every entity</b>, and <code>images: { small, medium, large }</code> on
-            anime/manga/character/person detail — <code>null</code> only where the CDN genuinely has no variant.</li>
-            <li><b><code>meta.pagination</code></b> on every paginated route.</li>
-            <li>Search filters <code>sort</code>, <code>letter</code>, <code>min_score</code>, <code>start_date</code>,
-            <code>end_date</code>, <code>magazines</code>; <code>order_by</code> went from 3 accepted values to 9.</li>
-          </ul>
-        </div>
-        <div>
-          <span class="group-label fixed">Fixed</span>
-          <ul>
-            <li>31 routes served a 50×70 thumbnail where a full poster existed — <code>imageUrl</code> is the
-            original everywhere now.</li>
-            <li>Long text (synopses, <code>about</code>, <code>moreinfo</code>) had every paragraph break flattened
-            into a wall of text.</li>
-          </ul>
-        </div>
-      </div>
-    </div>
+<section class="entry">
+<h2 id="2026-08-27"><a href="#2026-08-27">2026-08-27</a></h2>
+<p>Published versions: <code>4ce71084</code>, <code>9d3445dd</code>, <code>a07e0742</code>, <code>629508ce</code>, <code>ebeba400</code>, <code>5b41891e</code>, <code>f2b389cd</code>, <code>086145f9</code>, <code>2139e894</code>, <code>9679c755</code>, <code>44d028aa</code>, <code>0523faba</code>, <code>b9cf7782</code>, <code>f7d1a163</code>, <code>feaf775d</code>, <code>aa5baaa9</code>, <code>dff313ec</code>, <code>61a0c56e</code>, <code>7f6b59d3</code>, <code>1f16e42c</code>. The deploy publishing this filled-in line is not named — an entry can never name the version that ships it, the same structural gap as the 2026-08-16 section.</p>
+<p>Of those, eight carried the changes below: <code>629508ce</code> raised the size ceiling to 5 MiB, recovering five of the seven affected titles, <code>5b41891e</code> added the per-call fetch budget that recovered the remaining two, <code>9679c755</code> carried both the profile fix and the cache headers, <code>0523faba</code> the genre fix, <code>f7d1a163</code> the seasonal media type, <code>aa5baaa9</code> the random-route changes, <code>61a0c56e</code> the refresh that no longer blocks the caller who trips it, and <code>1f16e42c</code> the unstorable-resource error. The rest are documentation and a line-ending correction, with no change in behaviour.</p>
+<p><code>1f16e42c</code> took about 15 minutes to appear rather than the usual minute. Nothing was wrong with it — worth knowing only because a build that has not shown up yet is not the same as a build that failed, and the difference is not visible from <code>wrangler deployments list</code>.</p>
+<p>The <code>?sfw</code> item below was written on 2026-08-26 and merged the next morning. As with the 2026-08-16 section, the date here is the one it reached production, not the one it was written on.</p>
+<h3 class="group-label added">Added</h3>
+<ul>
+<li><p><strong>Responses now carry <code>Cache-Control</code> and <code>ETag</code>, so they can finally be cached and revalidated.</strong> Until now not one response carried either, which made every route uncacheable by omission: browsers, CDNs and your own HTTP client had no way to reuse an answer or to ask whether it had changed, so a client polling a route re-downloaded an identical body every time.</p>
+<p><code>Cache-Control</code> states the freshness that <strong>remains</strong>, not the full TTL — a resource fetched five hours into its six-hour life advertises one hour, so a shared cache cannot keep serving it long after this API considers it stale. It also carries <code>stale-while-revalidate</code>, which lets a shared cache keep answering during a refresh instead of making a caller wait on MyAnimeList.</p>
+<p><code>ETag</code> enables conditional requests. Send it back as <code>If-None-Match</code> and an unchanged resource answers <code>304</code> with no body — on <code>GET /v1/anime/21/characters</code> that is <strong>1,132,672 bytes down to 0</strong>. All the header's real forms work: a list, <code>*</code>, and <code>W/</code> weak tags.</p>
+<p><strong>Two things are deliberately never cached.</strong> Errors are <code>no-store</code>, so an upstream outage or a rate-limit answer cannot outlive the condition that caused it. <code>/v1/random/*</code> is <code>no-store</code> too — a shared cache storing those would pin one entity and serve it to everyone, which is the opposite of what the route promises.</p>
+<p><strong>Nothing about the bodies changed</strong>, and no request that worked before behaves differently. If you ignore the new headers you get exactly what you got yesterday.</p></li>
+</ul>
+<h3 class="group-label added">Added</h3>
+<ul>
+<li><p><strong>A resource too large for this deployment to store now says so: <code>507 PAYLOAD_TOO_LARGE</code>.</strong> The database has a hard ceiling on how large a single stored record can be. Nothing reaches it today — the largest is a little under a third of the measured limit — but the biggest records are cast and staff lists for very long-running series, and those only grow.</p>
+<p>Until now hitting it would have been indistinguishable from a bug. With no earlier copy of the resource stored, you would have received a bare <code>500 INTERNAL_ERROR</code> with nothing pointing at size; with an earlier copy, you would have kept receiving that copy, flagged <code>&quot;stale&quot;: true</code>, with no way to tell a passing MyAnimeList outage from a resource that can never be updated again.</p>
+<p>Now the first case is <code>507</code> with the code <code>PAYLOAD_TOO_LARGE</code>, and the second still serves the stored copy — answering something beats answering nothing — but is recorded as an operational error rather than a routine refresh failure, because unlike an outage it does not clear on its own.</p>
+<p>No other error changed. This is recognised only from the database's own too-large signal, so an ordinary failure is still reported as an ordinary failure.</p></li>
+</ul>
+<h3 class="group-label changed">Changed</h3>
+<ul>
+<li><p><strong>The request that trips a cache expiry is no longer the one that pays for the refresh.</strong> When a resource's six-hour lifetime lapsed, the next caller waited out the full fetch from MyAnimeList — seconds — while everyone arriving beside them was handed the stored copy instantly. The penalty landed on whoever got there first, which is backwards.</p>
+<p>That caller now gets the stored copy immediately too, and the refresh runs after the response is sent. Measured on one route with a 60-second lifetime: the first request past expiry went from doing a cold fetch's work to <strong>686 ms</strong>, and the request after it already saw the refreshed copy. Nothing else about the answer changed — it is flagged <code>&quot;stale&quot;: true</code> exactly as the concurrent case already was, and <code>Cache-Control</code> still says <code>max-age=0</code> so your own cache revalidates.</p>
+<p><strong>A resource that has been expired for longer than its own lifetime is not served this way</strong> — there the caller waits and gets fresh data, because handing back something that old is worse than the wait. That boundary is the same one <code>stale-while-revalidate</code> in the header already advertised.</p>
+<p>This does not apply after a parser fix either: when the stored copy predates a correction, callers wait and get the corrected value rather than the old one one last time.</p></li>
+<li><p><strong>The five <code>/v1/random/*</code> routes now all answer the same <code>meta</code> shape.</strong> Four of them (<code>anime</code>, <code>manga</code>, <code>characters</code>, <code>people</code>) returned <code>meta: { requestId }</code> while <code>/v1/random/users</code> returned the standard <code>cached</code>, <code>stale</code>, <code>refreshFailed</code> and <code>fetchedAt</code>. A client reading <code>meta.fetchedAt</code> got <code>undefined</code> on four routes of the same group and a real value on the fifth. All five now return the standard four fields.</p>
+<p><strong><code>requestId</code> is gone from the body of those four successful responses.</strong> It was the only one of 93 successful responses in this API that carried it — <code>requestId</code> belongs to error bodies, where it is the handle to quote in a bug report, and every error still carries it. If you were reading it from a <code>200</code> on these routes, it was available nowhere else, so nothing else in your code depended on it.</p>
+<p><code>stale</code> on those four is worked out from the age of the stored entity, because they are the only reads that never refresh: a pick can hand you something scraped weeks ago, and now says so. <code>cached</code> is always <code>true</code> and <code>refreshFailed</code> always <code>false</code> — the entity comes from the local catalogue and nothing was fetched to get it.</p></li>
+</ul>
+<h3 class="group-label fixed">Fixed</h3>
+<ul>
+<li><p><strong><code>GET /v1/random/users</code> was cacheable, which made it not random.</strong> It answered <code>Cache-Control: public, max-age=21599</code>, so a shared cache or CDN would store one &quot;random&quot; user and hand that same profile to everyone for six hours. The other four picks already said <code>no-store</code>; this one reads a real profile through the normal caching path and inherited that profile's lifetime. It now says <code>no-store</code> like the rest of the group.</p></li>
+<li><p><strong>Every seasonal entry said its <code>type</code> was <code>null</code>.</strong> All 891 entries across <code>GET /v1/seasons/now</code>, <code>/v1/seasons/upcoming</code> and <code>/v1/seasons/:year/:season</code>, plus all 130 in <code>GET /v1/schedules</code>, reported <code>&quot;type&quot;: null</code>. Not one entry in the group had a type, so anything that sorted or grouped by media type — TV versus movie versus ONA — had nothing to work with.</p>
+<p>They now carry the same value the detail route gives for the same anime: <code>TV</code>, <code>OVA</code>, <code>Movie</code>, <code>Special</code>, <code>ONA</code>, <code>TV Special</code>, or <code>Unknown</code> where MyAnimeList itself says unknown (61 of the 415 upcoming entries, which is the honest answer for a show that has not announced a format yet). Verified across 1,021 live entries with no nulls left, and one sample of each type checked against <code>/v1/anime/:id</code>.</p>
+<p>Cached seasons and schedules refresh into the new shape on their next read.</p></li>
+<li><p><strong>Browsing by genre alone returned nothing, for every genre and both media types.</strong> <code>GET /v1/anime?genres=1</code> answered <code>200</code> with <code>&quot;data&quot;: []</code> — for Action, which has 5012 titles by this API's own <code>/v1/genres/anime</code> count. <code>GET /v1/manga?genres=1</code> did the same. Every genre id was affected. You were told &quot;nothing matches&quot;, which is worse than an error: a plausible wrong answer is one you have no reason to question.</p>
+<p>It only broke when a genre was the <strong>whole</strong> request. Adding anything at all — <code>q</code>, <code>type</code>, <code>order_by</code>, or just asking for page 2 — worked, which is why the fault could sit there unnoticed: <code>?genres=1</code> returned 0 items while <code>?genres=1&amp;page=2</code> returned 50.</p>
+<p>MyAnimeList redirects a request whose only parameter is one genre to its genre-browsing page, which is a different page with different markup, and the results parser found no rows there. Requests now carry the same category field MyAnimeList's own search form sends, so a genre-only search stays on the search page. Nothing else about search changed: the same queries return the same results in the same order.</p>
+<p><strong>The guard that should have caught it was also fixed.</strong> The check that decides whether an upstream page is the page we asked for was weak enough to accept the genre-browsing page. It now rejects it, so this class of mistake answers <code>502 UPSTREAM_SUSPICIOUS</code> instead of an empty list. A search that genuinely matches nothing still returns an empty list, as before.</p>
+<p>Empty results already cached for a genre-only search are discarded rather than served out for the rest of their lifetime.</p></li>
+<li><p><strong>User profiles were missing their avatar and their About text — for every user.</strong> <code>GET /v1/users/:username</code> returned <code>avatarUrl: null</code> and <code>about: null</code>, and <code>GET /v1/users/:username/about</code> returned <code>{ &quot;about&quot;: null }</code>, no matter whose profile you asked for. Both fields are now populated whenever MyAnimeList actually has them.</p>
+<p>These were two unrelated faults that happened to land on the same page. The avatar was searched for only in the first 30,000 characters of the profile, and it sits right around that boundary — so whether you got an avatar was decided by a few dozen bytes of unrelated markup further up the page. The About text was looked up by searching for the heading <code>About Me</code>, which does not appear anywhere on a MyAnimeList profile, so that field could never have been anything but null.</p>
+<p><strong><code>null</code> still means null.</strong> A user with no profile picture, or who has written no About, still gets <code>null</code> for that field — the fix does not invent content. Verified against real profiles in both directions.</p>
+<p>If you worked around these by treating the fields as unavailable, you can stop. Cached profiles refresh into the new shape on their next read rather than all at once.</p></li>
+<li><p><strong>One Piece and Detective Conan now return their cast and staff too.</strong> These were the two titles the earlier fix in this same section could not reach — 9.9 MB and 7.3 MB, past both the 5 MiB ceiling and the 8-second upstream timeout. <code>GET /v1/anime/21/staff</code> returns <strong>541 staff members</strong> and <code>/characters</code> returns <strong>1482</strong>; Detective Conan returns 471 and 2110. Every route listed as broken earlier today now works.</p>
+<p>This also makes the staff fix announced on 2026-08-16 real for the first time: it promised the full One Piece staff list instead of the first 80, and that route has been answering <code>502</code> ever since, so nobody ever received the fix. 541 is the number it was written for.</p>
+<p>Rather than loosen the limits for all 96 routes, the character-page fetch now asks for its own budget (20 s, 16 MiB) while the global defaults stay at 8 s and 5 MiB — a runaway document on any other route still gets caught. <strong>One consequence worth knowing if you time out clients:</strong> a cold request for One Piece takes around 7 seconds, because the page genuinely is 10 MB. Cached requests are unaffected, and the 6-hour TTL means almost all of them are cached.</p>
+<p><strong>No response shape changes</strong>, and nothing that worked before behaves differently.</p></li>
+<li><p><strong>The longest-running series returned <code>502</code> for their entire cast and staff.</strong> <code>GET /v1/anime/:id/characters</code> and <code>/staff</code> answered <code>502 UPSTREAM_SUSPICIOUS</code> for <strong>One Piece, Detective Conan, Naruto, Naruto Shippuden, Bleach, Pokémon and Fairy Tail</strong> — both routes read the same MyAnimeList page, so both failed together. The page for these titles is simply larger than the 2 MiB ceiling this API imposed on any upstream document; that ceiling is now 5 MiB.</p>
+<p><strong>Five of the seven are fixed</strong> (Naruto, Fairy Tail, Bleach, Pokémon, Naruto Shippuden), along with the titles that were about to cross the same line — Dragon Ball Z sat at 96 % of the old limit and One Piece's <em>manga</em> page at 91 %, both answering <code>200</code> only by luck of timing. <strong>One Piece and Detective Conan still fail</strong>, at 9.9 MB and 7.3 MB: those are held back by the 8-second upstream timeout rather than by the size limit, and lifting that safely is a separate change. If you consume those two titles, this release does not yet help you.</p>
+<p>There was never any cached data behind these routes to fall back on, so this was a hard error rather than stale data — and it means the One Piece staff fix announced on 2026-08-16 (&quot;returned 80 of One Piece's 542 staff members&quot;) has in fact never been reachable in production for that title. It becomes reachable when the timeout change lands.</p>
+<p><strong>No response shape changes.</strong> Requests that already worked return exactly what they returned before; the parser was never the problem.</p></li>
+<li><p><strong><code>?sfw</code> pointed you at a parameter that is also refused.</strong> The <code>400 UNSUPPORTED_PARAMETER</code> for <code>sfw</code> ended with <code>Use &quot;genres_exclude&quot; or &quot;rating&quot;.</code>, but <code>genres_exclude</code> is refused by this same API — taking the advice bought a second request and the same wall. The message now names only <code>rating</code>, and says it applies to anime search (<code>GET /v1/anime</code>), since MyAnimeList's manga search page carries no classification field. <strong>Error text only:</strong> the same requests are accepted and refused as before.</p></li>
+</ul>
+</section>
 
-    <hr class="rule">
+<section class="entry">
+<h2 id="2026-08-18"><a href="#2026-08-18">2026-08-18</a></h2>
+<p>Published versions: <code>3810fd7b</code>, <code>96e592e6</code>, <code>5fb481a6</code>, <code>40959124</code>, <code>b0e3ba13</code>, <code>b689413b</code>, <code>3d97bdf8</code>, <code>2d4f3446</code>, <code>c214be3f</code>.</p>
+<p>Nine for three changes, because each one shipped twice: the Cloudflare Git integration deploys on every push to <code>main</code>, and these were also deployed by hand. The push-triggered build is the one that ends up serving, since it lands last. Deploying manually before pushing is redundant here.</p>
+<h3 class="group-label changed">Changed</h3>
+<ul>
+<li><p><strong>New base URL: <code>https://jikan.lucashdo.com</code>.</strong> All documentation, the landing page and <code>llms.txt</code> now point there. <strong>Nothing breaks:</strong> <code>https://jikan-edge.lucas-hdo.workers.dev</code> still serves the exact same Worker, on the same D1 cache, and is not scheduled for removal — no redirect, no deprecation window, no action required from existing integrations. The custom domain is additive (<code>workers_dev</code> stays <code>true</code>); prefer it for new work so a future move off <code>*.workers.dev</code> costs nothing.</p></li>
+<li><p><strong><code>MAL_USER_AGENT</code> now identifies the API as <code>jikan-edge/0.1 (+https://jikan.lucashdo.com)</code>.</strong> Only MyAnimeList sees this; no response changes.</p></li>
+</ul>
+<h3 class="group-label fixed">Fixed</h3>
+<ul>
+<li><strong>Self-hosting: <code>npm run setup</code> empties the <code>routes</code> list.</strong> Without it a fork would inherit the maintainer's custom domain and <code>wrangler deploy</code> would fail on a zone it cannot claim.</li>
+</ul>
+</section>
 
-    <div class="entry">
-      <div class="date">
-        <h2>2026-07-30 — user lists &amp; genres</h2>
-        <span class="versions">6 releases that day</span>
-      </div>
-      <p class="summary">A day on one theme: data that existed at the source and the API either withheld or got
-      wrong without saying so — found by sweeping all 98 routes in production, not by a bug report.</p>
-      <div class="groups">
-        <div>
-          <span class="group-label breaking">Breaking</span>
-          <ul>
-            <li><b><code>sourceVersion</code> removed from every response.</b> It was an internal cache-invalidation
-            token, never the API version — the API version is and remains <code>v1</code>, in the URL path.</li>
-          </ul>
-        </div>
-        <div>
-          <span class="group-label fixed">Fixed</span>
-          <ul>
-            <li><b>User lists answered 502 for any account using MAL's modern list layout</b> — now reads both
-            layouts, and stopped silently truncating the classic one too (one account was serving 273 of 360
-            entries with no error).</li>
-            <li><b>An anime titled "86" could take down an entire 2,354-entry list.</b> MAL leaves numeric-looking
-            titles unquoted in its embedded JSON; one bad row was rejecting the whole page.</li>
-            <li><b>Profile statistics could silently serve a manga number as the anime one</b> — a fixed-size
-            extraction window let one section bleed into the next.</li>
-          </ul>
-        </div>
-        <div>
-          <span class="group-label added">Added</span>
-          <ul>
-            <li><b><code>GET /v1/genres/anime</code> and <code>/manga</code> work</b> — 78 and 79 entries, each
-            carrying <code>count</code> and <code>type</code>, with a <code>?filter=</code> to narrow by category.</li>
-            <li>New <code>501 LIST_TOO_LARGE</code> instead of silently truncating a list past what one refresh
-            reads.</li>
-          </ul>
-        </div>
-      </div>
-    </div>
+<section class="entry">
+<h2 id="2026-08-16"><a href="#2026-08-16">2026-08-16</a></h2>
+<p>Published versions: <code>d75c8e94</code>, <code>80846de6</code>, <code>3853a33d</code>.</p>
+<p><code>3853a33d</code> carried no code — it is the deploy that published this entry, and it was added here on 2026-08-18, after the fact. An entry cannot name the version that ships it, so the last id of any day has to be filled in afterwards; the gap is expected, not a missing release.</p>
+<p>Everything here except the last two entries was written on <strong>2026-08-10</strong> and only reached production today. The deploy pipeline itself was broken: a stray <code>pnpm-workspace.yaml</code> made every Cloudflare build fail while installing dependencies, so no build had succeeded since the Git integration was connected on that date, and production kept serving code from 2026-07-31. If you consume this API, these are fixes you had not been getting yet — not fixes you already had.</p>
+<h3 class="group-label fixed">Fixed</h3>
+<ul>
+<li><p><strong>Opening and ending themes came back empty.</strong> <code>GET /v1/anime/:id/full</code> and <code>/themes</code> answered <code>{ &quot;openings&quot;: [], &quot;endings&quot;: [] }</code> for titles whose theme widget MAL has already migrated — Frieren returned nothing at all, and Fullmetal Alchemist: Brotherhood, which carries both markups on the same page, lost half its themes. Both formats are now read per line rather than per page.</p></li>
+<li><p><strong>Staff lists stopped at the first 80 KB of the page.</strong> <code>GET /v1/anime/:id/staff</code> returned 80 of One Piece's 542 staff members — ~85 % dropped with a <code>200</code> and no indication anything was missing. The cut now falls at the next real heading, or at the end of the document.</p></li>
+<li><p><strong><code>GET /health</code> accepted query parameters it documents as invalid.</strong> <code>?anything=1</code> answered <code>200</code> instead of <code>400</code>; the guard existed but was registered after the route, so it never ran.</p></li>
+<li><p><strong>A database blip could hide data that had already been saved.</strong> When the refreshed value was stored but the bookkeeping write that follows it failed, the response fell back to the <strong>previous</strong> value labelled <code>refreshFailed: true</code>, even though the new one was already in the database.</p></li>
+<li><p><strong>User search answered <code>500</code> on an unrecognised page.</strong> <code>GET /v1/users?q=</code> now answers <code>502 UPSTREAM_SUSPICIOUS</code>, and no longer risks echoing the query back as if it were a username it had actually found.</p></li>
+<li><p><strong><code>background</code> ended with a stray &quot;Edit&quot;.</strong> Every anime with a Background section carried the next section's edit link as the last word of the text — <code>&quot;…anime aimed at adult audiences.\n\nEdit&quot;</code>. Cached entries keep the old value until their 6 h TTL expires; nothing else changes about the field.</p></li>
+</ul>
+<h3 class="group-label changed">Changed</h3>
+<ul>
+<li><strong><code>ClubDetail.staff</code> is now <code>{ username, url, role }[]</code></strong>, where it used to be strings shaped like <code>&quot;Name (Role)&quot;</code>. <code>GET /v1/clubs/:id</code> and <code>/staff</code> are affected. The profile link was always in the markup and was being thrown away, and the concatenated form was ambiguous whenever a name or a role contained parentheses.</li>
+</ul>
+<h3 class="group-label">Operational notes</h3>
+<ul>
+<li>Detail, <code>full</code> and the media sub-routes of the same entity now prime each other's cache, so asking for <code>/full</code> right after <code>/detail</code> no longer triggers a second fetch of the same page upstream. No response shape or value changes.</li>
+<li>Failed upstream requests are retried once, but only for connection errors and timeouts — never for answers MAL gave deliberately (not found, private, rate limited).</li>
+<li>One migration ships, <code>0012</code>, and it only repairs stored bookkeeping: the parser version recorded for user update rows, which had been frozen at its first value.</li>
+</ul>
+</section>
 
-    <hr class="rule">
-    <p style="color:var(--paper-faint); font-size: 13px; margin-top: 24px;">Nothing recorded before 2026-07-30 —
-    see <a href="https://github.com/LucasHenriqueDiniz/jikan-edge/blob/main/CHANGELOG.md" target="_blank" rel="noopener">CHANGELOG.md</a>
-    for exactly what that means and for every release since.</p>
+<section class="entry">
+<h2 id="2026-07-30-second-release-of-the-day"><a href="#2026-07-30-second-release-of-the-day">2026-07-30 (second release of the day)</a></h2>
+<p>Published versions: <code>42f848f4</code>, <code>c098b3b5</code>, <code>1320a613</code>, <code>89bfcadc</code>, <code>cdcce2cd</code>, <code>499408ac</code>, <code>53c31b76</code>.</p>
+<p>Two things landed together: the self-hosting fix below, and a content sweep that compared every route against the official Jikan v4.</p>
+<p>Prompted by <a href="https://github.com/LucasHenriqueDiniz/jikan-edge/issues/1" target="_blank" rel="noopener">issue #1</a>: the first person to self-host this got <code>500 INTERNAL_ERROR</code> on every route, and nothing in the response or the README said why.</p>
+<h3 class="group-label added">Added</h3>
+<ul>
+<li><strong><code>GET /health</code> now reports <code>data.checks.database</code></strong> — <code>ok</code>, <code>not_migrated</code>, <code>not_configured</code> or <code>unavailable</code>. Additive: <code>status</code> and <code>service</code> are unchanged, and the route still answers <code>200</code> when the database is degraded, so uptime monitors keep reading it the same way.</li>
+<li><strong>A setup command for self-hosters</strong>: <code>npm run setup</code> creates the D1 database, writes its id into <code>wrangler.jsonc</code> and applies the migrations. Full guide in <a href="https://github.com/LucasHenriqueDiniz/jikan-edge/blob/main/docs/self-hosting.md" target="_blank" rel="noopener"><code>docs/self-hosting.md</code></a>, including the Free-plan CPU caveat.</li>
+</ul>
+<h3 class="group-label fixed">Fixed</h3>
+<ul>
+<li><strong>A deploy with no schema no longer fails as an unexplained server error.</strong> Every route reads the cache table first, so an un-migrated database produced <code>500 INTERNAL_ERROR</code> everywhere. Those two cases now answer <code>503</code> with <code>DATABASE_NOT_MIGRATED</code> or <code>DATABASE_NOT_CONFIGURED</code> and the command that fixes them. A genuine D1 outage still answers <code>500</code> — being told to re-run migrations you already ran is worse than being told nothing.</li>
+</ul>
+<h3 class="group-label removed">Removed</h3>
+<ul>
+<li><strong>The unused <code>SNAPSHOTS_BUCKET</code> R2 binding.</strong> It was never referenced in the code, but it forced everyone cloning the project to create an R2 bucket. Nothing about the API changes; self-hosting loses a required step. If you already created the bucket, you can delete it.</li>
+</ul>
+<hr>
+<p>The rest of this release comes from a second sweep: every route compared side by side against the official <code>api.jikan.moe/v4</code> in the same window. No route was broken — all 98 answered <code>200</code>. What turned up was <strong>content</strong>: data leaving thinner than the source, unusable, or wrong in a way nothing flagged.</p>
+<h3 class="group-label breaking">⚠️ Breaking</h3>
+<ul>
+<li><p><strong>Genres, studios and authors are objects now, not strings.</strong> <code>[&quot;Action&quot;, &quot;Sci-Fi&quot;]</code> became <code>[{ &quot;malId&quot;: 1, &quot;name&quot;: &quot;Action&quot;, &quot;url&quot;: &quot;…&quot; }]</code>. Applies to <code>genres</code>, <code>themes</code>, <code>demographics</code>, <code>studios</code>, <code>authors</code> and <code>producers</code>/<code>licensors</code> on anime and manga detail.</p>
+<p>This closes a loop that was broken inside the API itself: <code>GET /v1/anime?genres=1</code> has always taken numeric ids, but no response ever handed one back — you could filter by genre and never learn a title's genre ids. They were in the page all along, in the link this API was reading the name out of.</p></li>
+<li><p><strong><code>serialization</code> is now <code>serializations</code>, and it is an array.</strong> A manga can run in more than one magazine; a string could only ever hold the first.</p></li>
+<li><p><strong><code>aired</code> and <code>published</code> are objects.</strong> <code>&quot;Apr 3, 1998 to Apr 24, 1999&quot;</code> became <code>{ &quot;from&quot;: &quot;1998-04-03&quot;, &quot;to&quot;: &quot;1999-04-24&quot;, &quot;string&quot;: &quot;Apr 3, 1998 to Apr 24, 1999&quot; }</code>. <code>string</code> keeps MAL's own wording, so nothing is lost. A date only appears when the page gives day, month and year — Berserk reads <code>&quot;Aug 25, 1989 to ?&quot;</code>, so its <code>to</code> is <code>null</code> rather than an invented one.</p></li>
+<li><p><strong><code>GET /v1/manga?q=</code> returns <code>volumes</code> instead of <code>episodes</code>.</strong> The old field was not merely misnamed: MAL's manga results table carries the <strong>volume count</strong> in the column this API was reading as episodes. Searching Fullmetal Alchemist returned <code>episodes: 27</code>, and 27 is its volume count (it has 116 chapters). Manga has no episodes; the number was real and the label was wrong.</p></li>
+<li><p><strong>A query parameter this API does not honour is now <code>400</code>, not a silent <code>200</code>.</strong> <code>?limit=5</code>, <code>?sfw</code>, <code>?sort=asc</code> and <code>?min_score=8</code> used to answer <code>200</code> and do nothing, which is the one kind of divergence a caller cannot detect. Two codes tell the cases apart: <code>UNKNOWN_PARAMETER</code> for a name that does not exist, <code>UNSUPPORTED_PARAMETER</code> for one Jikan has and this API deliberately does not — with the reason in the message. <code>?limit=</code> still works on the two user list routes, which page over local storage rather than over a MyAnimeList page.</p></li>
+<li><p><strong>An invalid <code>page</code> or <code>limit</code> is <code>400</code> instead of being quietly corrected.</strong> <code>?page=0</code>, <code>?page=abc</code> and <code>?page=-5</code> all used to become page 1 without a word; <code>?limit=99999</code> became 300. <code>page</code> is also capped at 1000 now — every distinct page number costs a real upstream request.</p></li>
+</ul>
+<h3 class="group-label added">Added</h3>
+<ul>
+<li><strong><code>url</code> on every entity</strong>, carrying MAL's canonical link with its slug. Previously 78 of 95 routes gave no way to link back without rebuilding the URL by hand.</li>
+<li><strong><code>images</code> on anime, manga, character and person detail</strong>: <code>{ small, medium, large }</code>. The variants are <strong>not</strong> uniform on MAL's CDN — a character has no large, a person has no small, a producer logo has neither — so each is <code>null</code> where the CDN genuinely has nothing, never a derived URL that 404s.</li>
+<li><strong>Fields that were always on the page and never emitted</strong>: <code>scoredBy</code> (how many votes are behind the score), <code>season</code>, <code>year</code>, <code>airing</code>/<code>publishing</code>, <code>broadcast</code>, <code>background</code>, <code>titleSynonyms</code> and <code>trailer</code>.</li>
+<li><strong><code>meta.pagination</code> on every paginated route</strong> — <code>{ page, limit, count, total, hasNextPage }</code>. Before, only the user lists had it and everything else returned a bare array with no way to know whether another page existed. <code>total</code> is a number only on the user lists, which are counted locally; elsewhere it is <code>null</code>, because MAL prints no total and deriving one would be invention.</li>
+<li><strong>Search filters <code>sort</code>, <code>letter</code>, <code>min_score</code>, <code>start_date</code>, <code>end_date</code> and <code>magazines</code></strong> (manga only). Dates take Jikan's <code>YYYY-MM-DD</code>. One edge belongs to the source rather than to us: an entry whose date MyAnimeList does not have is <strong>included</strong> by either bound rather than filtered out.</li>
+<li><strong><code>order_by</code> went from 3 accepted values to 9</strong>: <code>start_date</code>, <code>score</code>, <code>episodes</code>/<code>volumes</code>, <code>end_date</code>, <code>type</code>, <code>members</code>, <code>rating</code>, <code>mal_id</code>. <code>title</code> is deliberately absent — MyAnimeList returns the same order in both directions for it, so offering it would be a sort that does not sort.</li>
+<li><strong><code>genres</code> with several ids means &quot;has all of them&quot;, not &quot;has any&quot;</strong> — that is MyAnimeList's behaviour, not a choice here: on &quot;love&quot;, genre 12 returns 16 results and genre 49 returns 3, and the two together return zero.</li>
+</ul>
+<h3 class="group-label">Withdrawn the same day</h3>
+<ul>
+<li><strong><code>genres_exclude</code> was announced earlier in this release and does not work.</strong> The check behind it compared result <em>counts</em> — 17 without the flag, 20 with it — and stopped there. Comparing the actual entries, 16 of the 18 results are the same ones the un-inverted filter returns: MyAnimeList ignores the flag. It now answers <code>400</code> with that evidence in the message. The same investigation retired <code>producers</code>: the field exists on the search page but no longer filters — &quot;gundam&quot; with and without it returns the same set.</li>
+</ul>
+<h3 class="group-label fixed">Fixed</h3>
+<ul>
+<li><strong>List routes served a 50×70 thumbnail where a poster exists.</strong> 31 routes published the resized copy MAL embeds in its own tables — 2 KB where the same path holds 56 KB. <code>imageUrl</code> is now the original everywhere.</li>
+<li><strong>Long text arrived with every paragraph break flattened.</strong> Synopses, <code>about</code> and <code>moreinfo</code> came through as one wall of text because tag stripping turned MAL's <code>&lt;br&gt;</code> into spaces. Cowboy Bebop's synopsis is 1,027 characters and had zero line breaks.</li>
+<li><strong>Some punctuation reached responses undecoded</strong> — <code>&amp;mdash;</code> was visible in <code>/v1/anime/5114</code> and <code>/v1/manga/2</code>. Related: entities were being decoded <em>before</em> tags were stripped, so a literal <code>&amp;lt;b&amp;gt;</code> written by a user turned into a real tag and was eaten.</li>
+</ul>
+<h3 class="group-label">Known divergence, on purpose</h3>
+<ul>
+<li><strong><code>duration</code> keeps MAL's punctuation</strong>: <code>&quot;24 min. per ep.&quot;</code>, where Jikan prints <code>&quot;24 min per ep&quot;</code>. That is what the page says, and this API reports the source rather than tidying it.</li>
+<li><strong><code>?filter=</code> on <code>/v1/top/anime</code> and <code>/v1/top/manga</code> takes different values per medium.</strong> Anime accepts Jikan's four (<code>airing</code>, <code>upcoming</code>, <code>bypopularity</code>, <code>favorite</code>); manga accepts only <code>bypopularity</code> and <code>favorite</code>. That is not an omission: comparing the id sets, <code>publishing</code> and <code>upcoming</code> return the unfiltered manga list unchanged, because MAL's top-manga page has no such tab. Jikan lists all four; two of them do nothing there. Anything else is <code>400 INVALID_FILTER</code> — MAL ignores an unrecognised tab silently and serves the unfiltered list with a <code>200</code>, so passing the value through would answer with the wrong data and no way to tell.</li>
+</ul>
+</section>
+
+<section class="entry">
+<h2 id="2026-07-30"><a href="#2026-07-30">2026-07-30</a></h2>
+<p>Published versions: <code>116479bb</code>, <code>7d5fea93</code>, <code>f2185eaf</code>, <code>48dbfd6a</code>, <code>400eff03</code>, <code>044942c8</code>.</p>
+<p>A day on a single theme: data that existed at the source and the API either withheld or got wrong without saying so. Found by sweeping all 98 routes in production, not by a bug report.</p>
+<h3 class="group-label breaking">⚠️ Breaking</h3>
+<ul>
+<li><p><strong><code>sourceVersion</code> is gone from every response.</strong> The field appeared on profiles, statistics, list entries and on anime, manga, character, person, club and producer details. It published the internal cache-invalidation token (<code>user-html-v3</code>, <code>anime-html-v1</code>, …) and was being read as the API version — which is the <code>v1</code> in the path and <strong>has never changed</strong>. If you read this field, stop: it was never contract. The cache mechanism is untouched; it simply stopped being public.</p>
+<p>For a few hours after the first deploy the field still showed up in responses served from rows written before the change. A migration now strips it from those rows, so it is gone everywhere rather than fading out over a TTL cycle.</p></li>
+</ul>
+<h3 class="group-label fixed">Fixed</h3>
+<ul>
+<li><p><strong>User lists returned 502 for a large share of accounts.</strong> <code>GET /v1/users/:username/animelist</code> and <code>/mangalist</code> failed for every user whose profile uses MAL's <strong>modern</strong> list layout — which is the user's own setting, not something wrong with the page. The parser only recognised classic-layout markup.</p></li>
+<li><p><strong>The classic layout was dropping entries silently.</strong> Worse than the 502, because it answered 200: without the <code>?status=7</code> parameter, MAL's page serves fewer entries than the profile declares.</p>
+<p>| User | Layout | Before | Now | Profile declares | | --- | --- | ---: | ---: | ---: | | Xinil | modern | 502 | 399 | 399 | | Karinyia | modern | 502 | 2,354 | 2,354 | | jet2r0cks | modern | 502 | 898 | 898 | | AMayacrab | classic | <strong>273</strong> (no error) | 360 | 360 | | Zel | classic | 514 | 514 | 514 |</p></li>
+<li><p><strong>An anime titled &quot;86&quot; took down an entire list.</strong> MAL leaves a numeric-looking title unquoted, so <code>86</code> (<em>86 Eighty-Six</em>), <code>1</code> and <code>663114</code> arrive as JSON numbers. The title came out empty, failed validation — and since one invalid item rejects the whole page, a 2,354-entry list fell over because of a single row.</p></li>
+<li><p><strong>Profile statistics could serve a manga number as if it were the anime one.</strong> Extraction used a fixed 8 KB window from <code>Anime Stats</code>, and <code>Manga Stats</code> sits ~2 KB away — inside it. With every row present the answer came out right by luck of match order; MAL omitting or renaming one row was enough to serve the wrong value with no error at all.</p></li>
+<li><p><strong><code>daysWatched</code>, <code>rewatched</code>, <code>daysRead</code> and <code>reread</code> were never emitted</strong> by <code>GET /v1/users/:username/statistics</code>. Not a source limitation — all four have always been in the same profile HTML the API already fetched.</p></li>
+</ul>
+<h3 class="group-label added">Added</h3>
+<ul>
+<li><p><strong>List entries carry more fields</strong> when they come from the modern layout: <code>status</code> (<code>watching</code>/<code>reading</code>, <code>completed</code>, <code>on hold</code>, <code>dropped</code>, <code>plan to watch</code>/<code>plan to read</code>), <code>total</code>, <code>startedAt</code>, <code>finishedAt</code> and <code>updatedAt</code>. On the classic layout they stay <code>null</code>, because the page does not expose them — a deliberate asymmetry: an honest <code>null</code> beats an invented value.</p></li>
+<li><p><strong>New <code>501 LIST_TOO_LARGE</code> error</strong> when a list runs past the 6,000 entries the API reads in one refresh. It is the only code that does not come from the source. Before this limit existed explicitly, the overflow was truncated silently.</p></li>
+<li><p><strong><code>GET /v1/genres/anime</code> and <code>GET /v1/genres/manga</code> work.</strong> They used to return 500 — MAL serves the genre sidebar of its browse pages truncated to ~12 entries for requests coming from Cloudflare's network, and the API refuses to cache a partial taxonomy as if it were whole. The full taxonomy turned out to be on a different public page (the search page's content filter), which arrives intact: <strong>78 entries for anime, 79 for manga</strong>, verified from Cloudflare's own network rather than from a developer machine.</p>
+<p>Each entry now carries <code>count</code> (titles in that genre) and <code>type</code> — <code>genres</code>, <code>explicit_genres</code>, <code>themes</code> or <code>demographics</code>, the same four categories Jikan uses — and <code>?filter=</code> narrows the list to one of them (<code>400 INVALID_FILTER</code> otherwise). The ids are the ones the <code>genres</code> filter on anime/manga search expects.</p></li>
+<li><p><strong>A completeness guard on lists</strong>: the assembled list is checked against the profile's own <code>totalEntries</code>. Extracting fewer entries than declared is now rejected with the counts in the message (<code>extracted 273 of 360</code>) instead of becoming an incomplete 200. Extracting more is accepted — a counter cached before the user added entries is legitimately behind.</p></li>
+</ul>
+<h3 class="group-label">Operational notes</h3>
+<ul>
+<li>The statistics fields needed no migration — they are JSON in columns that already existed. One migration did ship, and it only rewrites stored payloads: it strips the leftover <code>sourceVersion</code> key and drops the two cached genre rows, whose content was the old truncated taxonomy.</li>
+<li>The list cache version is separate from the profile one, so this fix invalidated lists only — cached profiles and statistics were not dragged into a mass refetch. The genre taxonomy has its own cache version too, for the same reason.</li>
+</ul>
+</section>
+
+<section class="entry">
+<h2 id="before-2026-07-30"><a href="#before-2026-07-30">Before 2026-07-30</a></h2>
+<p>Not covered here. Two earlier changes still catch consumers off guard and are described in <a href="https://github.com/LucasHenriqueDiniz/jikan-edge/blob/main/docs/routes.md" target="_blank" rel="noopener"><code>docs/routes.md</code></a>: <code>GET /v1/schedules</code> without a filter began returning an object keyed by day instead of a flat list (2026-07-27), and favorites and <code>userupdates</code> began emitting <code>malId</code> instead of <code>mal_id</code>.</p>
+</section>
   </main>
 </div>
 
