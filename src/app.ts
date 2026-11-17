@@ -13,7 +13,7 @@ import { registerRandomRoutes } from './http/routes/random.routes';
 import { Hono } from 'hono';
 import { RandomService } from './services/random.service';
 import { type App, type AppContext, background, type Variables } from './http/app-context';
-import { configFrom, type Env } from './config/env';
+import { configFrom, type Env, workerVersion } from './config/env';
 import { registerQueryGuards } from './http/query-guard';
 import { probeDatabase, SETUP_HINT } from './http/diagnostics';
 import { etagFor, matchesEtag, NO_STORE } from './http/caching';
@@ -61,7 +61,7 @@ app.use('*', async (c, next) => {
       refreshResult: 'rate_limited',
     });
     c.header('X-Request-Id', c.get('requestId'));
-    c.header('X-Worker-Version', c.env?.WORKER_VERSION ?? 'local');
+    c.header('X-Worker-Version', workerVersion(c.env));
     c.header('X-Cache-Status', 'rate_limited');
     c.header('Retry-After', burst.success ? '60' : '10');
     return c.json(
@@ -71,7 +71,7 @@ app.use('*', async (c, next) => {
   }
   await next();
   c.header('X-Request-Id', c.get('requestId'));
-  c.header('X-Worker-Version', c.env?.WORKER_VERSION ?? 'local');
+  c.header('X-Worker-Version', workerVersion(c.env));
   if (!c.res.headers.has('X-Cache-Status')) c.header('X-Cache-Status', 'unknown');
   logMetric({
     route: new URL(c.req.url).pathname,

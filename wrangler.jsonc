@@ -29,8 +29,11 @@
     // titles still above this line (One Piece 9.9 MB, Detective Conan 7.3 MB) are held back by
     // SOURCE_TIMEOUT_MS, not by this number — see docs/routes.md.
     "MAX_UPSTREAM_BYTES": "5242880"
-    ,"WORKER_VERSION": "jikan-edge-2026-07-19"
   },
+  // The id of the version actually serving, read back from the platform for `X-Worker-Version`. It
+  // replaced a `WORKER_VERSION` var written by hand on 2026-07-19 and never changed again, so every
+  // deploy since then answered with the same string.
+  "version_metadata": { "binding": "CF_VERSION_METADATA" },
   // Forking this? Run `npm run setup` — it creates your own D1 and rewrites the ids below.
   "d1_databases": [
     {
@@ -68,9 +71,9 @@
       "ANIME_TTL_SECONDS": "21600",
       "CATALOG_TTL_SECONDS": "21600",
       "SOURCE_TIMEOUT_MS": "8000",
-      "MAX_UPSTREAM_BYTES": "5242880",
-      "WORKER_VERSION": "jikan-edge-preview"
+      "MAX_UPSTREAM_BYTES": "5242880"
     },
+    "version_metadata": { "binding": "CF_VERSION_METADATA" },
     // Shared by every Preview. Migrate it with `pnpm run db:migrate:preview`, which reads
     // wrangler.preview-migrations.jsonc — the two files must name the same database.
     "d1_databases": [

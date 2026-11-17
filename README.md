@@ -168,7 +168,7 @@ second group: `limit` (outside the user lists), `sfw`, `max_score`, `producers`,
 | --- | --- |
 | `X-Cache-Status` | `hit`, `miss`, `stale`, `local` (random routes, drawn from D1), `rate_limited`, `error` (any error response), `unknown` |
 | `X-Request-Id` | Matches `error.requestId`; use it when reporting a problem |
-| `X-Worker-Version` | Deployed Worker build |
+| `X-Worker-Version` | Id of the deployed version that answered; its first 8 characters match the `CHANGELOG.md` "Published versions". `local` outside a deployment |
 | `Retry-After` | On `429` — seconds until the exceeded window resets; on `503 DATABASE_UNAVAILABLE` — seconds to wait before retrying |
 | `Access-Control-Allow-Origin` | `*` — see [CORS](#cors) |
 

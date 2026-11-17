@@ -8,8 +8,8 @@ This file starts on 2026-07-30 and does not reconstruct earlier history.
 
 ## 2026-11-17
 
-Published versions: `c50fb4cd` (the cache retention), `3a29cf39` (the external-link fix), `24bdf18d`
-(the user updates fix); the internal-error mapping: to be confirmed.
+Published versions: `c50fb4cd` (the cache retention), `3a29cf39` (the external-link fix), `4cc1eafb`
+(the internal-error mapping), `24bdf18d` (the user updates fix); the version header: to be confirmed.
 
 ### Fixed
 
@@ -52,6 +52,14 @@ Published versions: `c50fb4cd` (the cache retention), `3a29cf39` (the external-l
   same `503` message now reads "temporarily unavailable" instead of "temporarily overloaded"; the
   code and status are unchanged. Other database failures (a lost connection, an SQL error) are still
   `500`.
+- **`X-Worker-Version` carries the id of the version that answered.** It was a fixed string written
+  by hand on 2026-07-19 and never updated, so every response since then said
+  `jikan-edge-2026-07-19` whatever code produced it — the version that served the database incident
+  of 2026-11-16 included. It now comes from Cloudflare's version metadata: the full version id, whose
+  first eight characters are the ones this file lists under "Published versions". It reads `local`
+  where there is no deployed version (`wrangler dev --remote`, tests). *Before:*
+  `X-Worker-Version: jikan-edge-2026-07-19`. *After:* e.g.
+  `X-Worker-Version: 4cc1eafb-fcb4-4629-8b1e-37dd97a31029`.
 
 ## 2026-11-16
 

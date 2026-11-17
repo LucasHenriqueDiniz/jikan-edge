@@ -9,7 +9,19 @@ export interface Env {
   CATALOG_TTL_SECONDS?: string;
   SOURCE_TIMEOUT_MS?: string;
   MAX_UPSTREAM_BYTES?: string;
-  WORKER_VERSION?: string;
+  /** The `version_metadata` binding: which deployed version is answering. Absent in unit tests. */
+  CF_VERSION_METADATA?: WorkerVersionMetadata;
+}
+
+/**
+ * What `X-Worker-Version` carries: the platform's version id, or `local` where there is none.
+ *
+ * `||`, not `??`: `wrangler dev --remote` binds the metadata with an empty id (measured on
+ * 2026-11-17: `{ id: '', tag: '', timestamp: '0001-01-01T00:00:00Z' }`), and an empty header says
+ * less than `local`.
+ */
+export function workerVersion(env: Pick<Env, 'CF_VERSION_METADATA'> | undefined): string {
+  return env?.CF_VERSION_METADATA?.id || 'local';
 }
 
 export interface RuntimeConfig {
