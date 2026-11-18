@@ -8,7 +8,7 @@ This file starts on 2026-07-30 and does not reconstruct earlier history.
 
 ## 2026-11-18
 
-Published versions: `b00d5e16` (the news fixes); `0c287825` (the user `Cache-Control`); `19ba28ff`, then a follow-up to be confirmed (the `/random` picks).
+Published versions: `b00d5e16` (the news fixes); `0c287825` (the user `Cache-Control`); `19ba28ff`, then `87cd9ef8` (the `/random` picks).
 
 ### Fixed
 
@@ -40,7 +40,7 @@ Published versions: `b00d5e16` (the news fixes); `0c287825` (the user `Cache-Con
   local catalog, with the same body, the same `404 NO_LOCAL_ENTRIES` and the same `no-store`. The
   first version (`19ba28ff`) took two queries per pick, and since each one crosses from the edge to
   the database, it answered ~110 ms slower than before from South America (median 0.30 → 0.41 s);
-  the follow-up puts the pick back in one.
+  the follow-up (`87cd9ef8`) puts the pick back in one, and the median is now 0.27 s from there.
 
 ## 2026-11-17
 
