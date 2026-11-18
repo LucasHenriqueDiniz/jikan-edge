@@ -8,7 +8,7 @@ This file starts on 2026-07-30 and does not reconstruct earlier history.
 
 ## 2026-11-18
 
-Published versions: `b00d5e16` (the news fixes); the user `Cache-Control`: to be confirmed.
+Published versions: `b00d5e16` (the news fixes); `0c287825` (the user `Cache-Control`).
 
 ### Fixed
 
