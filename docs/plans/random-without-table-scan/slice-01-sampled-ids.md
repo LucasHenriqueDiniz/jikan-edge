@@ -1,5 +1,5 @@
 ---
-status: todo
+status: doing
 ---
 
 # Random without a table scan — Slice 01: draw from sampled ids
@@ -12,7 +12,7 @@ status: todo
 | **Delivers** | `/v1/random/{anime,manga,characters,people,users}` picks a uniformly random stored entity with two index lookups (≤ 33 rows read) instead of reading the whole table on every call |
 | **Needs** | nothing new — the tables, `RandomRepository` and its tests exist |
 | **Tests** | Task 1's list below: no `ORDER BY RANDOM()` issued, uniform within ±3% over a gapped id set, fallback after missed rounds, `null` on an empty table, `pickUser` over `rowid` |
-| **Done when** | `pnpm test` is green, and one round of the new statements on the production D1 reports `rows_read` ≤ 33 for `anime` and `manga` (Task 2) |
+| **Done when** | `pnpm test` is green, and one round of the new statements on the production D1 reports `rows_read` ≤ 33 for `anime` and `manga` (Task 2) — **measured 65**: D1 counts two rows per key looked up, so ≤ 33 was the wrong target (see Result) |
 | **If stuck** | keep `ORDER BY RANDOM()` but select `mal_id` only and fetch the payload by key — still a scan of the key index, but it no longer reads every payload |
 
 **Why (measured 2026-11-18, production D1, 2026-11-11 to 17):** the random pick is
@@ -34,6 +34,8 @@ known heavy one (see `docs/routes.md`, "D1 overload").
 4. No row found → try again, up to `ATTEMPTS` times; then fall back to the next id at or after a
    random point (`WHERE mal_id >= ? ORDER BY mal_id LIMIT 1`, wrapping to the first id). That
    fallback is biased but costs one row, and only runs when the table is almost empty.
+   **Superseded during implementation** — see Result: the fallback is the random sort over the key
+   alone, because "almost empty" is exactly what a fresh self-hosted catalog is.
 5. Empty table (`max` is null) → `null`, which `RandomService` already turns into
    `404 NO_LOCAL_ENTRIES`.
 
@@ -72,7 +74,7 @@ deterministic.
 - Test: `tests/repositories/random.repository.test.ts` (new), plus the existing
   `tests/routes/random.test.ts` stays green.
 
-- [ ] Write the failing tests first, against a fake D1 that records each statement and answers from
+- [x] Write the failing tests first, against a fake D1 that records each statement and answers from
       an in-memory table:
   - a table with ids `{3, 7, 9}` and a seeded random source → the pick is one of them, and the
     statements issued are one `max(...)` and one `... IN (...)` — **no `ORDER BY RANDOM()`**;
@@ -81,15 +83,15 @@ deterministic.
   - all probes miss for `ATTEMPTS` rounds → the fallback statement runs and returns a row;
   - empty table → `null`, one statement;
   - `pickUser` uses `rowid`, same shape.
-- [ ] Implement with `random: () => number` injected (default `Math.random`), `PROBES = 32`,
+- [x] Implement with `random: () => number` injected (default `Math.random`), `PROBES = 32`,
       `ATTEMPTS = 3`. Draw distinct ids; cap the probe count at `max` for tiny tables.
-- [ ] Revert the implementation and confirm the tests go red; restore.
+- [x] Revert the implementation and confirm the tests go red; restore.
 
 ## Task 2: prove the cost on real databases
 
-- [ ] **Preview D1, through the app:** `wrangler dev --remote` (binds `jikan-edge-preview`), call each
+- [x] **Preview D1, through the app:** `wrangler dev --remote` (binds `jikan-edge-preview`), call each
       `/v1/random/*` route 20 times; every answer `200` or `404 NO_LOCAL_ENTRIES`, ids spread.
-- [ ] **Production D1, the statements alone:** with the guarded probe, run one round of the new
+- [x] **Production D1, the statements alone:** with the guarded probe, run one round of the new
       statements by hand for `anime` and `manga` (`max(mal_id)`, then an `IN` list of 32 random
       ids) and record `rows_read` and `sql_duration_ms` from the response meta. Target: ≤ 33 rows
       against 58,851; the old statement is **not** run for comparison — the 7-day numbers above are
@@ -99,11 +101,32 @@ deterministic.
 
 ## Task 3: docs
 
-- [ ] `docs/routes.md`, random section: the sampling scheme and the measured before/after.
-- [ ] `.claude/CLAUDE.md` (and the `AGENTS.md` copy): replace "the known heavy statement is
+- [x] `docs/routes.md`, random section: the sampling scheme and the measured before/after.
+- [x] `.claude/CLAUDE.md` (and the `AGENTS.md` copy): replace "the known heavy statement is
       `ORDER BY RANDOM()`" with the result.
 - [ ] `CHANGELOG.md`: an operational note only if latency is visibly different for callers;
       the contract does not change.
+
+## Result (2026-11-18)
+
+| check | outcome |
+| --- | --- |
+| unit tests (`tests/repositories/random.repository.test.ts`) | 9, red against `ORDER BY RANDOM()` (9 of 9), and each kills its mutant: always-fallback, first row found, random probes on a tiny table; an unbounded draw loop hangs the run |
+| integration (`tests/integration/catalog.test.ts`, real SQLite) | 600 draws over ids `{3, 70, 900}` each within 10 points of a third; the `>=` fallback missed by 25 |
+| production D1, statements by hand | `max`: 1 row, 0.6–0.8 ms. `IN` of 32: **64 rows**, 4.3–12.4 ms, over 8 rounds (anime 9–17 keys found, manga 11–15). Users: max rowid 4,722, 200 of 200 rowids probed are stored |
+| preview D1 through the app, 20 calls per route | anime 20×200, 17 distinct of 61 stored (uniform expects 17.1); manga 20×200 over 2 rows; characters, people 20×404 `NO_LOCAL_ENTRIES` (empty); users: see `docs/routes.md` |
+
+Two departures from the plan above:
+
+- **The fallback is not `mal_id >= <random>`.** On the preview D1 (61 anime over 64,809 ids) nearly
+  every pick reached it, and it drew the same anime 4 times in the first 6 picks — 12 distinct
+  ids in 20. A fresh self-hosted catalog looks like that, and the old sort was uniform there. It
+  is now `WHERE key = (SELECT key FROM … ORDER BY RANDOM() LIMIT 1)`: a scan of the keys, but
+  only reached on a table mostly made of gaps, which is a small one. No wrap was needed either way.
+- **`rows_read` per round is 64, not ≤ 32.** D1 counts two rows per key in an `IN` lookup, found
+  or not (6 keys → 12 on a separate probe). One pick is 65 rows against 58,851.
+
+Left: the 7-day `d1QueriesAdaptiveGroups` check of Task 2, once the build is live.
 
 ## Out of scope
 

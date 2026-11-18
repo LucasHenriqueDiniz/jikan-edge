@@ -8,7 +8,7 @@ This file starts on 2026-07-30 and does not reconstruct earlier history.
 
 ## 2026-11-18
 
-Published versions: `b00d5e16` (the news fixes); `0c287825` (the user `Cache-Control`).
+Published versions: `b00d5e16` (the news fixes); `0c287825` (the user `Cache-Control`); the `/random` picks: to be confirmed.
 
 ### Fixed
 
@@ -29,6 +29,15 @@ Published versions: `b00d5e16` (the news fixes); `0c287825` (the user `Cache-Con
   `/v1/users/:username`; `full` announces that of its oldest part, since favorites and updates are
   cached apart from the profile and can be hours older. *Before:* no `Cache-Control`. *After:* e.g.
   `Cache-Control: public, max-age=18000, stale-while-revalidate=21600`.
+
+### Changed
+
+- **`/v1/random/*` no longer reads the whole table to pick one entry.** The pick sorted every
+  stored row by a random key — 58,851 rows read per anime pick, a fifth of everything the
+  database read in the week of 2026-11-11, and up to a second of database time per call that
+  every other request queued behind. It now looks up 32 random ids and picks one of those it
+  finds: 65 rows read and about 5–12 ms. Still a uniform draw from the local catalog, with the
+  same body, the same `404 NO_LOCAL_ENTRIES` and the same `no-store`.
 
 ## 2026-11-17
 

@@ -7,14 +7,24 @@ import { NO_STORE } from '../../src/http/caching';
 const KINDS = ['anime', 'manga', 'characters', 'people'] as const;
 const STANDARD_META = ['cached', 'fetchedAt', 'refreshFailed', 'stale'];
 
+// The pick asks for the top key with first() and reads the probed rows with all(); every other
+// statement on the way (the users pick goes through withCache) gets the row itself.
+function dbAnswering(row: Record<string, unknown>): D1Database {
+  return {
+    prepare: (sql: string) => {
+      const statement = {
+        bind: () => statement,
+        first: async () => (sql.startsWith('SELECT max(') ? { top: 1 } : row),
+        run: async () => ({ meta: {}, success: true }),
+        all: async () => ({ results: sql.includes(' IN (') ? [row] : [] }),
+      };
+      return statement;
+    },
+  } as unknown as D1Database;
+}
+
 function dbWithRow(payload: unknown, fetchedAt = new Date().toISOString()): D1Database {
-  const statement = {
-    bind: () => statement,
-    first: async () => ({ payload_json: JSON.stringify(payload), fetched_at: fetchedAt }),
-    run: async () => ({ meta: {}, success: true }),
-    all: async () => ({ results: [] }),
-  };
-  return { prepare: () => statement } as unknown as D1Database;
+  return dbAnswering({ payload_json: JSON.stringify(payload), fetched_at: fetchedAt });
 }
 
 // One row that satisfies every query the users pick makes on its way through withCache: the
@@ -37,13 +47,7 @@ function dbWithCachedProfile(): D1Database {
     source_status: 'success',
     parser_version: PARSER_VERSION,
   };
-  const statement = {
-    bind: () => statement,
-    first: async () => row,
-    run: async () => ({ meta: {}, success: true }),
-    all: async () => ({ results: [] }),
-  };
-  return { prepare: () => statement } as unknown as D1Database;
+  return dbAnswering(row);
 }
 
 function dbWithNothing(): D1Database {

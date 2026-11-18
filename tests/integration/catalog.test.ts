@@ -222,6 +222,35 @@ describe('D1 integration: catalog repositories', () => {
     expect(picked.fetchedAt).toBe(fetchedAt);
   });
 
+  // The statements of tests/repositories/random.repository.test.ts against real SQLite, which the
+  // fake there cannot vouch for: a bound IN list, the key-only random sort, and `max(rowid)` on a
+  // table keyed by text. Three ids spread over 900 send about three draws in four through the
+  // fallback, so it is the fallback's fairness this measures: the first draft's `mal_id >= <random>`
+  // gave 900 about 90% of the draws here.
+  it('random draws real rows by key, fairly even on a sparse table, and users by rowid', async () => {
+    const repo = new AnimeRepository(bindings.DB);
+    for (const malId of [3, 70, 900]) await repo.put(detail(malId), fetchedAt, 'test');
+    const random = new RandomService(new D1CatalogStore(bindings.DB));
+
+    const counts = new Map<number, number>();
+    const draws = 600;
+    for (let draw = 0; draw < draws; draw += 1) {
+      const malId = ((await random.pick('anime')).data as AnimeDetail).malId;
+      counts.set(malId, (counts.get(malId) ?? 0) + 1);
+    }
+    expect([...counts.keys()].sort((a, b) => a - b)).toEqual([3, 70, 900]);
+    // One standard deviation is 1.9 points at 600 draws; 10 points leaves room for chance, not bias.
+    for (const malId of [3, 70, 900]) expect(Math.abs((counts.get(malId) ?? 0) / draws - 1 / 3)).toBeLessThan(0.1);
+
+    await bindings.DB.prepare(
+      `INSERT INTO users(username_key, canonical_username, profile_url, fetched_at, parser_version, source_status)
+       VALUES ('xinil', 'Xinil', 'https://myanimelist.net/profile/Xinil', ?, 'test', 'success')`,
+    )
+      .bind(fetchedAt)
+      .run();
+    expect(await random.pickUser()).toEqual({ username: 'Xinil' });
+  });
+
   it('stores and overwrites list-shaped catalog resources by key', async () => {
     const repo = new CatalogListRepository(bindings.DB);
     // GenreTaxonomyEntry gained count and type in the 2026-07-30 contract change; this fixture

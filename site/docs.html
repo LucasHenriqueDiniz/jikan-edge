@@ -513,7 +513,7 @@ npm install</pre>
       { p: '/v1/recommendations/anime?page=', ex: '/v1/recommendations/anime', d: 'Latest anime recommendations site-wide.' },
       { p: '/v1/recommendations/manga?page=', ex: '/v1/recommendations/manga', d: 'Latest manga recommendations site-wide.' }
     ]},
-    { id: 'g-random', title: 'Random', note: 'Deliberately different from Jikan: draws only from entities already cached locally (<code>ORDER BY RANDOM()</code>), never scans MAL ids. Empty local catalog for a type → <code>404 NO_LOCAL_ENTRIES</code>.', routes: [
+    { id: 'g-random', title: 'Random', note: 'Deliberately different from Jikan: draws only from entities already cached locally (uniformly, by key), never scans MAL ids. Empty local catalog for a type → <code>404 NO_LOCAL_ENTRIES</code>.', routes: [
       { p: '/v1/random/anime', ex: '/v1/random/anime', d: 'Random cached anime.' },
       { p: '/v1/random/manga', ex: '/v1/random/manga', d: 'Random cached manga.' },
       { p: '/v1/random/characters', ex: '/v1/random/characters', d: 'Random cached character.' },
