@@ -8,7 +8,7 @@ This file starts on 2026-07-30 and does not reconstruct earlier history.
 
 ## 2026-11-18
 
-Published versions: `b00d5e16` (the news fixes).
+Published versions: `b00d5e16` (the news fixes); the user `Cache-Control`: to be confirmed.
 
 ### Fixed
 
@@ -23,6 +23,12 @@ Published versions: `b00d5e16` (the news fixes).
   with none was merged into the one before it and dropped: manga `4632` returned 12 of its 13 news
   items. Every item is returned now, with `imageUrl: null` where there is no picture. Cached news
   lists are refetched on their next request.
+- **`/v1/users/:username/statistics` and `/v1/users/:username/full` sent no `Cache-Control`.** Both
+  built their answer without the freshness every other cached route carries, so a browser or a CDN
+  had nothing to cache them by. `statistics` now announces the profile's remaining freshness, like
+  `/v1/users/:username`; `full` announces that of its oldest part, since favorites and updates are
+  cached apart from the profile and can be hours older. *Before:* no `Cache-Control`. *After:* e.g.
+  `Cache-Control: public, max-age=18000, stale-while-revalidate=21600`.
 
 ## 2026-11-17
 
@@ -124,7 +130,9 @@ overloaded: not a bug, and not MyAnimeList. The check after that deploy found th
 
 ## 2026-11-05
 
-Published version: to be confirmed.
+Published version: `4f505cd5`. Over the 24 hours after it went live (2026-11-05 22:05 to 2026-11-06
+22:05 UTC), 96 of 316,449 requests answered `502` (0.03%), against 54,018 of 333,416 (16.2%) in the
+24 hours before.
 
 Origin: one day of production traffic (2026-11-04/05). 16% of the requests that reached the API —
 53.6k of 331k — answered `502 UPSTREAM_SUSPICIOUS`, and every one of them was a title where

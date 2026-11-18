@@ -1,7 +1,10 @@
+/** The values `X-Cache-Status` takes — the metric reports the same word the caller received. */
+export type CacheStatus = 'hit' | 'miss' | 'stale' | 'local' | 'rate_limited' | 'error' | 'unknown';
+
 interface OperationMetric {
   route: string;
   resourceType: string;
-  cacheStatus: 'hit' | 'miss' | 'stale';
+  cacheStatus: CacheStatus;
   stale: boolean;
   upstreamStatus?: number | null;
   upstreamDurationMs?: number;

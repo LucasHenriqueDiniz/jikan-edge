@@ -43,16 +43,32 @@ import { parseTitleReviews } from '../../src/parsers/title-reviews.parser';
 import { parseTitleRecommendations } from '../../src/parsers/title-recommendations.parser';
 import { parseMoreInfo } from '../../src/parsers/more-info.parser';
 
+/**
+ * Milliseconds of CPU the process spent since `since` — the bound the benchmarks assert on.
+ *
+ * Not the wall clock: it counts time spent waiting for a core, and the full suite runs files in
+ * parallel. On 2026-11-16 the anime-detail p95 read 10.3 ms on unchanged `main` against ~0.15 ms on
+ * an idle machine, and the next run passed. CPU time measures the parsing, which is also what the
+ * Workers limit counts. It is taken over the 100 parses together, because per-sample CPU time is as
+ * coarse as the kernel's accounting tick on some Linux hosts; the wall-clock samples stay in the log.
+ */
+function cpuMs(since: NodeJS.CpuUsage): number {
+  const used = process.cpuUsage(since);
+  return (used.user + used.system) / 1000;
+}
+
 describe('parser benchmark smoke test', () => {
   it('reports a bounded fixture parsing duration', () => {
     const html = readFileSync('tests/fixtures/users/profile-valid.html', 'utf8');
     const samples: number[] = [];
+    const cpuStart = process.cpuUsage();
     for (let index = 0; index < 100; index += 1) {
       const started = performance.now();
       parseUserProfile(html, 'amayacrab');
       samples.push(performance.now() - started);
     }
     samples.sort((a, b) => a - b);
+    const cpuPerParse = cpuMs(cpuStart) / samples.length;
     const p95 = samples[Math.floor(samples.length * 0.95)];
     console.log(
       JSON.stringify({
@@ -61,21 +77,24 @@ describe('parser benchmark smoke test', () => {
         p50: samples[50],
         p95,
         max: samples.at(-1),
+        cpuPerParse,
         failures: 0,
       }),
     );
-    expect(p95).toBeLessThan(8);
+    expect(cpuPerParse).toBeLessThan(8);
   });
 
   it('reports a bounded anime-detail fixture parsing duration', () => {
     const html = readFileSync('tests/fixtures/anime/detail-valid.html', 'utf8');
     const samples: number[] = [];
+    const cpuStart = process.cpuUsage();
     for (let index = 0; index < 100; index += 1) {
       const started = performance.now();
       parseAnimeDetail(html, 1);
       samples.push(performance.now() - started);
     }
     samples.sort((a, b) => a - b);
+    const cpuPerParse = cpuMs(cpuStart) / samples.length;
     const p95 = samples[Math.floor(samples.length * 0.95)];
     console.log(
       JSON.stringify({
@@ -84,21 +103,24 @@ describe('parser benchmark smoke test', () => {
         p50: samples[50],
         p95,
         max: samples.at(-1),
+        cpuPerParse,
         failures: 0,
       }),
     );
-    expect(p95).toBeLessThan(8);
+    expect(cpuPerParse).toBeLessThan(8);
   });
 
   it('reports a bounded top-anime fixture parsing duration', () => {
     const html = readFileSync('tests/fixtures/anime/top-anime-page1.html', 'utf8');
     const samples: number[] = [];
+    const cpuStart = process.cpuUsage();
     for (let index = 0; index < 100; index += 1) {
       const started = performance.now();
       parseTopAnime(html);
       samples.push(performance.now() - started);
     }
     samples.sort((a, b) => a - b);
+    const cpuPerParse = cpuMs(cpuStart) / samples.length;
     const p95 = samples[Math.floor(samples.length * 0.95)];
     console.log(
       JSON.stringify({
@@ -107,21 +129,24 @@ describe('parser benchmark smoke test', () => {
         p50: samples[50],
         p95,
         max: samples.at(-1),
+        cpuPerParse,
         failures: 0,
       }),
     );
-    expect(p95).toBeLessThan(8);
+    expect(cpuPerParse).toBeLessThan(8);
   });
 
   it('reports a bounded season-now fixture parsing duration', () => {
     const html = readFileSync('tests/fixtures/anime/season-now-valid.html', 'utf8');
     const samples: number[] = [];
+    const cpuStart = process.cpuUsage();
     for (let index = 0; index < 100; index += 1) {
       const started = performance.now();
       parseSeasonNow(html);
       samples.push(performance.now() - started);
     }
     samples.sort((a, b) => a - b);
+    const cpuPerParse = cpuMs(cpuStart) / samples.length;
     const p95 = samples[Math.floor(samples.length * 0.95)];
     console.log(
       JSON.stringify({
@@ -130,21 +155,24 @@ describe('parser benchmark smoke test', () => {
         p50: samples[50],
         p95,
         max: samples.at(-1),
+        cpuPerParse,
         failures: 0,
       }),
     );
-    expect(p95).toBeLessThan(8);
+    expect(cpuPerParse).toBeLessThan(8);
   });
 
   it('reports a bounded manga-detail fixture parsing duration', () => {
     const html = readFileSync('tests/fixtures/manga/detail-valid.html', 'utf8');
     const samples: number[] = [];
+    const cpuStart = process.cpuUsage();
     for (let index = 0; index < 100; index += 1) {
       const started = performance.now();
       parseMangaDetail(html, 2);
       samples.push(performance.now() - started);
     }
     samples.sort((a, b) => a - b);
+    const cpuPerParse = cpuMs(cpuStart) / samples.length;
     const p95 = samples[Math.floor(samples.length * 0.95)];
     console.log(
       JSON.stringify({
@@ -153,21 +181,24 @@ describe('parser benchmark smoke test', () => {
         p50: samples[50],
         p95,
         max: samples.at(-1),
+        cpuPerParse,
         failures: 0,
       }),
     );
-    expect(p95).toBeLessThan(8);
+    expect(cpuPerParse).toBeLessThan(8);
   });
 
   it('reports a bounded top-manga fixture parsing duration', () => {
     const html = readFileSync('tests/fixtures/manga/top-manga-page1.html', 'utf8');
     const samples: number[] = [];
+    const cpuStart = process.cpuUsage();
     for (let index = 0; index < 100; index += 1) {
       const started = performance.now();
       parseTopManga(html);
       samples.push(performance.now() - started);
     }
     samples.sort((a, b) => a - b);
+    const cpuPerParse = cpuMs(cpuStart) / samples.length;
     const p95 = samples[Math.floor(samples.length * 0.95)];
     console.log(
       JSON.stringify({
@@ -176,21 +207,24 @@ describe('parser benchmark smoke test', () => {
         p50: samples[50],
         p95,
         max: samples.at(-1),
+        cpuPerParse,
         failures: 0,
       }),
     );
-    expect(p95).toBeLessThan(8);
+    expect(cpuPerParse).toBeLessThan(8);
   });
 
   it('reports a bounded character-detail fixture parsing duration', () => {
     const html = readFileSync('tests/fixtures/characters/detail-valid.html', 'utf8');
     const samples: number[] = [];
+    const cpuStart = process.cpuUsage();
     for (let index = 0; index < 100; index += 1) {
       const started = performance.now();
       parseCharacterDetail(html, 1);
       samples.push(performance.now() - started);
     }
     samples.sort((a, b) => a - b);
+    const cpuPerParse = cpuMs(cpuStart) / samples.length;
     const p95 = samples[Math.floor(samples.length * 0.95)];
     console.log(
       JSON.stringify({
@@ -199,21 +233,24 @@ describe('parser benchmark smoke test', () => {
         p50: samples[50],
         p95,
         max: samples.at(-1),
+        cpuPerParse,
         failures: 0,
       }),
     );
-    expect(p95).toBeLessThan(8);
+    expect(cpuPerParse).toBeLessThan(8);
   });
 
   it('reports a bounded producer-detail fixture parsing duration', () => {
     const html = readFileSync('tests/fixtures/producers/detail-valid.html', 'utf8');
     const samples: number[] = [];
+    const cpuStart = process.cpuUsage();
     for (let index = 0; index < 100; index += 1) {
       const started = performance.now();
       parseProducerDetail(html, 123);
       samples.push(performance.now() - started);
     }
     samples.sort((a, b) => a - b);
+    const cpuPerParse = cpuMs(cpuStart) / samples.length;
     const p95 = samples[Math.floor(samples.length * 0.95)];
     console.log(
       JSON.stringify({
@@ -222,21 +259,24 @@ describe('parser benchmark smoke test', () => {
         p50: samples[50],
         p95,
         max: samples.at(-1),
+        cpuPerParse,
         failures: 0,
       }),
     );
-    expect(p95).toBeLessThan(8);
+    expect(cpuPerParse).toBeLessThan(8);
   });
 
   it('reports a bounded club-detail fixture parsing duration', () => {
     const html = readFileSync('tests/fixtures/clubs/detail-valid.html', 'utf8');
     const samples: number[] = [];
+    const cpuStart = process.cpuUsage();
     for (let index = 0; index < 100; index += 1) {
       const started = performance.now();
       parseClubDetail(html, 1);
       samples.push(performance.now() - started);
     }
     samples.sort((a, b) => a - b);
+    const cpuPerParse = cpuMs(cpuStart) / samples.length;
     const p95 = samples[Math.floor(samples.length * 0.95)];
     console.log(
       JSON.stringify({
@@ -245,21 +285,24 @@ describe('parser benchmark smoke test', () => {
         p50: samples[50],
         p95,
         max: samples.at(-1),
+        cpuPerParse,
         failures: 0,
       }),
     );
-    expect(p95).toBeLessThan(8);
+    expect(cpuPerParse).toBeLessThan(8);
   });
 
   it('reports a bounded person-detail fixture parsing duration', () => {
     const html = readFileSync('tests/fixtures/people/detail-valid.html', 'utf8');
     const samples: number[] = [];
+    const cpuStart = process.cpuUsage();
     for (let index = 0; index < 100; index += 1) {
       const started = performance.now();
       parsePersonDetail(html, 11);
       samples.push(performance.now() - started);
     }
     samples.sort((a, b) => a - b);
+    const cpuPerParse = cpuMs(cpuStart) / samples.length;
     const p95 = samples[Math.floor(samples.length * 0.95)];
     console.log(
       JSON.stringify({
@@ -268,21 +311,24 @@ describe('parser benchmark smoke test', () => {
         p50: samples[50],
         p95,
         max: samples.at(-1),
+        cpuPerParse,
         failures: 0,
       }),
     );
-    expect(p95).toBeLessThan(8);
+    expect(cpuPerParse).toBeLessThan(8);
   });
 
   it('reports a bounded reviews fixture parsing duration', () => {
     const html = readFileSync('tests/fixtures/reviews/anime-valid.html', 'utf8');
     const samples: number[] = [];
+    const cpuStart = process.cpuUsage();
     for (let index = 0; index < 100; index += 1) {
       const started = performance.now();
       parseReviews(html);
       samples.push(performance.now() - started);
     }
     samples.sort((a, b) => a - b);
+    const cpuPerParse = cpuMs(cpuStart) / samples.length;
     const p95 = samples[Math.floor(samples.length * 0.95)];
     console.log(
       JSON.stringify({
@@ -291,21 +337,24 @@ describe('parser benchmark smoke test', () => {
         p50: samples[50],
         p95,
         max: samples.at(-1),
+        cpuPerParse,
         failures: 0,
       }),
     );
-    expect(p95).toBeLessThan(8);
+    expect(cpuPerParse).toBeLessThan(8);
   });
 
   it('reports a bounded search fixture parsing duration', () => {
     const html = readFileSync('tests/fixtures/search/anime-valid.html', 'utf8');
     const samples: number[] = [];
+    const cpuStart = process.cpuUsage();
     for (let index = 0; index < 100; index += 1) {
       const started = performance.now();
       parseAnimeSearchResults(html);
       samples.push(performance.now() - started);
     }
     samples.sort((a, b) => a - b);
+    const cpuPerParse = cpuMs(cpuStart) / samples.length;
     const p95 = samples[Math.floor(samples.length * 0.95)];
     console.log(
       JSON.stringify({
@@ -314,15 +363,17 @@ describe('parser benchmark smoke test', () => {
         p50: samples[50],
         p95,
         max: samples.at(-1),
+        cpuPerParse,
         failures: 0,
       }),
     );
-    expect(p95).toBeLessThan(8);
+    expect(cpuPerParse).toBeLessThan(8);
   });
 
   it('reports a bounded characters/staff fixture parsing duration', () => {
     const html = readFileSync('tests/fixtures/characters/anime-characters-valid.html', 'utf8');
     const samples: number[] = [];
+    const cpuStart = process.cpuUsage();
     for (let index = 0; index < 100; index += 1) {
       const started = performance.now();
       parseCharacters(html, 'anime');
@@ -330,6 +381,7 @@ describe('parser benchmark smoke test', () => {
       samples.push(performance.now() - started);
     }
     samples.sort((a, b) => a - b);
+    const cpuPerParse = cpuMs(cpuStart) / samples.length;
     const p95 = samples[Math.floor(samples.length * 0.95)];
     console.log(
       JSON.stringify({
@@ -338,21 +390,24 @@ describe('parser benchmark smoke test', () => {
         p50: samples[50],
         p95,
         max: samples.at(-1),
+        cpuPerParse,
         failures: 0,
       }),
     );
-    expect(p95).toBeLessThan(8);
+    expect(cpuPerParse).toBeLessThan(8);
   });
 
   it('reports a bounded statistics fixture parsing duration', () => {
     const html = readFileSync('tests/fixtures/statistics/anime-stats-valid.html', 'utf8');
     const samples: number[] = [];
+    const cpuStart = process.cpuUsage();
     for (let index = 0; index < 100; index += 1) {
       const started = performance.now();
       parseStatistics(html);
       samples.push(performance.now() - started);
     }
     samples.sort((a, b) => a - b);
+    const cpuPerParse = cpuMs(cpuStart) / samples.length;
     const p95 = samples[Math.floor(samples.length * 0.95)];
     console.log(
       JSON.stringify({
@@ -361,21 +416,24 @@ describe('parser benchmark smoke test', () => {
         p50: samples[50],
         p95,
         max: samples.at(-1),
+        cpuPerParse,
         failures: 0,
       }),
     );
-    expect(p95).toBeLessThan(8);
+    expect(cpuPerParse).toBeLessThan(8);
   });
 
   it('reports a bounded pictures fixture parsing duration', () => {
     const html = readFileSync('tests/fixtures/pictures/anime-pics-valid.html', 'utf8');
     const samples: number[] = [];
+    const cpuStart = process.cpuUsage();
     for (let index = 0; index < 100; index += 1) {
       const started = performance.now();
       parsePictures(html);
       samples.push(performance.now() - started);
     }
     samples.sort((a, b) => a - b);
+    const cpuPerParse = cpuMs(cpuStart) / samples.length;
     const p95 = samples[Math.floor(samples.length * 0.95)];
     console.log(
       JSON.stringify({
@@ -384,21 +442,24 @@ describe('parser benchmark smoke test', () => {
         p50: samples[50],
         p95,
         max: samples.at(-1),
+        cpuPerParse,
         failures: 0,
       }),
     );
-    expect(p95).toBeLessThan(8);
+    expect(cpuPerParse).toBeLessThan(8);
   });
 
   it('reports a bounded news fixture parsing duration', () => {
     const html = readFileSync('tests/fixtures/news/anime-news-valid.html', 'utf8');
     const samples: number[] = [];
+    const cpuStart = process.cpuUsage();
     for (let index = 0; index < 100; index += 1) {
       const started = performance.now();
       parseNews(html);
       samples.push(performance.now() - started);
     }
     samples.sort((a, b) => a - b);
+    const cpuPerParse = cpuMs(cpuStart) / samples.length;
     const p95 = samples[Math.floor(samples.length * 0.95)];
     console.log(
       JSON.stringify({
@@ -407,21 +468,24 @@ describe('parser benchmark smoke test', () => {
         p50: samples[50],
         p95,
         max: samples.at(-1),
+        cpuPerParse,
         failures: 0,
       }),
     );
-    expect(p95).toBeLessThan(8);
+    expect(cpuPerParse).toBeLessThan(8);
   });
 
   it('reports a bounded forum fixture parsing duration', () => {
     const html = readFileSync('tests/fixtures/forum/anime-forum-valid.html', 'utf8');
     const samples: number[] = [];
+    const cpuStart = process.cpuUsage();
     for (let index = 0; index < 100; index += 1) {
       const started = performance.now();
       parseForum(html);
       samples.push(performance.now() - started);
     }
     samples.sort((a, b) => a - b);
+    const cpuPerParse = cpuMs(cpuStart) / samples.length;
     const p95 = samples[Math.floor(samples.length * 0.95)];
     console.log(
       JSON.stringify({
@@ -430,21 +494,24 @@ describe('parser benchmark smoke test', () => {
         p50: samples[50],
         p95,
         max: samples.at(-1),
+        cpuPerParse,
         failures: 0,
       }),
     );
-    expect(p95).toBeLessThan(8);
+    expect(cpuPerParse).toBeLessThan(8);
   });
 
   it('reports a bounded episodes fixture parsing duration', () => {
     const html = readFileSync('tests/fixtures/episodes/anime-episodes-valid.html', 'utf8');
     const samples: number[] = [];
+    const cpuStart = process.cpuUsage();
     for (let index = 0; index < 100; index += 1) {
       const started = performance.now();
       parseEpisodes(html);
       samples.push(performance.now() - started);
     }
     samples.sort((a, b) => a - b);
+    const cpuPerParse = cpuMs(cpuStart) / samples.length;
     const p95 = samples[Math.floor(samples.length * 0.95)];
     console.log(
       JSON.stringify({
@@ -453,21 +520,24 @@ describe('parser benchmark smoke test', () => {
         p50: samples[50],
         p95,
         max: samples.at(-1),
+        cpuPerParse,
         failures: 0,
       }),
     );
-    expect(p95).toBeLessThan(8);
+    expect(cpuPerParse).toBeLessThan(8);
   });
 
   it('reports a bounded user-search fixture parsing duration', () => {
     const html = readFileSync('tests/fixtures/users/search-list-valid.html', 'utf8');
     const samples: number[] = [];
+    const cpuStart = process.cpuUsage();
     for (let index = 0; index < 100; index += 1) {
       const started = performance.now();
       parseUserSearch(html, 'amaya');
       samples.push(performance.now() - started);
     }
     samples.sort((a, b) => a - b);
+    const cpuPerParse = cpuMs(cpuStart) / samples.length;
     const p95 = samples[Math.floor(samples.length * 0.95)];
     console.log(
       JSON.stringify({
@@ -476,21 +546,24 @@ describe('parser benchmark smoke test', () => {
         p50: samples[50],
         p95,
         max: samples.at(-1),
+        cpuPerParse,
         failures: 0,
       }),
     );
-    expect(p95).toBeLessThan(8);
+    expect(cpuPerParse).toBeLessThan(8);
   });
 
   it('reports a bounded club-list fixture parsing duration', () => {
     const html = readFileSync('tests/fixtures/clubs/index-valid.html', 'utf8');
     const samples: number[] = [];
+    const cpuStart = process.cpuUsage();
     for (let index = 0; index < 100; index += 1) {
       const started = performance.now();
       parseClubList(html);
       samples.push(performance.now() - started);
     }
     samples.sort((a, b) => a - b);
+    const cpuPerParse = cpuMs(cpuStart) / samples.length;
     const p95 = samples[Math.floor(samples.length * 0.95)];
     console.log(
       JSON.stringify({
@@ -499,21 +572,24 @@ describe('parser benchmark smoke test', () => {
         p50: samples[50],
         p95,
         max: samples.at(-1),
+        cpuPerParse,
         failures: 0,
       }),
     );
-    expect(p95).toBeLessThan(8);
+    expect(cpuPerParse).toBeLessThan(8);
   });
 
   it('reports a bounded producer-full fixture parsing duration', () => {
     const html = readFileSync('tests/fixtures/producers/full-valid.html', 'utf8');
     const samples: number[] = [];
+    const cpuStart = process.cpuUsage();
     for (let index = 0; index < 100; index += 1) {
       const started = performance.now();
       parseProducerFull(html, 1);
       samples.push(performance.now() - started);
     }
     samples.sort((a, b) => a - b);
+    const cpuPerParse = cpuMs(cpuStart) / samples.length;
     const p95 = samples[Math.floor(samples.length * 0.95)];
     console.log(
       JSON.stringify({
@@ -522,21 +598,24 @@ describe('parser benchmark smoke test', () => {
         p50: samples[50],
         p95,
         max: samples.at(-1),
+        cpuPerParse,
         failures: 0,
       }),
     );
-    expect(p95).toBeLessThan(8);
+    expect(cpuPerParse).toBeLessThan(8);
   });
 
   it('reports a bounded character-search fixture parsing duration', () => {
     const html = readFileSync('tests/fixtures/characters/search-valid.html', 'utf8');
     const samples: number[] = [];
+    const cpuStart = process.cpuUsage();
     for (let index = 0; index < 100; index += 1) {
       const started = performance.now();
       parseCharacterSearch(html);
       samples.push(performance.now() - started);
     }
     samples.sort((a, b) => a - b);
+    const cpuPerParse = cpuMs(cpuStart) / samples.length;
     const p95 = samples[Math.floor(samples.length * 0.95)];
     console.log(
       JSON.stringify({
@@ -545,21 +624,24 @@ describe('parser benchmark smoke test', () => {
         p50: samples[50],
         p95,
         max: samples.at(-1),
+        cpuPerParse,
         failures: 0,
       }),
     );
-    expect(p95).toBeLessThan(8);
+    expect(cpuPerParse).toBeLessThan(8);
   });
 
   it('reports a bounded person-search fixture parsing duration', () => {
     const html = readFileSync('tests/fixtures/people/search-valid.html', 'utf8');
     const samples: number[] = [];
+    const cpuStart = process.cpuUsage();
     for (let index = 0; index < 100; index += 1) {
       const started = performance.now();
       parsePersonSearch(html);
       samples.push(performance.now() - started);
     }
     samples.sort((a, b) => a - b);
+    const cpuPerParse = cpuMs(cpuStart) / samples.length;
     const p95 = samples[Math.floor(samples.length * 0.95)];
     console.log(
       JSON.stringify({
@@ -568,21 +650,24 @@ describe('parser benchmark smoke test', () => {
         p50: samples[50],
         p95,
         max: samples.at(-1),
+        cpuPerParse,
         failures: 0,
       }),
     );
-    expect(p95).toBeLessThan(8);
+    expect(cpuPerParse).toBeLessThan(8);
   });
 
   it('reports a bounded anime-full fixture parsing duration', () => {
     const html = readFileSync('tests/fixtures/anime/full-valid.html', 'utf8');
     const samples: number[] = [];
+    const cpuStart = process.cpuUsage();
     for (let index = 0; index < 100; index += 1) {
       const started = performance.now();
       parseAnimeFull(html, 1);
       samples.push(performance.now() - started);
     }
     samples.sort((a, b) => a - b);
+    const cpuPerParse = cpuMs(cpuStart) / samples.length;
     const p95 = samples[Math.floor(samples.length * 0.95)];
     console.log(
       JSON.stringify({
@@ -591,15 +676,17 @@ describe('parser benchmark smoke test', () => {
         p50: samples[50],
         p95,
         max: samples.at(-1),
+        cpuPerParse,
         failures: 0,
       }),
     );
-    expect(p95).toBeLessThan(8);
+    expect(cpuPerParse).toBeLessThan(8);
   });
 
   it('reports a bounded character-media fixture parsing duration', () => {
     const html = readFileSync('tests/fixtures/characters/media-valid.html', 'utf8');
     const samples: number[] = [];
+    const cpuStart = process.cpuUsage();
     for (let index = 0; index < 100; index += 1) {
       const started = performance.now();
       parseCharacterAnimeography(html);
@@ -608,6 +695,7 @@ describe('parser benchmark smoke test', () => {
       samples.push(performance.now() - started);
     }
     samples.sort((a, b) => a - b);
+    const cpuPerParse = cpuMs(cpuStart) / samples.length;
     const p95 = samples[Math.floor(samples.length * 0.95)];
     console.log(
       JSON.stringify({
@@ -616,15 +704,17 @@ describe('parser benchmark smoke test', () => {
         p50: samples[50],
         p95,
         max: samples.at(-1),
+        cpuPerParse,
         failures: 0,
       }),
     );
-    expect(p95).toBeLessThan(8);
+    expect(cpuPerParse).toBeLessThan(8);
   });
 
   it('reports a bounded person-media fixture parsing duration', () => {
     const html = readFileSync('tests/fixtures/people/media-valid.html', 'utf8');
     const samples: number[] = [];
+    const cpuStart = process.cpuUsage();
     for (let index = 0; index < 100; index += 1) {
       const started = performance.now();
       parsePersonAnimeStaff(html);
@@ -633,6 +723,7 @@ describe('parser benchmark smoke test', () => {
       samples.push(performance.now() - started);
     }
     samples.sort((a, b) => a - b);
+    const cpuPerParse = cpuMs(cpuStart) / samples.length;
     const p95 = samples[Math.floor(samples.length * 0.95)];
     console.log(
       JSON.stringify({
@@ -641,21 +732,24 @@ describe('parser benchmark smoke test', () => {
         p50: samples[50],
         p95,
         max: samples.at(-1),
+        cpuPerParse,
         failures: 0,
       }),
     );
-    expect(p95).toBeLessThan(8);
+    expect(cpuPerParse).toBeLessThan(8);
   });
 
   it('reports a bounded character-full fixture parsing duration', () => {
     const html = readFileSync('tests/fixtures/characters/full-valid.html', 'utf8');
     const samples: number[] = [];
+    const cpuStart = process.cpuUsage();
     for (let index = 0; index < 100; index += 1) {
       const started = performance.now();
       parseCharacterFull(html, 1);
       samples.push(performance.now() - started);
     }
     samples.sort((a, b) => a - b);
+    const cpuPerParse = cpuMs(cpuStart) / samples.length;
     const p95 = samples[Math.floor(samples.length * 0.95)];
     console.log(
       JSON.stringify({
@@ -664,21 +758,24 @@ describe('parser benchmark smoke test', () => {
         p50: samples[50],
         p95,
         max: samples.at(-1),
+        cpuPerParse,
         failures: 0,
       }),
     );
-    expect(p95).toBeLessThan(8);
+    expect(cpuPerParse).toBeLessThan(8);
   });
 
   it('reports a bounded person-full fixture parsing duration', () => {
     const html = readFileSync('tests/fixtures/people/full-valid.html', 'utf8');
     const samples: number[] = [];
+    const cpuStart = process.cpuUsage();
     for (let index = 0; index < 100; index += 1) {
       const started = performance.now();
       parsePersonFull(html, 11);
       samples.push(performance.now() - started);
     }
     samples.sort((a, b) => a - b);
+    const cpuPerParse = cpuMs(cpuStart) / samples.length;
     const p95 = samples[Math.floor(samples.length * 0.95)];
     console.log(
       JSON.stringify({
@@ -687,21 +784,24 @@ describe('parser benchmark smoke test', () => {
         p50: samples[50],
         p95,
         max: samples.at(-1),
+        cpuPerParse,
         failures: 0,
       }),
     );
-    expect(p95).toBeLessThan(8);
+    expect(cpuPerParse).toBeLessThan(8);
   });
 
   it('reports a bounded top-people fixture parsing duration', () => {
     const html = readFileSync('tests/fixtures/people/top-people-page1.html', 'utf8');
     const samples: number[] = [];
+    const cpuStart = process.cpuUsage();
     for (let index = 0; index < 100; index += 1) {
       const started = performance.now();
       parseTopPeople(html);
       samples.push(performance.now() - started);
     }
     samples.sort((a, b) => a - b);
+    const cpuPerParse = cpuMs(cpuStart) / samples.length;
     const p95 = samples[Math.floor(samples.length * 0.95)];
     console.log(
       JSON.stringify({
@@ -710,21 +810,24 @@ describe('parser benchmark smoke test', () => {
         p50: samples[50],
         p95,
         max: samples.at(-1),
+        cpuPerParse,
         failures: 0,
       }),
     );
-    expect(p95).toBeLessThan(8);
+    expect(cpuPerParse).toBeLessThan(8);
   });
 
   it('reports a bounded top-characters fixture parsing duration', () => {
     const html = readFileSync('tests/fixtures/characters/top-characters-page1.html', 'utf8');
     const samples: number[] = [];
+    const cpuStart = process.cpuUsage();
     for (let index = 0; index < 100; index += 1) {
       const started = performance.now();
       parseTopCharacters(html);
       samples.push(performance.now() - started);
     }
     samples.sort((a, b) => a - b);
+    const cpuPerParse = cpuMs(cpuStart) / samples.length;
     const p95 = samples[Math.floor(samples.length * 0.95)];
     console.log(
       JSON.stringify({
@@ -733,21 +836,24 @@ describe('parser benchmark smoke test', () => {
         p50: samples[50],
         p95,
         max: samples.at(-1),
+        cpuPerParse,
         failures: 0,
       }),
     );
-    expect(p95).toBeLessThan(8);
+    expect(cpuPerParse).toBeLessThan(8);
   });
 
   it('reports a bounded title-reviews fixture parsing duration', () => {
     const html = readFileSync('tests/fixtures/reviews/anime-title-reviews-valid.html', 'utf8');
     const samples: number[] = [];
+    const cpuStart = process.cpuUsage();
     for (let index = 0; index < 100; index += 1) {
       const started = performance.now();
       parseTitleReviews(html);
       samples.push(performance.now() - started);
     }
     samples.sort((a, b) => a - b);
+    const cpuPerParse = cpuMs(cpuStart) / samples.length;
     const p95 = samples[Math.floor(samples.length * 0.95)];
     console.log(
       JSON.stringify({
@@ -756,21 +862,24 @@ describe('parser benchmark smoke test', () => {
         p50: samples[50],
         p95,
         max: samples.at(-1),
+        cpuPerParse,
         failures: 0,
       }),
     );
-    expect(p95).toBeLessThan(8);
+    expect(cpuPerParse).toBeLessThan(8);
   });
 
   it('reports a bounded title-recommendations fixture parsing duration', () => {
     const html = readFileSync('tests/fixtures/recommendations/anime-title-recs-valid.html', 'utf8');
     const samples: number[] = [];
+    const cpuStart = process.cpuUsage();
     for (let index = 0; index < 100; index += 1) {
       const started = performance.now();
       parseTitleRecommendations(html, 'anime');
       samples.push(performance.now() - started);
     }
     samples.sort((a, b) => a - b);
+    const cpuPerParse = cpuMs(cpuStart) / samples.length;
     const p95 = samples[Math.floor(samples.length * 0.95)];
     console.log(
       JSON.stringify({
@@ -779,21 +888,24 @@ describe('parser benchmark smoke test', () => {
         p50: samples[50],
         p95,
         max: samples.at(-1),
+        cpuPerParse,
         failures: 0,
       }),
     );
-    expect(p95).toBeLessThan(8);
+    expect(cpuPerParse).toBeLessThan(8);
   });
 
   it('reports a bounded more-info fixture parsing duration', () => {
     const html = readFileSync('tests/fixtures/anime/moreinfo-valid.html', 'utf8');
     const samples: number[] = [];
+    const cpuStart = process.cpuUsage();
     for (let index = 0; index < 100; index += 1) {
       const started = performance.now();
       parseMoreInfo(html);
       samples.push(performance.now() - started);
     }
     samples.sort((a, b) => a - b);
+    const cpuPerParse = cpuMs(cpuStart) / samples.length;
     const p95 = samples[Math.floor(samples.length * 0.95)];
     console.log(
       JSON.stringify({
@@ -802,21 +914,24 @@ describe('parser benchmark smoke test', () => {
         p50: samples[50],
         p95,
         max: samples.at(-1),
+        cpuPerParse,
         failures: 0,
       }),
     );
-    expect(p95).toBeLessThan(8);
+    expect(cpuPerParse).toBeLessThan(8);
   });
 
   it('reports a bounded club-members fixture parsing duration', () => {
     const html = readFileSync('tests/fixtures/clubs/members-valid.html', 'utf8');
     const samples: number[] = [];
+    const cpuStart = process.cpuUsage();
     for (let index = 0; index < 100; index += 1) {
       const started = performance.now();
       parseClubMembers(html);
       samples.push(performance.now() - started);
     }
     samples.sort((a, b) => a - b);
+    const cpuPerParse = cpuMs(cpuStart) / samples.length;
     const p95 = samples[Math.floor(samples.length * 0.95)];
     console.log(
       JSON.stringify({
@@ -825,9 +940,10 @@ describe('parser benchmark smoke test', () => {
         p50: samples[50],
         p95,
         max: samples.at(-1),
+        cpuPerParse,
         failures: 0,
       }),
     );
-    expect(p95).toBeLessThan(8);
+    expect(cpuPerParse).toBeLessThan(8);
   });
 });

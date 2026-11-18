@@ -1,0 +1,111 @@
+---
+status: todo
+---
+
+# Random without a table scan — Slice 01: draw from sampled ids
+
+> **For agentic workers:** implement task-by-task, TDD, tests alongside the code. Steps use
+> `- [ ]` checkboxes. One slice; nothing depends on another.
+
+| | |
+|---|---|
+| **Delivers** | `/v1/random/{anime,manga,characters,people,users}` picks a uniformly random stored entity with two index lookups (≤ 33 rows read) instead of reading the whole table on every call |
+| **Needs** | nothing new — the tables, `RandomRepository` and its tests exist |
+| **Tests** | Task 1's list below: no `ORDER BY RANDOM()` issued, uniform within ±3% over a gapped id set, fallback after missed rounds, `null` on an empty table, `pickUser` over `rowid` |
+| **Done when** | `pnpm test` is green, and one round of the new statements on the production D1 reports `rows_read` ≤ 33 for `anime` and `manga` (Task 2) |
+| **If stuck** | keep `ORDER BY RANDOM()` but select `mal_id` only and fetch the payload by key — still a scan of the key index, but it no longer reads every payload |
+
+**Why (measured 2026-11-18, production D1, 2026-11-11 to 17):** the random pick is
+`SELECT payload_json, fetched_at FROM <table> ORDER BY RANDOM() LIMIT 1`. SQLite has to read every
+row — payload included — to sort by a random key. In that week only the anime pick ran: 71 calls,
+**4,178,452 rows read (58,851 per call), 20% of every row the database read that week**, from 71 of
+5,054,986 queries. p50 72 ms, p99 1.09 s. D1 runs one query at a time, so each call holds the
+database for everyone else; the overload incidents of 2026-11-16 had this statement as the only
+known heavy one (see `docs/routes.md`, "D1 overload").
+
+**Architecture / decision:** rejection sampling over the primary key.
+
+1. `SELECT max(mal_id) FROM <table>` — one index lookup (`mal_id` is the rowid alias).
+2. Draw `PROBES` random ids in `[1, max]` and read
+   `SELECT payload_json, fetched_at FROM <table> WHERE mal_id IN (…)` — at most `PROBES` rows.
+3. Pick one of the rows found, uniformly. Every stored id is equally likely to be probed and, once
+   found, equally likely to be chosen, so the pick stays uniform over what is stored — unlike
+   `WHERE mal_id >= random() LIMIT 1`, which favours an id that sits after a long gap.
+4. No row found → try again, up to `ATTEMPTS` times; then fall back to the next id at or after a
+   random point (`WHERE mal_id >= ? ORDER BY mal_id LIMIT 1`, wrapping to the first id). That
+   fallback is biased but costs one row, and only runs when the table is almost empty.
+5. Empty table (`max` is null) → `null`, which `RandomService` already turns into
+   `404 NO_LOCAL_ENTRIES`.
+
+`users` has a text primary key, so it is the same scheme over `rowid` (`max(rowid)`,
+`WHERE rowid IN (…)`); its rowids stay dense because a profile refresh is an upsert.
+
+**Density, sampled in production 2026-11-18** (200 random ids per table, `mal_id IN (…)`):
+
+| table | max id | found | density | stored rows (est.) | chance 32 probes all miss |
+| --- | --- | --- | --- | --- | --- |
+| anime | 65,463 | 93/200 | 46.5% | ~30k | 2×10⁻⁹ |
+| manga | 197,953 | 80/200 | 40.0% | ~79k | 8×10⁻⁸ |
+| characters | 307,325 | 102/200 | 51.0% | ~157k | 10⁻¹⁰ |
+| people | 100,361 | 73/200 | 36.5% | ~37k | 5×10⁻⁷ |
+
+So `PROBES = 32`, `ATTEMPTS = 3`: in practice one round, two statements, ≤ 33 rows read.
+
+**Tech stack:** TypeScript, D1, Vitest. Code: `src/repositories/random.repository.ts` (the SQL),
+`src/services/random.service.ts` (policy, unchanged). Randomness is injected so tests are
+deterministic.
+
+## Global constraints
+
+- Never run a scanning query on the production D1 — the measurement steps below use bounded
+  statements only (`max(rowid)` alone, `IN (…)` lists). See `.claude/CLAUDE.md`, D1 section.
+- The interpolated table name stays a closed map (`TABLES`), never a caller string.
+- No contract change: same routes, same body, same `404 NO_LOCAL_ENTRIES`, still `no-store`.
+- After editing, check `git diff --stat` matches the change size (LF-only in `src/`/`tests/`).
+
+---
+
+## Task 1: sampled pick in `RandomRepository`
+
+**Files:**
+- Modify: `src/repositories/random.repository.ts`
+- Test: `tests/repositories/random.repository.test.ts` (new), plus the existing
+  `tests/routes/random.test.ts` stays green.
+
+- [ ] Write the failing tests first, against a fake D1 that records each statement and answers from
+      an in-memory table:
+  - a table with ids `{3, 7, 9}` and a seeded random source → the pick is one of them, and the
+    statements issued are one `max(...)` and one `... IN (...)` — **no `ORDER BY RANDOM()`**;
+  - uniformity: 30,000 draws over ids `{1, 2, 1000}` (a long gap before 1000) land on each id within
+    ±3% of a third — the `>=` scheme would give 1000 ~99.8%;
+  - all probes miss for `ATTEMPTS` rounds → the fallback statement runs and returns a row;
+  - empty table → `null`, one statement;
+  - `pickUser` uses `rowid`, same shape.
+- [ ] Implement with `random: () => number` injected (default `Math.random`), `PROBES = 32`,
+      `ATTEMPTS = 3`. Draw distinct ids; cap the probe count at `max` for tiny tables.
+- [ ] Revert the implementation and confirm the tests go red; restore.
+
+## Task 2: prove the cost on real databases
+
+- [ ] **Preview D1, through the app:** `wrangler dev --remote` (binds `jikan-edge-preview`), call each
+      `/v1/random/*` route 20 times; every answer `200` or `404 NO_LOCAL_ENTRIES`, ids spread.
+- [ ] **Production D1, the statements alone:** with the guarded probe, run one round of the new
+      statements by hand for `anime` and `manga` (`max(mal_id)`, then an `IN` list of 32 random
+      ids) and record `rows_read` and `sql_duration_ms` from the response meta. Target: ≤ 33 rows
+      against 58,851; the old statement is **not** run for comparison — the 7-day numbers above are
+      the baseline.
+- [ ] **After deploy:** `d1QueriesAdaptiveGroups` filtered on the new statement text, 7 days later —
+      rows read per call and p99 against the baseline table above.
+
+## Task 3: docs
+
+- [ ] `docs/routes.md`, random section: the sampling scheme and the measured before/after.
+- [ ] `.claude/CLAUDE.md` (and the `AGENTS.md` copy): replace "the known heavy statement is
+      `ORDER BY RANDOM()`" with the result.
+- [ ] `CHANGELOG.md`: an operational note only if latency is visibly different for callers;
+      the contract does not change.
+
+## Out of scope
+
+- Making `/random` draw from MAL's whole catalogue (it stays the local-catalogue policy).
+- Caching a random pick — the route is `no-store` on purpose (`docs/routes.md`).

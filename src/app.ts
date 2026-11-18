@@ -20,7 +20,7 @@ import { etagFor, matchesEtag, NO_STORE } from './http/caching';
 import { errorResponse } from './http/errors';
 import { notFoundMessage } from './http/not-found';
 import { ServiceError } from './domain/errors';
-import { logMetric } from './observability/metrics';
+import { type CacheStatus, logMetric } from './observability/metrics';
 import { D1CatalogStore } from './adapters/d1-catalog-store';
 import { MalClient } from './source/mal-client';
 import { UserService } from './services/user.service';
@@ -58,7 +58,7 @@ app.use('*', async (c, next) => {
     logMetric({
       route: new URL(c.req.url).pathname,
       resourceType: 'http',
-      cacheStatus: 'miss',
+      cacheStatus: 'rate_limited',
       stale: false,
       responseDurationMs: Math.round(performance.now() - c.get('startedAt')),
       refreshResult: 'rate_limited',
@@ -76,14 +76,19 @@ app.use('*', async (c, next) => {
   c.header('X-Request-Id', c.get('requestId'));
   c.header('X-Worker-Version', workerVersion(c.env));
   if (!c.res.headers.has('X-Cache-Status')) c.header('X-Cache-Status', 'unknown');
+  // The metric repeats what the caller was told. It used to say `miss` and `stale: false` on every
+  // request, so the logs could not count hits or stale serves at all; and a missing Content-Length
+  // (`c.json` sets none) was logged as a size of 0 rather than as unknown.
+  const cacheStatus = c.res.headers.get('X-Cache-Status') as CacheStatus;
+  const contentLength = c.res.headers.get('content-length');
   logMetric({
     route: new URL(c.req.url).pathname,
     resourceType: 'http',
-    cacheStatus: 'miss',
-    stale: false,
+    cacheStatus,
+    stale: cacheStatus === 'stale',
     responseDurationMs: Math.round(performance.now() - c.get('startedAt')),
     refreshResult: String(c.res.status),
-    responseSizeBytes: Number(c.res.headers.get('content-length') ?? 0),
+    responseSizeBytes: contentLength === null ? undefined : Number(contentLength),
   });
 });
 

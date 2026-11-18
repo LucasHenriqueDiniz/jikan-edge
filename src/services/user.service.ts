@@ -128,6 +128,9 @@ export class UserService {
       stale: profileResult.stale,
       refreshFailed: profileResult.refreshFailed,
       fetchedAt: profileResult.fetchedAt,
+      // The statistics are written by the profile refresh, so they share its freshness. Left out, the
+      // route had no TTL to announce and answered with no Cache-Control at all.
+      ttlSeconds: profileResult.ttlSeconds,
     };
   }
 
@@ -187,6 +190,7 @@ export class UserService {
       refreshFailed:
         profile.refreshFailed || statistics.refreshFailed || favorites.refreshFailed || updates.refreshFailed,
       fetchedAt: profile.fetchedAt,
+      ttlSeconds: ttlUntilFirstExpiry(profile.fetchedAt, [profile, statistics, favorites, updates]),
     };
   }
 
@@ -337,4 +341,21 @@ export class UserService {
       listRefreshLeaseSeconds(this.config.sourceTimeoutMs),
     );
   }
+}
+
+/**
+ * The TTL that makes `fetchedAt + ttl` the moment the first of `parts` goes stale.
+ *
+ * `/full` reports the profile's `fetchedAt` but is only as fresh as its oldest part — favorites and
+ * updates are cached separately and can be hours older. Without a TTL it announced no Cache-Control
+ * at all; with the profile's own TTL it would let a cache keep a part past its expiry. `undefined`
+ * when any part has no TTL or no readable timestamp, which keeps the old, uncacheable answer.
+ */
+export function ttlUntilFirstExpiry(fetchedAt: string, parts: { fetchedAt: string; ttlSeconds?: number }[]) {
+  const base = Date.parse(fetchedAt);
+  const expiries = parts.map((part) =>
+    part.ttlSeconds === undefined ? Number.NaN : Date.parse(part.fetchedAt) + part.ttlSeconds * 1000,
+  );
+  if (Number.isNaN(base) || expiries.some(Number.isNaN)) return undefined;
+  return Math.max(0, Math.floor((Math.min(...expiries) - base) / 1000));
 }
