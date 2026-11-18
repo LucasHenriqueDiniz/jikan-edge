@@ -19,6 +19,7 @@ import { parseTopPeople } from '../parsers/top-people.parser';
 import type { CatalogSource } from '../ports/driven/catalog-source.port';
 import type { CatalogStore } from '../ports/driven/catalog-store.port';
 import { newsUrl, personDetailUrl, picturesUrl, topPeopleUrl } from '../source/mal-urls';
+import { NEWS_PAGE_MARKERS } from '../source/page-markers';
 import {
   type CacheDeps,
   ServiceError,
@@ -230,7 +231,7 @@ export class PersonService {
       NEWS_PARSER_VERSION,
       () => this.catalog.get<NewsItem[]>(cacheKey),
       async () => {
-        const source = await this.source.getHtml(newsUrl('people', malId), ['read more']);
+        const source = await this.source.getHtml(newsUrl('people', malId), NEWS_PAGE_MARKERS);
         if (source.kind !== 'success') throw sourceError(source);
         const value = parseNews(source.value);
         const fetchedAt = new Date().toISOString();

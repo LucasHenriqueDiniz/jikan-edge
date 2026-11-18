@@ -48,6 +48,7 @@ import {
   CHARACTERS_PAGE_MARKERS,
   DETAIL_PAGE_MARKERS,
   FORUM_PAGE_MARKERS,
+  NEWS_PAGE_MARKERS,
   RECOMMENDATIONS_PAGE_MARKERS,
 } from '../source/page-markers';
 import {
@@ -298,7 +299,7 @@ export class MangaService {
       rawId,
       'news',
       newsUrl('manga', malId),
-      ['read more'],
+      NEWS_PAGE_MARKERS,
       NEWS_PARSER_VERSION,
       parseNews,
       requestId,

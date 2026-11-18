@@ -334,7 +334,7 @@ A page that has rows and parses none of them is still an error. On the anime cha
 
 **No parser-version bump**: no response that used to succeed changes, and the 502s were never cached.
 
-**Left as it is: `/v1/anime/:id/news`** on a title with no news still answers 502. The empty page (`/anime/38099/x/news`) has the `<h2 class="mb8">News</h2>` heading and no items, with no notice — an empty list there could not be told from a markup change.
+**`/v1/anime/:id/news` was left as it was here, and fixed on 2026-11-18** — see "Empty news pages" below. The empty page has the heading and no notice, which is what kept it open.
 
 ## D1 overload: retried inside the request, then 503 (2026-11-16)
 
@@ -377,7 +377,7 @@ By route: `/v1/anime/:id/episodes` 648 (66%), `/v1/anime/:id/full` 54, `/v1/char
 
 **Lab notes.** At 3.3 s and 4.5 s of CPU, requests only waited in the queue. From ~5.7 s, D1 answered `Too many resources consumed within a 10 second window` until the burst left its trailing 10-second window, ~7–10 s after the block; how long varied by run. Production's variant was `Requests queued for too long` (a full queue under real traffic, refused at once). Both take the same code path.
 
-**Still open.** Why D1 overloads 88–331 times a day while it spends ~0.4% of the time executing statements. The 03:07 stall had no visible slow statement, and GraphQL `d1QueriesAdaptiveGroups` omits queries issued through the API (a 7.8 s diagnostic scan never appeared there). The known heavy statement is `ORDER BY RANDOM()` on `/v1/random/*`: 7.3M rows read in 125 calls, p99 1.6 s.
+**Still open.** Why D1 overloads 88–331 times a day while it spends ~0.4% of the time executing statements. The 03:07 stall had no visible slow statement, and GraphQL `d1QueriesAdaptiveGroups` omits queries issued through the API (a 7.8 s diagnostic scan never appeared there). The known heavy statement is `ORDER BY RANDOM()` on `/v1/random/*`: 7.3M rows read in 125 calls, p99 1.6 s. After the fixes, no overload of its own on 2026-11-17 or 18 — see "Measured after the D1 fixes" below.
 
 ## Single-episode titles have no episode page (2026-11-16)
 
@@ -428,6 +428,8 @@ During run 1 a cached route answered 30 of 30 requests with 200, median 0.17 s a
 
 At this pace production's backlog (~1.6 million expired rows) clears in about a day, after which a run deletes only what expired that day. Each run logs `type: cache_retention` with the counts, the database size after the last batch and why it stopped.
 
+**Measured in production** (2026-11-17 01:00 to 2026-11-18 14:00 UTC, Workers Logs): 222 runs, none failed; 1,242,658 cache rows and 1,148,861 payloads deleted. The backlog was smaller than estimated and drained after 81 runs at the cap (~13.5 h); the 141 runs since stopped as `drained`. The database went from 4.461 GB (2026-11-17) to 2.678 GB (2026-11-18), D1 storage analytics.
+
 ## D1 internal errors answer 503 (2026-11-17)
 
 The day after the overload fix shipped, the post-deploy check found 88 `500 INTERNAL_ERROR` in one burst: from 19:30:43 to 19:31:28 UTC on 2026-11-16 the production database executed no statement at all (D1 analytics, per second), and every request that reached it failed in ~10 ms with `D1_ERROR: internal error; reference = <id>` — 88 different reference ids. The overload fix did not cover this message on purpose: it retries only failures that prove the statement never ran.
@@ -439,6 +441,43 @@ Cloudflare's D1 documentation has no entry for `internal error; reference`. The 
 The `503` message changed from "temporarily overloaded" to "temporarily unavailable" — with an internal error landing there too, "overloaded" would point whoever reads it at the wrong cause.
 
 **Verified by test, not live.** An internal error cannot be produced on demand in `wrangler dev`, so the evidence is the exact production messages driven through the adapter and through the real app: the route answers `503` and each of the two reads `withCache` starts is tried once. Four mutants — no translation, translation with retries, any `D1_ERROR` treated as a platform failure, the old message — each fail the tests that name them.
+
+## Empty news pages (2026-11-18)
+
+**What broke.** On 2026-11-18, 135 of the day's 140 Worker `502`s were `/v1/anime/:id/news` — one client (`curl/7.88.1`) polling nine titles every hour from 03:00 UTC. All nine have no news. MAL's empty news page is the heading and nothing else: no "no news" notice, measured on anime 124/26, manga 120000 and person 60000. The required marker was `read more`, which only items carry, so every title without news answered `502 UPSTREAM_SUSPICIOUS` — and a 502 is never cached, so every poll refetched the page.
+
+**The marker is now the heading, `<h2 class="mb8">News</h2>`** (`NEWS_PAGE_MARKERS`, used by anime, manga and people). It is on every news page, with items or without, and it is not on the title's detail page — which matters, because that is what MAL serves for a sub-path it does not know. An id with no title is still a 404 from MAL (`/anime/99999999/x/news`).
+
+| page | heading | items |
+| --- | --- | --- |
+| anime 21, manga 2, person 1 | yes | 30, 25, 2 |
+| anime 124 and 26, manga 120000, person 60000 | yes | 0 |
+| anime 124 detail, and `/anime/124/x/bogussubpath` (detail fallback) | no — `<h2 id="recent_news">Recent News</h2>` instead | — |
+| anime 99999999 | 404 | — |
+
+**An empty list is the parser's call.** With the heading present and no item after it, `parseNews` returns `[]`, cached like any page. A page that lists items and yields none of them still throws: cached as empty for the TTL, a markup change would hide every item.
+
+**A second bug, in the same parser.** Items were cut at the picture block (`picSurround`), so an item without a picture was merged into the item before it and lost — manga 4632 lists 13 items and returned 12. Items are now cut at MAL's separator (`<div class="borderClass"></div>`) and every one has its title paragraph; the picture is optional (`imageUrl: null`). `NEWS_PARSER_VERSION` = `news-html-v3`, since a value changes for pages like that one.
+
+**Checked on `wrangler dev --remote`, both ends:** the nine polled titles, manga 120000 and person 60000 answered `200` with `data: []` (production: `502`), and the second request was a cache `hit`; manga 4632 answered 13 items, one without a picture (production: 12); anime 21 30 items, person 1 2 items, anime 99999999 `404`.
+
+## Measured after the D1 fixes (2026-11-18)
+
+The day-long check the overload fix was waiting for (`ea5847b0`, 2026-11-16 17:00 UTC; internal errors as 503 from `4cc1eafb`, 2026-11-17 01:43). Worker invocation analytics and Workers Logs, per UTC day — exact counts, not the sampled 7-day view. 2026-11-18 runs to 14:00 UTC.
+
+| | 11 to 16 Nov (per day) | 17 Nov | 18 Nov (to 14:00) |
+| --- | --- | --- | --- |
+| Worker `500` | 88–329 | **0** | **0** |
+| Worker `503` | 24–59 | 17 | 1 |
+| `unhandled_error` (15 Nov) | 331 | 0 | 0 |
+| `d1_retry_recovered` | — | 9 | 0 |
+| `database_unavailable` | — | 1 (overload) | 1 (internal error) |
+| `/v1/anime/:id/episodes` 404 share (zone) | 4.7–5.4% | 0.05% | 0.05% |
+| CPU p50 | 2.29–2.87 ms | 2.51 ms | 2.34 ms |
+
+The 17 November retries and its one `database_unavailable` all came from a diagnostic query run against production that day (the `min()`+`max()` scan below); there was no other overload on either day. The one on 18 November was an internal error, answered `503` as designed. The `503`s that remain are `UPSTREAM_UNAVAILABLE` — MyAnimeList failing — at their usual level.
+
+Why the overloads stopped is not settled. They stopped as the retention drained the database from 4.46 to 2.68 GB, and also after the friends-list scraper behind most of that data had gone quiet; neither is proven to be the cause.
 
 ## Health and configuration errors
 

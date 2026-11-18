@@ -387,6 +387,26 @@ describe('a title MAL has nothing listed for', () => {
     expect((await manga(page(fixture('forum/manga-no-topics-real.html'))).forum('175006', 'r')).data).toEqual([]);
   });
 
+  // MAL's empty news page carries no notice — the heading, then nothing (measured 2026-11-18). The
+  // old marker came from the rows, so every title without news answered 502, uncached, every poll.
+  it('answers empty news, on anime, manga and people', async () => {
+    const { source, calls } = serving(page(fixture('news/anime-no-news-real.html')));
+    expect((await new AnimeService(store(), source, config).news('124', 'r')).data).toEqual([]);
+    expect(calls[0].markers).toEqual(['<h2 class="mb8">News</h2>']);
+    expect((await manga(page(fixture('news/manga-no-news-real.html'))).news('120000', 'r')).data).toEqual([]);
+    const person = serving(page(fixture('news/person-no-news-real.html')));
+    expect((await new PersonService(store(), person.source, config).news('60000', 'r')).data).toEqual([]);
+  });
+
+  // The title's detail page is what MAL serves for a sub-path it does not know; it has a "Recent
+  // News" block, but not the news page's heading, so it is never read as a title without news.
+  it('does not read the detail page as a news page', async () => {
+    await expect(anime(fixture('anime/detail-real.html')).news('1', 'r')).rejects.toMatchObject({
+      code: 'UPSTREAM_SUSPICIOUS',
+      status: 502,
+    });
+  });
+
   // The marker still has a job: a page that is not the one asked for stays a 502.
   it('is still a 502 when the section heading is missing', async () => {
     const notTheEpisodesPage = page(fixture('episodes/no-episode-info-real.html').replace('h2_overwrite', 'h2'));

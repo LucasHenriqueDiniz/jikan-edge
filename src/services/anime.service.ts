@@ -85,6 +85,7 @@ import {
   DETAIL_PAGE_MARKERS,
   EPISODES_PAGE_MARKERS,
   FORUM_PAGE_MARKERS,
+  NEWS_PAGE_MARKERS,
   RECOMMENDATIONS_PAGE_MARKERS,
 } from '../source/page-markers';
 import {
@@ -347,7 +348,7 @@ export class AnimeService {
       rawId,
       'news',
       newsUrl('anime', malId),
-      ['read more'],
+      NEWS_PAGE_MARKERS,
       NEWS_PARSER_VERSION,
       parseNews,
       requestId,

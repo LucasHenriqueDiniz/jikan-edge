@@ -6,6 +6,24 @@ Changes that matter to anyone **consuming** the API. The technical detail behind
 
 This file starts on 2026-07-30 and does not reconstruct earlier history.
 
+## 2026-11-18
+
+Published versions: to be confirmed.
+
+### Fixed
+
+- **`/news` answered `502` for every title or person without news.** MyAnimeList's empty news page
+  is a heading and nothing else — no "no news" notice — and the check that the page was the right
+  one looked for a link only news items have. Every such request failed, and since a `502` is never
+  cached, each retry went back to MyAnimeList: 135 of the 140 `502`s on 2026-11-18 were one client
+  polling nine such titles. Affects `/v1/anime/:id/news`, `/v1/manga/:id/news` and
+  `/v1/people/:id/news`. *Before:* `GET /v1/anime/124/news` → `502 UPSTREAM_SUSPICIOUS`. *After:*
+  `200`, `data: []`, cached like any other page.
+- **A news item without a picture was lost.** The list was cut at each item's picture, so an item
+  with none was merged into the one before it and dropped: manga `4632` returned 12 of its 13 news
+  items. Every item is returned now, with `imageUrl: null` where there is no picture. Cached news
+  lists are refetched on their next request.
+
 ## 2026-11-17
 
 Published versions: `c50fb4cd` (the cache retention), `3a29cf39` (the external-link fix), `4cc1eafb`

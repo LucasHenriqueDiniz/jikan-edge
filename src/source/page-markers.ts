@@ -30,3 +30,10 @@ export const CHARACTERS_PAGE_MARKERS = {
 export const RECOMMENDATIONS_PAGE_MARKERS = ['Make a recommendation'];
 
 export const FORUM_PAGE_MARKERS = ['class="page-forum"'];
+
+// The heading every news page carries — with news or without, on anime, manga and people — and that
+// the title's detail page, which MAL serves for an unknown sub-path, does not (measured 2026-11-18 on
+// anime 21/124/26, manga 2/4632/120000, people 1/60000). The marker it replaced, `read more`, came
+// from the rows: an empty news page carries no "no news" notice at all, so every title without news
+// answered 502 — 135 of the 140 502s on 2026-11-18, one client polling nine such titles.
+export const NEWS_PAGE_MARKERS = ['<h2 class="mb8">News</h2>'];
