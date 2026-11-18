@@ -154,7 +154,7 @@ footer a { color: var(--paper-dim); }
 
 <section class="entry">
 <h2 id="2026-11-18"><a href="#2026-11-18">2026-11-18</a></h2>
-<p>Published versions: to be confirmed.</p>
+<p>Published versions: <code>b00d5e16</code> (the news fixes).</p>
 <h3 class="group-label fixed">Fixed</h3>
 <ul>
 <li><strong><code>/news</code> answered <code>502</code> for every title or person without news.</strong> MyAnimeList's empty news page is a heading and nothing else — no &quot;no news&quot; notice — and the check that the page was the right one looked for a link only news items have. Every such request failed, and since a <code>502</code> is never cached, each retry went back to MyAnimeList: 135 of the 140 <code>502</code>s on 2026-11-18 were one client polling nine such titles. Affects <code>/v1/anime/:id/news</code>, <code>/v1/manga/:id/news</code> and <code>/v1/people/:id/news</code>. <em>Before:</em> <code>GET /v1/anime/124/news</code> → <code>502 UPSTREAM_SUSPICIOUS</code>. <em>After:</em> <code>200</code>, <code>data: []</code>, cached like any other page.</li>

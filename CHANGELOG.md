@@ -8,7 +8,7 @@ This file starts on 2026-07-30 and does not reconstruct earlier history.
 
 ## 2026-11-18
 
-Published versions: to be confirmed.
+Published versions: `b00d5e16` (the news fixes).
 
 ### Fixed
 
