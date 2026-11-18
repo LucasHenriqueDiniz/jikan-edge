@@ -360,3 +360,90 @@ describe('withCache serving stale while it revalidates', () => {
     expect(dependencies.release).toHaveBeenCalledOnce();
   });
 });
+
+// Two requests for a resource nobody has cached yet: the first takes the lease and goes to
+// MyAnimeList, the second used to get `503 REFRESH_IN_PROGRESS` at once. Measured on 2026-11-18: an
+// app sending a GET and a HEAD together lost one of the two on every uncached page — 11 of 12 pairs
+// on the preview D1, and 4 of those 11 times the request that lost was the GET.
+describe('withCache when another request holds the lease and nothing is stored', () => {
+  const landed = entry('v3');
+
+  /** A store that a running refresh fills after `polls` looks; the lease is always taken. */
+  function refreshInFlight(polls: number, written: CacheEntry = landed) {
+    let looks = 0;
+    const reads = vi.fn(async () => (looks > polls ? 'written by the other request' : null));
+    const sleeps: number[] = [];
+    const refresh = vi.fn(async () => 'fetched here');
+    const dependencies: CacheDeps = {
+      cache: {
+        get: async () => {
+          looks += 1;
+          return looks > polls ? written : null;
+        },
+        put: vi.fn(async () => {}),
+        isFresh: (value: CacheEntry) => Date.parse(value.expiresAt) > Date.now(),
+      },
+      locks: { acquire: vi.fn(async () => false), release: vi.fn(async () => {}) },
+      sleep: async (ms: number) => {
+        sleeps.push(ms);
+      },
+    };
+    const call = () => withCache(dependencies, 'user:x:profile', 60, 'v3', reads, refresh, 'req');
+    return { call, reads, sleeps, refresh };
+  }
+
+  it('waits for the refresh in flight and answers with what it wrote', async () => {
+    const { call, refresh, sleeps } = refreshInFlight(3);
+
+    const result = await call();
+
+    expect(result).toMatchObject({ data: 'written by the other request', cached: true, stale: false });
+    expect(result.fetchedAt).toBe(landed.fetchedAt);
+    expect(refresh).not.toHaveBeenCalled();
+    expect(sleeps).toHaveLength(3);
+  });
+
+  // A user list can be thousands of rows; reading it on every look would make the wait the
+  // expensive part. The cache row is one primary-key lookup.
+  it('looks at the cache row while waiting, and reads the payload only once it has landed', async () => {
+    const { call, reads } = refreshInFlight(4);
+
+    await call();
+
+    expect(reads).toHaveBeenCalledTimes(2);
+  });
+
+  it('gives up after five seconds with REFRESH_IN_PROGRESS and a Retry-After', async () => {
+    const { call, sleeps, refresh } = refreshInFlight(Number.POSITIVE_INFINITY);
+
+    await expect(call()).rejects.toMatchObject({ code: 'REFRESH_IN_PROGRESS', status: 503, retryAfterSeconds: 5 });
+    expect(sleeps.reduce((sum, ms) => sum + ms, 0)).toBe(5_000);
+    expect(refresh).not.toHaveBeenCalled();
+  });
+
+  // Only reachable mid-rollout, when an instance still on the previous version finishes a refresh.
+  it('keeps waiting past a row written by an older parser', async () => {
+    const { call } = refreshInFlight(1, entry('v2'));
+
+    await expect(call()).rejects.toMatchObject({ code: 'REFRESH_IN_PROGRESS' });
+  });
+
+  it('still serves a stored row at once instead of waiting, when there is one', async () => {
+    const sleep = vi.fn(async () => {});
+    const dependencies = { ...deps(entry('v3', JUST_EXPIRED)), sleep };
+    dependencies.acquire.mockResolvedValue(false);
+
+    const result = await withCache(
+      dependencies,
+      'user:x:profile',
+      60,
+      'v3',
+      async () => 'stored',
+      async () => 'new',
+      'req',
+    );
+
+    expect(result).toMatchObject({ data: 'stored', stale: true });
+    expect(sleep).not.toHaveBeenCalled();
+  });
+});

@@ -183,7 +183,7 @@ second group: `limit` (outside the user lists), `sfw`, `max_score`, `producers`,
 | `500` | `INTERNAL_ERROR` | A bug. The `requestId` is in the logs |
 | `501` | `LIST_TOO_LARGE` | A user list exceeds the 6,000 entries one refresh reads. Refused rather than truncated silently |
 | `502` | `UPSTREAM_SUSPICIOUS` | The page came back, but did not look like the page it should be. Never overwrites good cached data |
-| `503` | `UPSTREAM_UNAVAILABLE`, `REFRESH_IN_PROGRESS`, `CACHE_WRITE_FAILED`, `DATABASE_UNAVAILABLE`, `DATABASE_NOT_CONFIGURED`, `DATABASE_NOT_MIGRATED` | Transient upstream failure, a concurrent refresh holding the lock, the database stayed overloaded through 12 s of retries or failed internally (honour `Retry-After`), or (self-hosters) a D1 binding that is missing or un-migrated |
+| `503` | `UPSTREAM_UNAVAILABLE`, `REFRESH_IN_PROGRESS`, `CACHE_WRITE_FAILED`, `DATABASE_UNAVAILABLE`, `DATABASE_NOT_CONFIGURED`, `DATABASE_NOT_MIGRATED` | Transient upstream failure, a concurrent refresh that had not finished after 5 s of waiting (honour `Retry-After`), the database stayed overloaded through 12 s of retries or failed internally (honour `Retry-After`), or (self-hosters) a D1 binding that is missing or un-migrated |
 | `504` | `UPSTREAM_TIMEOUT` | MyAnimeList did not answer within the source timeout |
 
 A `4xx`/`5xx` only reaches you when there is **no** usable cached copy. If one exists, you get `200` with `meta.stale: true` instead. The exception is `DATABASE_UNAVAILABLE`: the cached copy lives in the database that is unavailable.

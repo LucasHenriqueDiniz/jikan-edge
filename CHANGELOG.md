@@ -8,7 +8,7 @@ This file starts on 2026-07-30 and does not reconstruct earlier history.
 
 ## 2026-11-18
 
-Published versions: `b00d5e16` (the news fixes); `0c287825` (the user `Cache-Control`); `19ba28ff`, then `87cd9ef8` (the `/random` picks).
+Published versions: `b00d5e16` (the news fixes); `0c287825` (the user `Cache-Control`); `19ba28ff`, then `87cd9ef8` (the `/random` picks); the wait for a refresh in flight: to be confirmed.
 
 ### Fixed
 
@@ -29,6 +29,13 @@ Published versions: `b00d5e16` (the news fixes); `0c287825` (the user `Cache-Con
   `/v1/users/:username`; `full` announces that of its oldest part, since favorites and updates are
   cached apart from the profile and can be hours older. *Before:* no `Cache-Control`. *After:* e.g.
   `Cache-Control: public, max-age=18000, stale-while-revalidate=21600`.
+- **Two requests sent together for something not cached yet no longer lose one of the two.** The
+  first fetches from MyAnimeList; the second used to answer `503 REFRESH_IN_PROGRESS` at once, and
+  it was the `GET` as often as the other one — an app sending a `GET` and a `HEAD` together lost a
+  request on 11 of 12 uncached pages in a test. The second request now waits, up to five seconds,
+  for what the first one fetches and answers it. *Before:* `503`, no `Retry-After`. *After:* `200`
+  for both; a `503 REFRESH_IN_PROGRESS` remains only if the fetch takes longer than five seconds,
+  and it now carries `Retry-After: 5`.
 
 ### Changed
 

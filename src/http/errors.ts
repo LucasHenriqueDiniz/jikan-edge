@@ -21,8 +21,10 @@ export function errorResponse(c: Context, error: unknown, requestId: string): Re
   // unset, the middleware filled in `unknown`, which a consumer logging the header reads as "the API
   // does not know" — on the 2026-11-16 incident that sent the investigation toward the cache.
   c.header('X-Cache-Status', 'error');
-  if (error instanceof ServiceError)
+  if (error instanceof ServiceError) {
+    if (error.retryAfterSeconds !== undefined) c.header('Retry-After', String(error.retryAfterSeconds));
     return c.json({ error: { code: error.code, message: error.message, requestId } }, error.status);
+  }
   // The store gave up — overloaded through the whole retry window, or failing internally — so this is
   // an outage of the database, not a bug and not the caller's doing. 503 with Retry-After so a client
   // can tell it from a 500 and knows when to come back. Logged under its own type, with D1's message

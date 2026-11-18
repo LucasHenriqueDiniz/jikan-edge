@@ -15,12 +15,17 @@ export type ServiceErrorStatus = 400 | 403 | 404 | 429 | 501 | 502 | 503 | 504 |
  * Nothing about the class needed caching to exist; it was only ever declared next to it.
  */
 export class ServiceError extends Error {
+  /** Seconds the caller should wait before trying again, sent as `Retry-After` when present. */
+  public readonly retryAfterSeconds?: number;
+
   constructor(
     public readonly code: string,
     public readonly status: ServiceErrorStatus,
     message: string,
+    options?: { retryAfterSeconds?: number },
   ) {
     super(message);
+    this.retryAfterSeconds = options?.retryAfterSeconds;
   }
 }
 

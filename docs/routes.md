@@ -555,6 +555,21 @@ Now that request also gets the old row immediately, and the refresh runs behind 
 
 The logic is in `src/http/caching.ts` (`cacheControlFor`, `etagFor`, `matchesEtag`), outside `app.ts` precisely so it can be tested without the network — the routes' success path depends on MAL, so the age arithmetic and the tag comparison would have no test if they lived inside the handler.
 
+### A request that arrives during another one's refresh waits for it (2026-11-18)
+
+Found investigating the three `503`s of 2026-11-18 17:22–17:23 UTC, which were not the database. An app (Android WebView, `origin: https://onianime.hu`) sends a `GET` and a `HEAD` for the same URL at the same instant — the starts, computed from each log's end time minus its duration, were 5–11 ms apart. On a page nobody had cached, the first took the lease and went to MyAnimeList (1.1–1.8 s); the second found the lease taken and nothing stored, and `withCache` answered `503 REFRESH_IN_PROGRESS` at once, in ~270 ms, with no `Retry-After`. Nothing about it was specific to `HEAD`: two `GET`s lose the same way.
+
+Now the second request waits for the refresh it lost the lease to: it looks at the `cache_entries` row after 250, 250, 500, 500, 1,000, 1,000 and 1,500 ms (five seconds in all), and once the row is fresh and written by the current parser version it reads the payload and answers it as a `hit`. Only the row is read between pauses — one primary-key lookup — because the payload of a user list can be thousands of rows. A refresh that has not landed after five seconds (the source timeout is 8 s, retried once) still ends in `503 REFRESH_IN_PROGRESS`, now with `Retry-After: 5`. A stored row, stale or not, is still served at once, as before: waiting is only for a request that would otherwise get nothing.
+
+Measured on the preview D1 through the app (`wrangler dev --remote`), a `GET` and a `HEAD` fired together at the episodes page of titles not cached there:
+
+| | pairs | a request answered `503` | of those, the `GET` |
+| --- | --- | --- | --- |
+| before | 12 | 11 (the twelfth title was already stored) | 4 |
+| after | 12 | 0 — in each pair one is `miss`, the other `hit`, 1.15–1.92 s | — |
+
+Three `GET` pairs fired the same way answered `200` twice each, with the same `data`. `ServiceError` gained an optional `retryAfterSeconds`, which `errorResponse` sends as `Retry-After`.
+
 ## Rate limiting
 
 Hardened on 2026-07-27, before public announcement. Two limits per **global IP** (the old key was `IP:route`, which multiplied one IP's budget by the number of routes — ~5,700 req/min across 96 routes; fixed):
@@ -566,7 +581,7 @@ It mirrors Jikan's own public policy (3 req/s, 60 req/min). Exceeded → 429 `RA
 
 ## Cache flow
 
-A fresh hit makes no fetch to MAL. A miss makes one fetch from the source, writes the normalized data and then `cache_entries`. Stale cache is returned if the refresh fails; with no cache, the failure becomes an HTTP error. The lease is per resource and lasts 30 seconds. Since 2026-08-27 the refresh is **no longer synchronous** on the request that crosses the TTL — see "Internal stale-while-revalidate" above.
+A fresh hit makes no fetch to MAL. A miss makes one fetch from the source, writes the normalized data and then `cache_entries`. Stale cache is returned if the refresh fails; with no cache, the failure becomes an HTTP error. The lease is per resource and lasts 30 seconds. Since 2026-08-27 the refresh is **no longer synchronous** on the request that crosses the TTL — see "Internal stale-while-revalidate" above. Since 2026-11-18 a request that finds the lease taken and nothing stored waits for that refresh instead of answering `503` — see "A request that arrives during another one's refresh waits for it" above.
 
 ### D1 row size ceiling and `507 PAYLOAD_TOO_LARGE` (2026-08-27)
 

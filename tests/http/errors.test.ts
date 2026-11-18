@@ -24,6 +24,21 @@ describe('errorResponse', () => {
     }
   });
 
+  it('sends Retry-After when the error says when to come back', async () => {
+    const response = await respond(
+      new ServiceError('REFRESH_IN_PROGRESS', 503, 'Resource refresh is already in progress.', {
+        retryAfterSeconds: 5,
+      }),
+    );
+    expect(response.status).toBe(503);
+    expect(response.headers.get('retry-after')).toBe('5');
+  });
+
+  it('sends no Retry-After for an error that does not carry one', async () => {
+    const response = await respond(new ServiceError('NOT_FOUND', 404, 'message'));
+    expect(response.headers.get('retry-after')).toBeNull();
+  });
+
   it('answers 507 PAYLOAD_TOO_LARGE with the code and request id in the body', async () => {
     const response = await respond(
       new ServiceError('PAYLOAD_TOO_LARGE', 507, 'This resource is larger than this deployment can store.'),

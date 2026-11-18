@@ -116,6 +116,50 @@ export interface CacheDeps {
   cache: CatalogStore['cacheEntries'];
   locks: CatalogStore['refreshLeases'];
   waitUntil?: WaitUntil;
+  /** Pauses between looks while another request's refresh runs. Injected so tests do not wait. */
+  sleep?: (ms: number) => Promise<void>;
+}
+
+// The pauses between looks at the cache row while another request holds the lease and nothing is
+// stored to serve meanwhile: five seconds in all. A refresh is one MyAnimeList fetch — 1.1–1.8 s for
+// the three that made a concurrent request fail on 2026-11-18 — so it lands well inside; the source
+// timeout (8 s, retried once) is the case left to Retry-After.
+const LOOKS_WHILE_REFRESHING_MS = [250, 250, 500, 500, 1_000, 1_000, 1_500];
+export const REFRESH_RETRY_AFTER_SECONDS = 5;
+
+const pause = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
+
+/**
+ * The value another request's refresh wrote, once it lands, or `null` if it has not by the end of the
+ * wait. Only the cache row is read between pauses — one primary-key lookup — and the payload once,
+ * after the row shows the refresh finished: a user list can be thousands of rows, and reading it on
+ * every look would make the wait the expensive part. The row has to be fresh and written by this
+ * parser version; anything else is not the refresh being waited for.
+ */
+async function awaitRunningRefresh<T>(
+  deps: CacheDeps,
+  key: string,
+  ttl: number,
+  parserVersion: string,
+  read: () => Promise<T | null>,
+): Promise<ServiceResponse<T> | null> {
+  const sleep = deps.sleep ?? pause;
+  for (const ms of LOOKS_WHILE_REFRESHING_MS) {
+    await sleep(ms);
+    const cache = await deps.cache.get(key);
+    if (!cache || cache.parserVersion !== parserVersion || !deps.cache.isFresh(cache)) continue;
+    const stored = await read();
+    if (stored)
+      return {
+        data: stored,
+        cached: true,
+        stale: false,
+        refreshFailed: false,
+        fetchedAt: cache.fetchedAt,
+        ttlSeconds: ttl,
+      };
+  }
+  return null;
 }
 
 // Whether a resource went stale recently enough to be worth serving while it refreshes. The window
@@ -169,7 +213,14 @@ export async function withCache<T>(
         fetchedAt: cache.fetchedAt,
         ttlSeconds: ttl,
       };
-    throw new ServiceError('REFRESH_IN_PROGRESS', 503, 'Resource refresh is already in progress.');
+    // Nothing to serve while the other request fetches, so wait for what it writes. Until 2026-11-18
+    // this answered 503 at once: two requests for an uncached resource, sent together, lost one of
+    // the two every time — and it was the GET as often as not.
+    const landed = await awaitRunningRefresh(deps, key, ttl, parserVersion, read);
+    if (landed) return landed;
+    throw new ServiceError('REFRESH_IN_PROGRESS', 503, 'Resource refresh is already in progress.', {
+      retryAfterSeconds: REFRESH_RETRY_AFTER_SECONDS,
+    });
   }
   const runRefresh = async (): Promise<{ value: T; fetchedAt: string }> => {
     const value = await refresh();
