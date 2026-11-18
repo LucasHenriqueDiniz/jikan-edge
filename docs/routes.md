@@ -290,23 +290,26 @@ Fields the classic layout never carried now come populated when the source is th
 
 **And `/v1/random/users` became `no-store` too** — a real bug, not just a shape inconsistency. It reads a real profile via `withCache`, so it inherited the profile's `Cache-Control` and was served with `public, max-age=21599`: a shared cache would pin **one** "random" user for six hours. It was the only one of the five a CDN could freeze. `X-Cache-Status` stays `local` on the four (nothing upstream is consulted) and hit/miss/stale on the users one, which can genuinely fetch.
 
-**Random picks without a table scan (2026-11-18).** The pick was `SELECT payload_json, fetched_at FROM <table> ORDER BY RANDOM() LIMIT 1`, and SQLite reads every row — payload included — to sort them by a random key. From 2026-11-11 to 17 only the anime pick ran on production: 71 calls, 4,178,452 rows read (58,851 per call), 20% of every row D1 read that week, at p50 72 ms and p99 1.09 s of SQL. D1 runs one query at a time, so each call held the database for everyone else. `RandomRepository.sample` now reads by key:
+**Random picks without a table scan (2026-11-18).** The pick was `SELECT payload_json, fetched_at FROM <table> ORDER BY RANDOM() LIMIT 1`, and SQLite reads every row — payload included — to sort them by a random key. From 2026-11-11 to 17 only the anime pick ran on production: 71 calls, 4,178,452 rows read (58,851 per call), 20% of every row D1 read that week, at p50 72 ms and p99 1.09 s of SQL. D1 runs one query at a time, so each call held the database for everyone else. `RandomRepository.sample` now reads by key, one statement per round:
 
-1. `SELECT max(key)` — one index lookup (`mal_id` is the rowid alias; `users`, keyed by text, uses its implicit `rowid`).
-2. 32 distinct random keys in `[1, max]`, read with one `WHERE key IN (…)`. A table no larger than 32 keys is probed whole.
-3. One of the rows found, picked uniformly. Every stored key is equally likely to be probed and then chosen, so the pick stays uniform over what is stored.
+1. `max(key)` in a CTE — an index search (`mal_id` is the rowid alias; `users`, keyed by text, uses its implicit `rowid`).
+2. 32 random keys in `[1, max]`, drawn by a recursive CTE with SQLite's `random()` (sign bit masked, so the modulo stays uniform), and the table LEFT JOINed on them — every probe a rowid lookup. A table no larger than 32 keys is probed whole. The LEFT JOIN always yields a row, so one answer tells an empty table (`top` null) from a round that found nothing (`hit` null).
+3. One of the rows found, picked uniformly in the Worker. Every stored key is equally likely to be probed and then chosen, so the pick stays uniform over what is stored.
 4. Three rounds that find nothing → the random sort **over the key alone**, then the row by that key. Only a table that is mostly gaps gets there (96 probes all miss one time in twenty at 3% density, one in a million at 13%), and such a table is small.
 
 | measured | before | after |
 | --- | --- | --- |
-| rows read per pick, production D1 | 58,851 (anime, 7-day mean) | 65: 1 for `max`, 64 for the `IN` list of 32 — D1 counts two rows per key looked up, found or not |
-| SQL time per pick, production D1 | p50 72 ms, p99 1.09 s (7 days) | `max` 0.6–0.8 ms, `IN` 4.3–12.4 ms (8 rounds by hand, anime and manga) |
-| keys found per round of 32 | — | anime 9–17, manga 11–15 |
+| statements per pick | 1 | 1 (2 in the first version — see below) |
+| rows read per pick, production D1 | 58,851 (anime, 7-day mean) | 164 in each of 15 rounds by hand, all five tables — D1 counts the CTE's rows and two per key looked up |
+| SQL time per pick, production D1 | p50 72 ms, p99 1.09 s (7 days) | 3.5–20.2 ms |
+| keys found per round of 32 | — | anime 15–20, manga 9–13, characters 14–21, people 12–14, users 32 |
 | `users` rowids stored | — | 200 of 200 probed (max rowid 4,722): a refresh is an upsert, and nothing deletes a user |
 
 Through the app on the preview D1 (`wrangler dev --remote`, 20 calls per route): anime 20×`200` with 17 distinct ids out of the 61 stored (a uniform draw expects 17.1); manga 20×`200` over its 2 rows; users 20×`200` over its 2 profiles; characters and people 20×`404 NO_LOCAL_ENTRIES` — both tables are empty there.
 
 **The first draft fell back to `key >= <random> LIMIT 1`, and that fallback is biased.** It reads one row, but it picks an id with the probability of the gap in front of it. On the preview D1 (61 anime over 64,809 ids, so nearly every pick reached the fallback) it drew the same anime 4 times in the first 6 picks, and 12 distinct ids in 20. A freshly self-hosted catalog looks like that, and the old sort was uniform there. `tests/integration/catalog.test.ts` guards it on real SQLite: 600 draws over three ids spread across 900 must each land within 10 points of a third, and the `>=` fallback missed by 25.
+
+**The first version took two statements, and that made the route slower.** It read `max(key)`, then an `IN` list bound from the Worker — 65 rows, 5–12 ms of SQL — and shipped as `19ba28ff`. Each statement is a round trip, though, and the Worker serving South America runs in POA (`cf-ray …-POA`) while the database runs in ENAM with read replication off (`wrangler d1 info`). From POA, `/v1/random/anime` went from a p50 of 0.30 s on the sort (11 warm calls on `48a0a799`) to 0.41 s (10 calls on `19ba28ff`): the round trip cost more than the SQL saved. Drawing the keys inside SQLite puts the round back in one statement, at 164 rows read instead of 65 — a count D1 bills, not one that holds the database.
 
 No contract change: same routes, same body, same `404 NO_LOCAL_ENTRIES`, still `no-store`. Left: the 7-day `d1QueriesAdaptiveGroups` check of the new statements once the build is live (`docs/plans/random-without-table-scan/slice-01-sampled-ids.md`).
 
@@ -397,7 +400,7 @@ By route: `/v1/anime/:id/episodes` 648 (66%), `/v1/anime/:id/full` 54, `/v1/char
 
 **Lab notes.** At 3.3 s and 4.5 s of CPU, requests only waited in the queue. From ~5.7 s, D1 answered `Too many resources consumed within a 10 second window` until the burst left its trailing 10-second window, ~7–10 s after the block; how long varied by run. Production's variant was `Requests queued for too long` (a full queue under real traffic, refused at once). Both take the same code path.
 
-**Still open.** Why D1 overloads 88–331 times a day while it spends ~0.4% of the time executing statements. The 03:07 stall had no visible slow statement, and GraphQL `d1QueriesAdaptiveGroups` omits queries issued through the API (a 7.8 s diagnostic scan never appeared there). The known heavy statement was `ORDER BY RANDOM()` on `/v1/random/*`: 7.3M rows read in 125 calls, p99 1.6 s. Replaced on 2026-11-18 by a draw by key that reads 65 rows — see "Random picks without a table scan". After the fixes, no overload of its own on 2026-11-17 or 18 — see "Measured after the D1 fixes" below.
+**Still open.** Why D1 overloads 88–331 times a day while it spends ~0.4% of the time executing statements. The 03:07 stall had no visible slow statement, and GraphQL `d1QueriesAdaptiveGroups` omits queries issued through the API (a 7.8 s diagnostic scan never appeared there). The known heavy statement was `ORDER BY RANDOM()` on `/v1/random/*`: 7.3M rows read in 125 calls, p99 1.6 s. Replaced on 2026-11-18 by a draw by key that reads 164 rows — see "Random picks without a table scan". After the fixes, no overload of its own on 2026-11-17 or 18 — see "Measured after the D1 fixes" below.
 
 ## Single-episode titles have no episode page (2026-11-16)
 

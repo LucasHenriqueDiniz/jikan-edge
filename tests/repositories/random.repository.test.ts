@@ -5,6 +5,10 @@ import { RandomRepository } from '../../src/repositories/random.repository';
 // payload included — to sort it by a random key. On the production D1 that was 58,851 rows read per
 // call, a fifth of every row the database read in the week of 2026-11-11, from 71 calls out of five
 // million queries (docs/plans/random-without-table-scan/slice-01-sampled-ids.md).
+//
+// The probing happens inside SQLite, so the fake below does not imitate it: each test says which
+// stored ids a round comes back with. Whether the SQL probes fairly is tested on real SQLite, in
+// tests/integration/catalog.test.ts.
 
 /** A seeded source, so a statistical assertion gives the same answer on every run. */
 function seeded(seed: number): () => number {
@@ -17,47 +21,36 @@ function seeded(seed: number): () => number {
   };
 }
 
-type Issued = { sql: string; params: unknown[] };
+type Row = Record<string, unknown>;
 
 /**
- * An in-memory table that answers the statements the pick is allowed to issue and throws on any
- * other, recording each one with what it was bound to.
+ * A D1 that answers the pick's two statements and throws on any other, recording each one. A round
+ * answers like the real LEFT JOIN: one row per id found, in key order, or a single row with only
+ * the top key when nothing was found — and with no top key at all when the table is empty.
  */
-function fakeTable(ids: number[], rowFor: (id: number) => Record<string, unknown>) {
-  const issued: Issued[] = [];
-  const stored = new Set(ids);
-  const sorted = [...ids].sort((a, b) => a - b);
+function fakeDb(options: {
+  top: number | null;
+  roundFinds: number[];
+  rowFor: (id: number) => Row;
+  emptyRow: Row;
+  fallbackId?: number;
+}) {
+  const issued: string[] = [];
   const db = {
     prepare(sql: string) {
-      const entry: Issued = { sql, params: [] };
-      issued.push(entry);
-      const statement = {
-        bind(...values: unknown[]) {
-          entry.params = values;
-          return statement;
+      issued.push(sql);
+      return {
+        async all() {
+          if (!sql.startsWith('WITH RECURSIVE')) throw new Error(`unexpected all(): ${sql}`);
+          const found = [...options.roundFinds].sort((a, b) => a - b);
+          const rows = found.map((id) => ({ top: options.top, hit: id, ...options.rowFor(id) }));
+          return { results: rows.length > 0 ? rows : [{ top: options.top, hit: null, ...options.emptyRow }] };
         },
         async first() {
-          if (/^SELECT max\(/.test(sql)) return { top: sorted.at(-1) ?? null };
-          if (/ = \(SELECT \w+ FROM \w+ ORDER BY RANDOM\(\) LIMIT 1\)$/.test(sql)) {
-            const id = sorted[Math.floor(Math.random() * sorted.length)];
-            return id === undefined ? null : rowFor(id);
-          }
-          throw new Error(`unexpected first(): ${sql}`);
-        },
-        // In key order, whatever the order of the list: that is how D1 answered an IN lookup on
-        // production (2026-11-18), and it is what makes "take the first row found" a biased pick.
-        async all() {
-          if (!/ IN \(/.test(sql)) throw new Error(`unexpected all(): ${sql}`);
-          return {
-            results: entry.params
-              .map(Number)
-              .filter((id) => stored.has(id))
-              .sort((a, b) => a - b)
-              .map(rowFor),
-          };
+          if (!/ORDER BY RANDOM\(\) LIMIT 1\)$/.test(sql)) throw new Error(`unexpected first(): ${sql}`);
+          return options.fallbackId === undefined ? null : options.rowFor(options.fallbackId);
         },
       };
-      return statement;
     },
   } as unknown as D1Database;
   return { db, issued };
@@ -67,43 +60,30 @@ const animeRow = (id: number) => ({
   payload_json: JSON.stringify({ malId: id }),
   fetched_at: '2026-11-18T00:00:00.000Z',
 });
+const noAnime = { payload_json: null, fetched_at: null };
 const userRow = (id: number) => ({ canonical_username: `user${id}` });
+const noUser = { canonical_username: null };
 const malIdOf = (picked: { data: unknown } | null) => (picked?.data as { malId: number } | undefined)?.malId;
 
 describe('RandomRepository.pick', () => {
-  it('reads by key — the top id, then one IN list — and never sorts the table', async () => {
-    const { db, issued } = fakeTable([3, 7, 9], animeRow);
+  // One statement, not two: the Worker serving South America runs in POA and the database in ENAM,
+  // so each statement is a round trip — the two-statement draft made the route ~110 ms slower.
+  it('reads a round in one statement, and never sorts the table', async () => {
+    const { db, issued } = fakeDb({ top: 9, roundFinds: [3, 7, 9], rowFor: animeRow, emptyRow: noAnime });
 
     const picked = await new RandomRepository(db, seeded(1)).pick('anime');
 
     expect([3, 7, 9]).toContain(malIdOf(picked));
     expect(picked?.fetchedAt).toBe('2026-11-18T00:00:00.000Z');
-    expect(issued.map((entry) => entry.sql)).toEqual([
-      'SELECT max(mal_id) AS top FROM anime',
-      expect.stringMatching(/^SELECT payload_json, fetched_at FROM anime WHERE mal_id IN \(\?(, \?)*\)$/),
-    ]);
-    expect(issued.some((entry) => /RANDOM\(\)/i.test(entry.sql))).toBe(false);
+    expect(issued).toHaveLength(1);
+    expect(issued[0]).toContain('SELECT max(mal_id) FROM anime');
+    expect(issued[0]).toContain('LEFT JOIN anime AS t ON t.mal_id IN (SELECT id FROM probe)');
+    expect(issued[0]).not.toMatch(/ORDER BY RANDOM\(\)/i);
   });
 
-  it('binds at most 32 distinct ids however large the table is', async () => {
-    const { db, issued } = fakeTable(
-      Array.from({ length: 50_000 }, (_, index) => index * 2 + 1),
-      animeRow,
-    );
-
-    await new RandomRepository(db, seeded(2)).pick('manga');
-
-    const probes = issued[1].params;
-    expect(probes).toHaveLength(32);
-    expect(new Set(probes).size).toBe(32);
-    for (const id of probes) expect(id).toBeGreaterThanOrEqual(1);
-    for (const id of probes) expect(id).toBeLessThanOrEqual(99_999);
-  });
-
-  // The cheap alternative, `WHERE mal_id >= <random> LIMIT 1`, picks an id with the probability of
-  // the gap in front of it: over these three ids it lands on 64 about 97% of the time.
-  it('is uniform over the stored ids, whatever the gaps between them', async () => {
-    const { db } = fakeTable([1, 2, 64], animeRow);
+  // Rows come back in key order, so "take the first row found" would favour the lowest id.
+  it('picks uniformly among the rows a round brings back', async () => {
+    const { db } = fakeDb({ top: 64, roundFinds: [1, 2, 64], rowFor: animeRow, emptyRow: noAnime });
     const repository = new RandomRepository(db, seeded(3));
     const counts = new Map<number | undefined, number>();
     const draws = 30_000;
@@ -117,68 +97,57 @@ describe('RandomRepository.pick', () => {
     for (const id of [1, 2, 64]) expect(Math.abs((counts.get(id) ?? 0) / draws - 1 / 3)).toBeLessThan(0.01);
   });
 
-  it('probes every id of a table no larger than one round, so it never misses there', async () => {
-    const { db, issued } = fakeTable([32], animeRow);
-
-    const picked = await new RandomRepository(db, () => 0).pick('people');
-
-    expect(malIdOf(picked)).toBe(32);
-    expect(issued).toHaveLength(2);
-    expect(issued[1].params).toEqual(Array.from({ length: 32 }, (_, index) => index + 1));
-  });
-
   it('falls back to a random sort over the key alone after three rounds that found nothing', async () => {
-    // Probes stay in 1..900, so they never reach the one stored id.
-    const below900 = seeded(4);
-    const { db, issued } = fakeTable([1000], animeRow);
+    const { db, issued } = fakeDb({ top: 1000, roundFinds: [], rowFor: animeRow, emptyRow: noAnime, fallbackId: 1000 });
 
-    const picked = await new RandomRepository(db, () => below900() * 0.9).pick('characters');
+    const picked = await new RandomRepository(db, seeded(4)).pick('characters');
 
     expect(malIdOf(picked)).toBe(1000);
-    expect(issued.map((entry) => entry.sql)).toEqual([
-      'SELECT max(mal_id) AS top FROM characters',
-      expect.stringContaining(' IN ('),
-      expect.stringContaining(' IN ('),
-      expect.stringContaining(' IN ('),
+    expect(issued).toHaveLength(4);
+    expect(issued.slice(0, 3).every((sql) => sql.startsWith('WITH RECURSIVE'))).toBe(true);
+    expect(issued[3]).toBe(
       'SELECT payload_json, fetched_at FROM characters WHERE mal_id = (SELECT mal_id FROM characters ORDER BY RANDOM() LIMIT 1)',
-    ]);
-  });
-
-  // The draw loop rejects repeated ids. Bounded by successes alone, a source that keeps repeating
-  // itself would spin forever inside a request.
-  it('does not hang on a random source that repeats itself', async () => {
-    const { db, issued } = fakeTable([1, 500, 1000], animeRow);
-
-    const picked = await new RandomRepository(db, () => 0).pick('anime');
-
-    expect(malIdOf(picked)).toBe(1);
-    expect(issued[1].params).toEqual([1]);
+    );
   });
 
   it('answers null on an empty table after one statement', async () => {
-    const { db, issued } = fakeTable([], animeRow);
+    const { db, issued } = fakeDb({ top: null, roundFinds: [], rowFor: animeRow, emptyRow: noAnime });
 
     expect(await new RandomRepository(db, seeded(5)).pick('anime')).toBeNull();
+    expect(issued).toHaveLength(1);
+  });
+
+  // D1 always returns the LEFT JOIN's row; a stub that returns nothing must not read as a database
+  // full of gaps and walk through every round.
+  it('reads a round that returns no row at all as an empty table', async () => {
+    const issued: string[] = [];
+    const db = {
+      prepare: (sql: string) => {
+        issued.push(sql);
+        return { all: async () => ({ results: [] }) };
+      },
+    } as unknown as D1Database;
+
+    expect(await new RandomRepository(db, seeded(6)).pick('manga')).toBeNull();
     expect(issued).toHaveLength(1);
   });
 });
 
 describe('RandomRepository.pickUser', () => {
   it('draws over rowid, since users are keyed by their username', async () => {
-    const { db, issued } = fakeTable([1, 2, 3], userRow);
+    const { db, issued } = fakeDb({ top: 3, roundFinds: [1, 2, 3], rowFor: userRow, emptyRow: noUser });
 
-    const picked = await new RandomRepository(db, seeded(6)).pickUser();
+    const picked = await new RandomRepository(db, seeded(7)).pickUser();
 
     expect(['user1', 'user2', 'user3']).toContain(picked?.username);
-    expect(issued.map((entry) => entry.sql)).toEqual([
-      'SELECT max(rowid) AS top FROM users',
-      expect.stringMatching(/^SELECT canonical_username FROM users WHERE rowid IN \(\?(, \?)*\)$/),
-    ]);
+    expect(issued).toHaveLength(1);
+    expect(issued[0]).toContain('SELECT max(rowid) FROM users');
+    expect(issued[0]).toContain('LEFT JOIN users AS t ON t.rowid IN (SELECT id FROM probe)');
   });
 
   it('answers null when no profile is stored', async () => {
-    const { db } = fakeTable([], userRow);
+    const { db } = fakeDb({ top: null, roundFinds: [], rowFor: userRow, emptyRow: noUser });
 
-    expect(await new RandomRepository(db, seeded(7)).pickUser()).toBeNull();
+    expect(await new RandomRepository(db, seeded(8)).pickUser()).toBeNull();
   });
 });

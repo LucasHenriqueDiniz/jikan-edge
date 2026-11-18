@@ -113,10 +113,10 @@ deterministic.
 | --- | --- |
 | unit tests (`tests/repositories/random.repository.test.ts`) | 9, red against `ORDER BY RANDOM()` (9 of 9), and each kills its mutant: always-fallback, first row found, random probes on a tiny table; an unbounded draw loop hangs the run |
 | integration (`tests/integration/catalog.test.ts`, real SQLite) | 600 draws over ids `{3, 70, 900}` each within 10 points of a third; the `>=` fallback missed by 25 |
-| production D1, statements by hand | `max`: 1 row, 0.6–0.8 ms. `IN` of 32: **64 rows**, 4.3–12.4 ms, over 8 rounds (anime 9–17 keys found, manga 11–15). Users: max rowid 4,722, 200 of 200 rowids probed are stored |
+| production D1, statements by hand | first version: `max` 1 row, 0.6–0.8 ms, then `IN` of 32: **64 rows**, 4.3–12.4 ms (8 rounds, anime and manga). Final, one statement: **164 rows**, 3.5–20.2 ms, 15 rounds over all five tables; the plan is an index search for `max` and a rowid lookup per probe. Users: max rowid 4,722, 200 of 200 rowids probed are stored |
 | preview D1 through the app, 20 calls per route | anime 20×200, 17 distinct of 61 stored (uniform expects 17.1); manga 20×200 over 2 rows; characters, people 20×404 `NO_LOCAL_ENTRIES` (empty); users: see `docs/routes.md` |
 
-Two departures from the plan above:
+Three departures from the plan above:
 
 - **The fallback is not `mal_id >= <random>`.** On the preview D1 (61 anime over 64,809 ids) nearly
   every pick reached it, and it drew the same anime 4 times in the first 6 picks — 12 distinct
@@ -125,6 +125,11 @@ Two departures from the plan above:
   only reached on a table mostly made of gaps, which is a small one. No wrap was needed either way.
 - **`rows_read` per round is 64, not ≤ 32.** D1 counts two rows per key in an `IN` lookup, found
   or not (6 keys → 12 on a separate probe). One pick is 65 rows against 58,851.
+- **One statement, not two.** The two-statement version shipped as `19ba28ff`, and from POA it
+  answered ~110 ms slower than the sort (p50 0.30 → 0.41 s): each statement is a round trip to the
+  database in ENAM. The keys are now drawn inside SQLite by a recursive CTE and the table LEFT
+  JOINed on them, so a round is one statement again. D1 counts 164 rows for it — the CTE's rows
+  included — which costs nothing that matters next to 58,851.
 
 Left: the 7-day `d1QueriesAdaptiveGroups` check of Task 2, once the build is live.
 

@@ -7,16 +7,16 @@ import { NO_STORE } from '../../src/http/caching';
 const KINDS = ['anime', 'manga', 'characters', 'people'] as const;
 const STANDARD_META = ['cached', 'fetchedAt', 'refreshFailed', 'stale'];
 
-// The pick asks for the top key with first() and reads the probed rows with all(); every other
-// statement on the way (the users pick goes through withCache) gets the row itself.
+// The pick reads its round with all(), as one row per stored key it found; every other statement on
+// the way (the users pick goes through withCache) gets the row itself.
 function dbAnswering(row: Record<string, unknown>): D1Database {
   return {
     prepare: (sql: string) => {
       const statement = {
         bind: () => statement,
-        first: async () => (sql.startsWith('SELECT max(') ? { top: 1 } : row),
+        first: async () => row,
         run: async () => ({ meta: {}, success: true }),
-        all: async () => ({ results: sql.includes(' IN (') ? [row] : [] }),
+        all: async () => ({ results: sql.startsWith('WITH RECURSIVE') ? [{ top: 1, hit: 1, ...row }] : [] }),
       };
       return statement;
     },

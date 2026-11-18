@@ -10,6 +10,14 @@ const FAILURES: Record<Exclude<StubBehaviour, 'ok'>, string> = {
   overloaded: OVERLOADED,
 };
 
+// D1's all() always resolves to `{ results }`, never to null; the stubs answer it the same way.
+function rows(answer: () => Promise<null>) {
+  return async () => {
+    await answer();
+    return { results: [] };
+  };
+}
+
 /**
  * A database that refuses its first `failures` statements as overloaded and then answers like the
  * empty `ok` stub — a stall that clears while the request is still retrying.
@@ -23,7 +31,7 @@ export function flakyDatabase(failures: number): D1Database {
     }
     return null;
   };
-  const statement = { bind: () => statement, first: answer, run: answer, all: answer };
+  const statement = { bind: () => statement, first: answer, run: answer, all: rows(answer) };
   return { prepare: () => statement } as unknown as D1Database;
 }
 
@@ -32,6 +40,6 @@ export function stubDatabase(behaviour: StubBehaviour): D1Database {
     if (behaviour !== 'ok') throw new Error(FAILURES[behaviour]);
     return null;
   };
-  const statement = { bind: () => statement, first: answer, run: answer, all: answer };
+  const statement = { bind: () => statement, first: answer, run: answer, all: rows(answer) };
   return { prepare: () => statement } as unknown as D1Database;
 }
